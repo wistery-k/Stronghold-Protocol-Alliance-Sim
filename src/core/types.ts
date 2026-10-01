@@ -130,6 +130,22 @@ export interface Modifier {
   ammoPct?: number;
   /** 弱点ダメージ（物理と術の有利な方になる） */
   weakDamage?: boolean;
+  /** スキル発動ごとの攻撃力上昇（炎国の短刀） */
+  atkPerCast?: number;
+  atkPerCastMax?: number;
+  /** 攻撃ごとの攻撃速度上昇（リミテッドアクセラレーター） */
+  aspdPerAttack?: number;
+  aspdPerAttackMax?: number;
+  /** 配置後の与ダメージ上昇と減衰（カジミエーシュの競技旗） */
+  flagScale?: number;
+  flagDuration?: number;
+  flagStep?: number;
+  flagMinus?: number;
+  /** 攻撃時に確率で追加の物理弾（銃騎の威光） */
+  extraShotProb?: number;
+  extraShotScale?: number;
+  /** 最初のスキル終了時に回復するSP（黄砂の羅針盤） */
+  firstSkillEndSp?: number;
 }
 
 export interface EnemyPhase {
@@ -157,10 +173,19 @@ export interface EnemyDef {
 
 export type Direction = 'up' | 'right' | 'down' | 'left';
 
+export interface OwnedItem {
+  uid: number;
+  itemId: string;
+  /** 1 = 通常, 2 = 強化 */
+  star: Star;
+}
+
 export interface OwnedUnit {
   uid: number;
   defId: string;
   star: Star;
+  /** 装備中のアイテム（最大2つ） */
+  items?: OwnedItem[];
   /** 配置エリアのマス（0〜15、左上から右へ）。控えにいる時は未設定 */
   pos?: number;
   /** 向き（未設定なら右） */

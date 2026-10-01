@@ -1,6 +1,7 @@
 import { UNITS, getUnit } from './data/units';
 import { benchUnits, currentActive, gainTriggerTimes, triggerGarrisons } from './garrison';
 import { Rng } from './rng';
+import { itemOnGain, unitAvailable } from './items';
 import { BENCH_SIZE } from './rules';
 import type { GameState } from './game';
 import type { OwnedUnit, Star, Tier } from './types';
@@ -48,7 +49,7 @@ export function rollChoices(state: GameState, tier: Tier): string[] {
   return withRng(state, (rng) => {
     const picked: string[] = [];
     for (let i = 0; i < 3; i++) {
-      const cands = UNITS.filter((u) => u.tier === tier && !picked.includes(u.id));
+      const cands = UNITS.filter((u) => u.tier === tier && !picked.includes(u.id) && unitAvailable(state, u.id));
       const idx = rng.weighted(cands.map((c) => state.pool[c.id]));
       if (idx < 0) break;
       picked.push(cands[idx].id);
@@ -91,6 +92,7 @@ export function gainUnit(state: GameState, defId: string): boolean {
   if (emptyIdx >= 0 && benchOverflow(state) === 0) state.bench[emptyIdx] = unit;
   else state.bench.push(unit);
   triggerGarrisons(state, 'SERVER_GAIN', [{ unit, where: 'bench' }], gainTriggerTimes(state, currentActive(state)));
+  itemOnGain(state);
   mergeUnits(state, defId);
   state.bench = compactBench(state.bench);
   return true;
@@ -98,7 +100,7 @@ export function gainUnit(state: GameState, defId: string): boolean {
 
 /** 候補からランダムに1名を獲得（特性による獲得用） */
 export function gainRandom(state: GameState, candidates: { id: string; weight: number }[], source: string): void {
-  const avail = candidates.filter((c) => state.pool[c.id] > 0);
+  const avail = candidates.filter((c) => state.pool[c.id] > 0 && unitAvailable(state, c.id));
   const idx = withRng(state, (rng) => rng.weighted(avail.map((c) => c.weight)));
   if (idx < 0) return;
   const id = avail[idx].id;

@@ -12,12 +12,27 @@ import {
   sellPrice,
   type Action,
   type GameState,
+  deployCapOf,
 } from '../core/game';
-import { BENCH_SIZE, MAX_ROUND, REFRESH_COST, TIER_ODDS, deployCap } from '../core/rules';
+import { BENCH_SIZE, MAX_ROUND, REFRESH_COST, TIER_ODDS } from '../core/rules';
+import { ITEM_STORE_SIZE, getItem } from '../core/data/items';
+import { itemOverflow, storedItems } from '../core/items';
 import { benchOverflow } from '../core/acquire';
 import { simulateDps } from '../core/sim';
 import type { AllianceId } from '../core/types';
-import { alliancePanel, boardGrid, emptySlot, enemyInfo, makeDropTarget, predictionLine, simSummary, unitCard, unitDetail } from './components';
+import {
+  allianceSummary,
+  alliancePanel,
+  boardGrid,
+  emptySlot,
+  enemyInfo,
+  itemCard,
+  makeDropTarget,
+  predictionLine,
+  simSummary,
+  unitCard,
+  unitDetail,
+} from './components';
 import { h } from './dom';
 
 export interface GameViewProps {
@@ -49,21 +64,28 @@ const lastClick: { uid: number | null; at: number } = { uid: null, at: 0 };
 
 function prepView(p: GameViewProps): HTMLElement {
   const { state, dispatch, select, selectedUid } = p;
-  const cap = deployCap(state.level);
+  const cap = deployCapOf(state);
   const enemy = enemyForRound(state.round);
   const bench = benchUnits(state);
-  const statuses = evaluateAlliances(state.board, bench);
+  const statuses = evaluateAlliances(state.board, bench, state.banned);
   const activeIds = activeAllianceIds(statuses);
   // 戦闘開始時（準備フェーズ終了時の特性・配置時の特性の後）の加算数で予測する
   const battleStacks = previewBattleStacks(state);
-  const setup = buildSimInputs(state.board, bench, battleStacks);
+  const setup = buildSimInputs(state.board, bench, battleStacks, { banned: state.banned, roundGained: state.round_.gained });
   const prediction = simulateDps(setup.inputs, enemy, { globals: setup.globals, activeAlliances: activeAllianceIds(setup.statuses), stacks: battleStacks });
   const lvCost = levelUpCost(state);
   // 非精鋭で所持しているオペレーター（ショップで光らせる）
   const ownedNormal = new Set(allOwned(state).filter((o) => o.star === 1).map((o) => o.defId));
   const hasChoice = state.choices.length > 0;
   const overflow = benchOverflow(state);
-  const blockReason = hasChoice ? '無料獲得の候補を先に選んでください' : overflow > 0 ? `控えが上限を${overflow}名超えています` : null;
+  const itemOver = itemOverflow(state);
+  const blockReason = hasChoice
+    ? '無料獲得の候補を先に選んでください'
+    : overflow > 0
+      ? `控えが上限を${overflow}名超えています`
+      : itemOver > 0
+        ? `装備の保管庫が上限を${itemOver}つ超えています`
+        : null;
 
   // 詳細表示：マウスオーバー中のユニットを優先し、なければ選択中のユニット。
   // マウスオーバーでは全体を再描画せず（ドラッグが途切れるため）、詳細パネルだけを差し替える
@@ -115,7 +137,17 @@ function prepView(p: GameViewProps): HTMLElement {
       select(uid === selectedUid ? null : uid);
     },
     onHover: (enter: boolean) => hover(enter ? uid : null),
+    items: findOwned(state, uid)?.unit.items,
+    onItemDrop: (itemUid: number) => dispatch({ type: 'equip', itemUid, unitUid: uid }),
   });
+
+  const itemSlots = state.itemStore.map((it, index) =>
+    h(
+      'div',
+      { class: `slot item-slot${index >= ITEM_STORE_SIZE ? ' over' : ''}` },
+      it ? itemCard(it.itemId, { star: it.star, dragItemUid: it.uid }) : emptySlot(),
+    ),
+  );
 
   const benchSlots = state.bench.map((o, index) => {
     const slot = h(
@@ -190,6 +222,13 @@ function prepView(p: GameViewProps): HTMLElement {
             onClick: () => dispatch({ type: 'buy', slot }),
           });
         }),
+        state.itemShop
+          ? itemCard(state.itemShop, {
+              price: getItem(state.itemShop).normal.price,
+              dim: state.gold < getItem(state.itemShop).normal.price,
+              onClick: () => dispatch({ type: 'buyItem' }),
+            })
+          : emptySlot('装備：購入済み'),
       ),
       h('div', { class: 'muted small odds' }, odds.map((o, i) => (o ? `等級${i + 1}:${o}%` : '')).filter(Boolean).join('　'), '　｜ここへドロップで売却'),
     ),
@@ -197,6 +236,7 @@ function prepView(p: GameViewProps): HTMLElement {
       dispatch({ type: 'sell', uid });
       select(null);
     },
+    (itemUid) => dispatch({ type: 'sellItem', uid: itemUid }),
   );
 
   return h(
@@ -221,6 +261,7 @@ function prepView(p: GameViewProps): HTMLElement {
           'section',
           { class: 'panel' },
           h('h2', null, `配置（${state.board.length}/${cap}）`),
+          allianceSummary(statuses, state.stacks, state.banned),
           boardGrid(state.board, {
             cardOptions: (o) => ({
               ...cardFor(o.uid, 'board'),
@@ -235,6 +276,17 @@ function prepView(p: GameViewProps): HTMLElement {
           { class: `panel${overflow > 0 ? ' overflow' : ''}` },
           h('h2', null, `控え（${bench.length}/${BENCH_SIZE}）`, overflow > 0 ? h('span', { class: 'ng' }, `　${overflow}名超過：配置か売却で上限内に戻してください`) : null),
           h('div', { class: 'cards bench' }, benchSlots),
+        ),
+        h(
+          'section',
+          { class: `panel${itemOver > 0 ? ' overflow' : ''}` },
+          h(
+            'h2',
+            null,
+            `装備（${storedItems(state).length}/${ITEM_STORE_SIZE}）`,
+            h('span', { class: 'muted small' }, '　オペレーターへドラッグで装備（1人2つまで・外せません）、招集欄へドロップで売却'),
+          ),
+          h('div', { class: 'cards items' }, itemSlots),
         ),
         choicePanel,
         shopPanel,
@@ -289,8 +341,34 @@ function resultView(p: GameViewProps): HTMLElement {
               ? h('dd', null, `+${b.nextIncome.base}`, b.nextIncome.extra ? h('span', { class: 'muted' }, `（追加+${b.nextIncome.extra}）`) : null)
               : null,
           ),
+        ),
+        h(
+          'section',
+          { class: 'panel' },
+          h('h2', null, '獲得した盟約加算数'),
           gained.length
-            ? h('p', { class: 'small' }, '増えた加算数：', gained.map(([id, n]) => `${ALLIANCES[id].name}+${n}`).join('、'))
+            ? h(
+                'table',
+                { class: 'stack-table' },
+                h('thead', null, h('tr', null, h('th', null, '盟約'), h('th', null, '前'), h('th', { title: '準備フェーズ終了時・配置時' }, '準備'), h('th', null, '戦闘'), h('th', null, '合計'))),
+                h(
+                  'tbody',
+                  null,
+                  gained
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([id, n]) =>
+                      h(
+                        'tr',
+                        null,
+                        h('td', null, ALLIANCES[id].name),
+                        h('td', null, `${b.stacksBefore[id] ?? 0}`),
+                        h('td', { class: 'ok' }, b.stacksFromPrep[id] ? `+${b.stacksFromPrep[id]}` : '-'),
+                        h('td', { class: 'ok' }, b.stacksFromBattle[id] ? `+${b.stacksFromBattle[id]}` : '-'),
+                        h('td', null, h('b', null, `${(b.stacksBefore[id] ?? 0) + n}`), h('span', { class: 'ok small' }, `（+${n}）`)),
+                      ),
+                    ),
+                ),
+              )
             : h('p', { class: 'small muted' }, '加算数の増加なし'),
         ),
         h('section', { class: 'panel' }, h('h2', null, '発動した盟約'), alliancePanel(b.alliances.filter((a) => a.level > 0), state.stacks)),

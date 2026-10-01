@@ -1,6 +1,6 @@
 import { enemyForRound } from './data/enemies';
 import { UNITS, getUnit, unitState } from './data/units';
-import { activeAllianceIds, battleSetup, evaluateAlliances, type AllianceStatus } from './alliance';
+import { activeAllianceIds, battleSetup, evaluateAlliances, type AllianceStatus, type BattleOptions } from './alliance';
 import {
   addStacks,
   allTargets,
@@ -13,6 +13,22 @@ import {
 } from './garrison';
 import { miraProb } from './data/alliances';
 import { allOwned, benchOverflow, canReceive, compactBench, gainUnit, withRng } from './acquire';
+import {
+  ITEM_SELL_PRICE,
+  compactItemStore,
+  gainItem,
+  equipItem,
+  itemBattleEnd,
+  itemOnSold,
+  itemOverflow,
+  itemRoundStart,
+  returnItems,
+  rollItemShop,
+  storedItems,
+  unitAvailable,
+} from './items';
+import { ITEM_STORE_SIZE, getItem, itemState } from './data/items';
+import { CORE_IDS } from './data/alliances';
 import { firstFreeCell, normalizePositions, unitAt } from './board';
 import {
   BENCH_SIZE,
@@ -24,14 +40,14 @@ import {
   TIER_ODDS,
   baseLevelUpCost,
   buyPrice,
-  deployCap,
+  DEPLOY_CAP,
   lifeLoss,
   roundIncome,
   sellPriceOf,
   shopSlots,
 } from './rules';
 import { simulateDps, type SimResult } from './sim';
-import type { AllianceId, Direction, OwnedUnit } from './types';
+import type { AllianceId, Direction, OwnedItem, OwnedUnit } from './types';
 
 export type Phase = 'prep' | 'result' | 'gameover' | 'clear';
 
@@ -41,13 +57,18 @@ export interface BattleReport {
   lifeLost: number;
   /** この戦闘（準備フェーズ終了時〜戦闘中）で増えた加算数 */
   stacksGained: Partial<Record<AllianceId, number>>;
+  /** 戦闘前（準備フェーズ終了前）の加算数 */
+  stacksBefore: Partial<Record<AllianceId, number>>;
+  /** 準備フェーズ終了時〜配置時に増えた分と、戦闘中に増えた分 */
+  stacksFromPrep: Partial<Record<AllianceId, number>>;
+  stacksFromBattle: Partial<Record<AllianceId, number>>;
   alliances: AllianceStatus[];
   /** 次ラウンド開始時に得る資金 */
   nextIncome: { base: number; extra: number } | null;
 }
 
 export interface GameState {
-  version: 4;
+  version: 5;
   seed: number;
   rngState: number;
   round: number;
@@ -57,7 +78,19 @@ export interface GameState {
   /** 管理レベルを上げてから経過したラウンド数（レベルアップ価格の割引） */
   levelDiscount: number;
   shop: (string | null)[];
+  /** ショップの装備枠 */
+  itemShop: string | null;
+  /** 装備の保管庫（上限を超えても保持し、超過中は戦闘不可） */
+  itemStore: (OwnedItem | null)[];
   frozen: boolean;
+  /** 盟約BANされた盟約 */
+  banned: AllianceId[];
+  /** ラウンド開始時の追加資金（倹約家の人形） */
+  extraRoundGold: number;
+  /** 最大配置人数の上書き（人事部の書類） */
+  deployCapOverride: number | null;
+  /** 売却したオペレーターの累計（商業パッケージ案） */
+  soldCount: number;
   bench: (OwnedUnit | null)[];
   board: OwnedUnit[];
   pool: Record<string, number>;
@@ -68,8 +101,8 @@ export interface GameState {
   /** 次の準備フェーズで得る追加資金 */
   pendingGold: number;
   /** このラウンドの集計（特性の計算に使う） */
-  round_: { gained: number; spent: number; refreshes: number };
-  rewards: { visiTens: number; miraHundreds: number; visiDiscount: boolean; allDiscount: boolean };
+  round_: { gained: number; spent: number; refreshes: number; cauldron: number };
+  rewards: { visiTens: number; miraHundreds: number; visiDiscount: boolean; allDiscount: boolean; victoriaQuarters: number };
   /** 無料で1名を選べる候補（精鋭化の報酬・特別招集）。先頭から順に選ぶ */
   choices: { title: string; options: string[] }[];
   nextUid: number;
@@ -81,6 +114,9 @@ export interface GameState {
 
 export type Action =
   | { type: 'buy'; slot: number }
+  | { type: 'buyItem' }
+  | { type: 'sellItem'; uid: number }
+  | { type: 'equip'; itemUid: number; unitUid: number }
   | { type: 'sell'; uid: number }
   | { type: 'deploy'; uid: number; pos?: number }
   | { type: 'undeploy'; uid: number }
@@ -103,11 +139,18 @@ export interface ActionResult {
 // 生成
 // ------------------------------------------------------------
 
-export function createGame(seed = Math.floor(Math.random() * 2 ** 31)): GameState {
+export interface GameOptions {
+  /** 盟約BAN：'random' = 核心盟約からランダムに3つ、'none' = なし */
+  ban?: 'random' | 'none';
+}
+
+export const BAN_COUNT = 3;
+
+export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: GameOptions = {}): GameState {
   const pool: Record<string, number> = {};
   for (const u of UNITS) pool[u.id] = POOL_COPIES[u.tier];
   const state: GameState = {
-    version: 4,
+    version: 5,
     seed,
     rngState: seed,
     round: 1,
@@ -116,7 +159,13 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31)): GameStat
     level: 1,
     levelDiscount: 0,
     shop: [],
+    itemShop: null,
+    itemStore: Array(ITEM_STORE_SIZE).fill(null),
     frozen: false,
+    banned: [],
+    extraRoundGold: 0,
+    deployCapOverride: null,
+    soldCount: 0,
     bench: Array(BENCH_SIZE).fill(null),
     board: [],
     pool,
@@ -124,8 +173,8 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31)): GameStat
     freeRefreshes: 0,
     nextRefreshFree: false,
     pendingGold: 0,
-    round_: { gained: 0, spent: 0, refreshes: 0 },
-    rewards: { visiTens: 0, miraHundreds: 0, visiDiscount: false, allDiscount: false },
+    round_: { gained: 0, spent: 0, refreshes: 0, cauldron: 0 },
+    rewards: { visiTens: 0, miraHundreds: 0, visiDiscount: false, allDiscount: false, victoriaQuarters: 0 },
     choices: [],
     nextUid: 1,
     phase: 'prep',
@@ -133,6 +182,14 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31)): GameStat
     history: [],
     log: [`シード ${seed} で開始`],
   };
+  if ((opts.ban ?? 'random') === 'random') {
+    state.banned = withRng(state, (rng) => {
+      const cands = [...CORE_IDS];
+      const out: AllianceId[] = [];
+      while (out.length < BAN_COUNT && cands.length) out.push(cands.splice(rng.int(cands.length), 1)[0]);
+      return out;
+    });
+  }
   rollShop(state);
   return state;
 }
@@ -149,7 +206,7 @@ export function rollShop(state: GameState): void {
       let tier = rng.weighted(odds) + 1;
       let picked: string | null = null;
       for (; tier >= 1 && !picked; tier--) {
-        const cands = UNITS.filter((u) => u.tier === tier);
+        const cands = UNITS.filter((u) => u.tier === tier && unitAvailable(state, u.id));
         const idx = rng.weighted(cands.map((c) => state.pool[c.id]));
         if (idx >= 0) picked = cands[idx].id;
       }
@@ -157,6 +214,7 @@ export function rollShop(state: GameState): void {
     }
     state.shop = shop;
   });
+  rollItemShop(state);
 }
 
 export function findOwned(state: GameState, uid: number): { unit: OwnedUnit; where: 'board' | 'bench'; index: number } | null {
@@ -165,6 +223,10 @@ export function findOwned(state: GameState, uid: number): { unit: OwnedUnit; whe
   const ni = state.bench.findIndex((o) => o?.uid === uid);
   if (ni >= 0) return { unit: state.bench[ni]!, where: 'bench', index: ni };
   return null;
+}
+
+export function deployCapOf(state: Pick<GameState, 'deployCapOverride'>): number {
+  return state.deployCapOverride ?? DEPLOY_CAP;
 }
 
 export function levelUpCost(state: Pick<GameState, 'level' | 'levelDiscount'>): number | null {
@@ -233,12 +295,44 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       state.gold += price;
       state.pool[f.unit.defId] += f.unit.star === 2 ? def.mergeCount : 1;
       state.log.push(`${def.name} を売却（+${price}）`);
+      returnItems(state, f.unit);
+      itemOnSold(state);
+      return { state };
+    }
+    case 'buyItem': {
+      if (!state.itemShop) return fail('装備枠は空です');
+      const def = getItem(state.itemShop);
+      const price = def.normal.price;
+      if (state.gold < price) return fail('資金が足りません');
+      const canMerge = storedItems(state).filter((i) => i.itemId === def.id && i.star === 1).length >= def.mergeCount - 1;
+      if (!state.itemStore.slice(0, ITEM_STORE_SIZE).includes(null) && !canMerge) return fail('装備の保管庫がいっぱいです');
+      spend(state, price);
+      state.itemShop = null;
+      state.log.push(`${def.normal.name} を購入（-${price}）`);
+      gainItem(state, def.id);
+      return { state };
+    }
+    case 'sellItem': {
+      const idx = state.itemStore.findIndex((i) => i?.uid === action.uid);
+      if (idx < 0) return fail('装備が見つかりません');
+      const it = state.itemStore[idx]!;
+      state.itemStore[idx] = null;
+      state.itemStore = compactItemStore(state.itemStore);
+      state.gold += ITEM_SELL_PRICE;
+      state.log.push(`${itemState(getItem(it.itemId), it.star).name} を売却（+${ITEM_SELL_PRICE}）`);
+      return { state };
+    }
+    case 'equip': {
+      const f = findOwned(state, action.unitUid);
+      if (!f) return fail('オペレーターが見つかりません');
+      const err = equipItem(state, action.itemUid, f.unit);
+      if (err) return fail(err);
       return { state };
     }
     case 'deploy': {
       const f = findOwned(state, action.uid);
       if (!f || f.where !== 'bench') return fail('控えのユニットを選んでください');
-      if (state.board.length >= deployCap(state.level)) return fail('配置上限に達しています');
+      if (state.board.length >= deployCapOf(state)) return fail('配置上限に達しています');
       const pos = action.pos ?? firstFreeCell(state.board);
       if (pos === null || unitAt(state.board, pos)) return fail('そのマスには配置できません');
       state.bench[f.index] = null;
@@ -260,7 +354,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       const f = findOwned(state, action.uid);
       if (!f) return fail('ユニットが見つかりません');
       moveUnit(state, f, action.to);
-      if (state.board.length > deployCap(state.level)) return fail('配置上限に達しています');
+      if (state.board.length > deployCapOf(state)) return fail('配置上限に達しています');
       return { state };
     }
     case 'choose': {
@@ -329,6 +423,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
     case 'battle': {
       if (state.choices.length) return fail(CHOICE_LOCK_MESSAGE);
       if (benchOverflow(state) > 0) return fail(`控えが上限を${benchOverflow(state)}名超えています。配置するか売却してください`);
+      if (itemOverflow(state) > 0) return fail(`装備の保管庫が上限を${itemOverflow(state)}つ超えています。装備するか売却してください`);
       normalizePositions(state.board);
       resolveBattle(state);
       return { state };
@@ -351,10 +446,12 @@ function startRound(state: GameState, round: number): void {
   state.round = round;
   state.phase = 'prep';
   const income = roundIncome(round);
-  state.gold += income + state.pendingGold;
+  state.gold += income + state.pendingGold + state.extraRoundGold;
   if (state.pendingGold) state.log.push(`追加資金+${state.pendingGold}`);
+  if (state.extraRoundGold) state.log.push(`倹約家の人形：資金+${state.extraRoundGold}`);
   state.pendingGold = 0;
-  state.round_ = { gained: 0, spent: 0, refreshes: 0 };
+  state.round_ = { gained: 0, spent: 0, refreshes: 0, cauldron: 0 };
+  itemRoundStart(state);
   state.levelDiscount++;
   if (!state.frozen) rollShop(state);
   state.frozen = false;
@@ -404,9 +501,14 @@ function moveUnit(
 }
 
 /** 盤面から戦闘入力を作る（UIの予測でも使う） */
-export function buildSimInputs(board: OwnedUnit[], bench: OwnedUnit[], stacks: Partial<Record<AllianceId, number>>) {
+export function buildSimInputs(
+  board: OwnedUnit[],
+  bench: OwnedUnit[],
+  stacks: Partial<Record<AllianceId, number>>,
+  opts: BattleOptions = {},
+) {
   normalizePositions(board);
-  const setup = battleSetup(board, bench, stacks);
+  const setup = battleSetup(board, bench, stacks, opts);
   return {
     ...setup,
     inputs: board
@@ -444,20 +546,26 @@ function resolveBattle(state: GameState): void {
   prepFinish(state);
 
   const bench = benchUnits(state);
-  const { statuses, inputs, globals } = buildSimInputs(state.board, bench, state.stacks);
+  const { statuses, inputs, globals } = buildSimInputs(state.board, bench, state.stacks, { banned: state.banned, roundGained: state.round_.gained });
   const enemy = enemyForRound(state.round);
   const sim = simulateDps(inputs, enemy, { globals, activeAlliances: activeAllianceIds(statuses), stacks: state.stacks });
-  const active = activeAllianceIds(evaluateAlliances(state.board, bench));
+  const afterPrep = { ...state.stacks };
+  const active = activeAllianceIds(evaluateAlliances(state.board, bench, state.banned));
   for (const [b, n] of Object.entries(sim.stackGains) as [AllianceId, number][]) addStacks(state, b, n, active);
 
   const lost = sim.killed ? 0 : lifeLoss(sim.remainingHp / enemy.hp, enemy.isBoss);
   state.life = Math.max(0, state.life - lost);
+  itemBattleEnd(state);
 
-  const stacksGained: Partial<Record<AllianceId, number>> = {};
-  for (const [b, n] of Object.entries(state.stacks) as [AllianceId, number][]) {
-    const d = n - (before[b] ?? 0);
-    if (d > 0) stacksGained[b] = d;
-  }
+  const diff = (from: Partial<Record<AllianceId, number>>, to: Partial<Record<AllianceId, number>>) => {
+    const out: Partial<Record<AllianceId, number>> = {};
+    for (const [b, n] of Object.entries(to) as [AllianceId, number][]) {
+      const d = n - (from[b] ?? 0);
+      if (d > 0) out[b] = d;
+    }
+    return out;
+  };
+  const stacksGained = diff(before, state.stacks);
 
   const last = state.life <= 0 || state.round >= MAX_ROUND;
   state.lastBattle = {
@@ -465,6 +573,9 @@ function resolveBattle(state: GameState): void {
     sim,
     lifeLost: lost,
     stacksGained,
+    stacksBefore: before,
+    stacksFromPrep: diff(before, afterPrep),
+    stacksFromBattle: diff(afterPrep, state.stacks),
     alliances: statuses,
     nextIncome: last ? null : { base: roundIncome(state.round + 1), extra: state.pendingGold },
   };

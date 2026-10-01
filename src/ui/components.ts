@@ -1,8 +1,9 @@
 import { ALLIANCES } from '../core/data/alliances';
 import { DAMAGE_TYPE_NAME, PROFESSION_NAME, getUnit, unitState } from '../core/data/units';
+import { getItem, itemState } from '../core/data/items';
 import { isGarrisonImplemented, type AllianceStatus } from '../core/alliance';
 import { attackInterval, baseAtk, type SimResult } from '../core/sim';
-import type { AllianceId, Direction, EnemyDef, Modifier, OwnedUnit, Star } from '../core/types';
+import type { AllianceId, Direction, EnemyDef, Modifier, OwnedItem, OwnedUnit, Star } from '../core/types';
 import { BOARD_CELLS, DEFAULT_DIRECTION, DIRECTIONS, DIRECTION_NAME } from '../core/board';
 import { fmt, h, pct, s } from './dom';
 
@@ -26,6 +27,10 @@ export interface CardOptions {
   onHover?: (enter: boolean) => void;
   /** ドラッグで運ぶユニットの uid */
   dragUid?: number;
+  /** 装備中のアイテム */
+  items?: OwnedItem[];
+  /** 装備をドロップされた時 */
+  onItemDrop?: (itemUid: number) => void;
   highlight?: Set<AllianceId>;
 }
 
@@ -58,7 +63,15 @@ export function unitCard(defId: string, opts: CardOptions = {}) {
       { class: 'card-tags' },
       d.bonds.map((t) => h('span', { class: `tag ${ALLIANCES[t].kind}${opts.highlight?.has(t) ? ' on' : ''}` }, ALLIANCES[t].name)),
     ),
+    opts.items?.length
+      ? h(
+          'div',
+          { class: 'card-items' },
+          opts.items.map((i) => h('span', { class: `item-chip tier-${getItem(i.itemId).tier}`, title: itemState(getItem(i.itemId), i.star).description }, itemState(getItem(i.itemId), i.star).name)),
+        )
+      : null,
   );
+  if (opts.onItemDrop) makeItemDropTarget(card, opts.onItemDrop);
   if (opts.dragUid !== undefined) {
     const uid = opts.dragUid;
     card.addEventListener('dragstart', (e) => {
@@ -73,7 +86,8 @@ export function unitCard(defId: string, opts: CardOptions = {}) {
 }
 
 /** 要素をドロップ先にする。ユニットの uid を受け取る */
-export function makeDropTarget<T extends HTMLElement>(el: T, onDrop: (uid: number) => void): T {
+export function makeDropTarget<T extends HTMLElement>(el: T, onDrop: (uid: number) => void, onItemDrop?: (itemUid: number) => void): T {
+  if (onItemDrop) makeItemDropTarget(el, onItemDrop);
   el.addEventListener('dragover', (e) => {
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
@@ -138,6 +152,35 @@ export function emptySlot(label = '') {
   return h('div', { class: 'card empty' }, label);
 }
 
+/** 開いている盟約の詳細（再描画しても開閉状態を保つ） */
+const openAlliances = new Set<AllianceId>();
+
+/** 発動段階の表記：炎（3/6/9）の2段階目なら「炎6」 */
+export function allianceLabel(st: AllianceStatus): string {
+  const def = ALLIANCES[st.id];
+  return `${def.name}${st.level > 0 ? def.thresholds[st.level - 1] : ''}`;
+}
+
+/** 発動中の盟約と加算数だけのまとめ */
+export function allianceSummary(statuses: AllianceStatus[], stacks: Partial<Record<AllianceId, number>>, banned: AllianceId[] = []) {
+  const active = statuses.filter((s) => s.level > 0);
+  return h(
+    'div',
+    { class: 'alliance-summary' },
+    active.length
+      ? active.map((st) =>
+          h(
+            'span',
+            { class: `chip ${ALLIANCES[st.id].kind}` },
+            h('b', null, allianceLabel(st)),
+            h('span', { class: 'chip-stack' }, `${stacks[st.id] ?? 0}`),
+          ),
+        )
+      : h('span', { class: 'muted small' }, '発動中の盟約なし'),
+    banned.length ? h('span', { class: 'ban-list small' }, 'BAN：', banned.map((b) => ALLIANCES[b].name).join('・')) : null,
+  );
+}
+
 export function alliancePanel(statuses: AllianceStatus[], stacks: Partial<Record<AllianceId, number>>) {
   if (statuses.length === 0) return h('p', { class: 'muted' }, 'オペレーターを配置すると盟約が表示されます');
   return h(
@@ -147,13 +190,14 @@ export function alliancePanel(statuses: AllianceStatus[], stacks: Partial<Record
       const def = ALLIANCES[st.id];
       const stack = stacks[st.id] ?? 0;
       const tiers = def.describe(stack);
-      return h(
-        'li',
-        { class: `alliance ${st.level > 0 ? 'active' : ''} ${def.kind}` },
+      const details = h(
+        'details',
+        { open: openAlliances.has(st.id) },
         h(
-          'div',
+          'summary',
           { class: 'alliance-head' },
           h('span', { class: 'alliance-name' }, def.name),
+          st.banned ? h('span', { class: 'badge' }, 'BAN') : null,
           h(
             'span',
             { class: 'thresholds' },
@@ -175,9 +219,78 @@ export function alliancePanel(statuses: AllianceStatus[], stacks: Partial<Record
           ),
           (def.stackMilestones?.(stack) ?? []).map((m) => h('li', { class: `milestone ${m.reached && st.level > 0 ? 'on' : ''}` }, m.text)),
         ),
-      );
+      ) as HTMLDetailsElement;
+      details.addEventListener('toggle', () => {
+        if (details.open) openAlliances.add(st.id);
+        else openAlliances.delete(st.id);
+      });
+      return h('li', { class: `alliance ${st.level > 0 ? 'active' : ''} ${st.banned ? 'banned' : ''} ${def.kind}` }, details);
     }),
   );
+}
+
+// ------------------------------------------------------------
+// 装備
+// ------------------------------------------------------------
+
+export const ITEM_MIME = 'application/x-sp-item';
+
+export function itemCard(
+  itemId: string,
+  opts: { star?: Star; price?: number; dragItemUid?: number; dim?: boolean; onClick?: () => void } = {},
+) {
+  const def = getItem(itemId);
+  const st = itemState(def, opts.star ?? 1);
+  const card = h(
+    'div',
+    {
+      role: 'button',
+      tabindex: 0,
+      class: `card item tier-${def.tier}${opts.dim ? ' dim' : ''}${opts.star === 2 ? ' golden' : ''}`,
+      onclick: opts.onClick ? () => opts.onClick!() : undefined,
+      draggable: opts.dragItemUid !== undefined ? 'true' : undefined,
+      title: `${st.name}\n${st.description}`,
+    },
+    h(
+      'div',
+      { class: 'card-top' },
+      h('span', { class: 'card-name' }, st.name),
+      opts.price !== undefined ? h('span', { class: 'price' }, `${opts.price}`) : opts.star === 2 ? h('span', { class: 'promoted' }, '強化') : null,
+    ),
+    h('div', { class: 'item-desc' }, st.description),
+  );
+  if (opts.dragItemUid !== undefined) {
+    const uid = opts.dragItemUid;
+    card.addEventListener('dragstart', (e) => {
+      e.dataTransfer?.setData(ITEM_MIME, String(uid));
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      document.body.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => document.body.classList.remove('dragging'));
+  }
+  return card;
+}
+
+/** 要素を装備のドロップ先にする（オペレーターへの装備など） */
+export function makeItemDropTarget<T extends HTMLElement>(el: T, onDrop: (itemUid: number) => void): T {
+  const isItem = (e: DragEvent) => !!e.dataTransfer?.types.includes(ITEM_MIME);
+  el.addEventListener('dragover', (e) => {
+    if (!isItem(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    el.classList.add('item-over');
+  });
+  el.addEventListener('dragleave', () => el.classList.remove('item-over'));
+  el.addEventListener('drop', (e) => {
+    if (!isItem(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    el.classList.remove('item-over');
+    document.body.classList.remove('dragging');
+    const uid = Number(e.dataTransfer?.getData(ITEM_MIME));
+    if (Number.isFinite(uid)) onDrop(uid);
+  });
+  return el;
 }
 
 export function enemyInfo(e: EnemyDef) {
@@ -264,6 +377,17 @@ export function unitDetail(o: OwnedUnit, mods: Modifier | undefined) {
             g.description,
           ),
         ),
+      ),
+      h('dt', null, '装備'),
+      h(
+        'dd',
+        null,
+        (o.items ?? []).length
+          ? (o.items ?? []).map((i) => {
+              const st = itemState(getItem(i.itemId), i.star);
+              return h('div', { class: 'small' }, h('b', null, st.name, i.star === 2 ? '（強化）' : ''), '：', st.description);
+            })
+          : h('span', { class: 'muted' }, 'なし'),
       ),
       h('dt', null, '補正'),
       h('dd', null, modText.length ? modText.join('、') : h('span', { class: 'muted' }, 'なし（配置すると表示）')),

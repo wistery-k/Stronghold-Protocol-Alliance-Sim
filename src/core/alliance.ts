@@ -1,6 +1,7 @@
 import { ALLIANCES, ALLIANCE_IDS, CORE_IDS, v } from './data/alliances';
 import { GIVEN_GARRISONS, getUnit, isRanged, unitState } from './data/units';
-import { egirDevour, frontOf, neighbors, rightmostInRow, sameRow } from './board';
+import { getItem, itemState } from './data/items';
+import { egirDevour, frontOf, neighbors, rightmostInRow, sameRow, sidesOf } from './board';
 import type { AllianceId, GarrisonData, Modifier, OwnedUnit } from './types';
 
 export interface AllianceStatus {
@@ -11,6 +12,8 @@ export interface AllianceStatus {
   level: number;
   /** 次の段階に必要な人数（最大段階なら null） */
   next: number | null;
+  /** 盟約BANされている */
+  banned?: boolean;
   /** 効果を受ける盤面ユニットの uid */
   memberUids: number[];
 }
@@ -20,6 +23,19 @@ export const bondKey = (s: string) => s.replace(/Ship$/, '') as AllianceId;
 
 export function unitAlliances(defId: string): AllianceId[] {
   return getUnit(defId).bonds;
+}
+
+/** 所持ユニットの盟約（変形同構体で追加された盟約を含む） */
+export function ownedBonds(o: OwnedUnit): AllianceId[] {
+  const bonds = [...getUnit(o.defId).bonds];
+  const items = o.items ?? [];
+  if (items.some((i) => getItem(i.itemId).canGiveBond)) {
+    for (const i of items) {
+      const b = getItem(i.itemId).giveBond;
+      if (b && !bonds.includes(b)) bonds.push(b);
+    }
+  }
+  return bonds;
 }
 
 function distinctCount(units: OwnedUnit[]): number {
@@ -32,16 +48,16 @@ function distinctCount(units: OwnedUnit[]): number {
  * - 先見・奇跡・投資家は控えのオペレーターも数える
  * - 調和が有効なら、盤面に所属者がいる核心盟約の人数+1
  */
-export function evaluateAlliances(board: OwnedUnit[], bench: OwnedUnit[] = []): AllianceStatus[] {
+export function evaluateAlliances(board: OwnedUnit[], bench: OwnedUnit[] = [], banned: AllianceId[] = []): AllianceStatus[] {
   const counts = new Map<AllianceId, { count: number; members: OwnedUnit[] }>();
   for (const id of ALLIANCE_IDS) {
     const def = ALLIANCES[id];
-    const onBoard = board.filter((o) => unitAlliances(o.defId).includes(id));
-    const pool = def.countMode === 'boardAndBench' ? [...onBoard, ...bench.filter((o) => unitAlliances(o.defId).includes(id))] : onBoard;
+    const onBoard = board.filter((o) => ownedBonds(o).includes(id));
+    const pool = def.countMode === 'boardAndBench' ? [...onBoard, ...bench.filter((o) => ownedBonds(o).includes(id))] : onBoard;
     counts.set(id, { count: distinctCount(pool), members: onBoard });
   }
 
-  const maniActive = (counts.get('mani')?.count ?? 0) >= 1;
+  const maniActive = (counts.get('mani')?.count ?? 0) >= 1 && !banned.includes('mani');
   const maniUnits = counts.get('mani')?.members ?? [];
 
   const result: AllianceStatus[] = [];
@@ -52,6 +68,10 @@ export function evaluateAlliances(board: OwnedUnit[], bench: OwnedUnit[] = []): 
       count += 1;
     }
     if (count === 0) continue;
+    if (banned.includes(id)) {
+      result.push({ id, count, level: 0, next: null, memberUids: [], banned: true });
+      continue;
+    }
     let level = 0;
     let next: number | null = null;
     if (def.countMode === 'exactlyOne') {
@@ -90,6 +110,14 @@ export interface BattleGlobals {
   laterano?: { members: Set<number>; atkPerAmmo: number; maxAtk: number };
   /** カジミエーシュLv2：近接は2秒ごとに攻撃力120%の確定ダメージ */
   kazimierzPulse?: { members: Set<number>; scale: number; interval: number };
+  /** 黄砂の羅針盤＋サルゴンの濃茶：サルゴンのスキル発動で全サルゴンのSP回復 */
+  sargonSpOnSkill?: { members: Set<number>; sp: number };
+}
+
+export interface BattleOptions {
+  banned?: AllianceId[];
+  /** このラウンドに獲得したオペレーター数（天師の古鼎） */
+  roundGained?: number;
 }
 
 export interface BattleSetup {
@@ -232,6 +260,9 @@ export const IMPLEMENTED_SERVER_EFFECTS = new Set([
   'SERVER_CHESS_PRICE',
   'SERVER_ADD_BOND_POSITION',
   'SERVER_SELL_CHESS_GAIN_SPECIAL_GOODS',
+  'SERVER_GAIN_EQUIP',
+  'SERVER_POOL_EQUIP',
+  'SERVER_GAIN_RANDOM_EQUIP_CHESS_IN_POOL',
   'SERVER_MOST_BOND',
   'SERVER_TRIGGER_ANOTHER',
   'SERVER_TRIGGER_FRONT_COUNT',
@@ -244,8 +275,9 @@ export function battleSetup(
   board: OwnedUnit[],
   bench: OwnedUnit[],
   stacks: Partial<Record<AllianceId, number>>,
+  opts: BattleOptions = {},
 ): BattleSetup {
-  const statuses = evaluateAlliances(board, bench);
+  const statuses = evaluateAlliances(board, bench, opts.banned ?? []);
   const mods = new Map<number, Modifier>();
   for (const o of board) mods.set(o.uid, {});
   const globals: BattleGlobals = {};
@@ -258,6 +290,19 @@ export function battleSetup(
   };
   const all = board.map((o) => o.uid);
 
+  // ヴィクトリア：装備を持つ所属者の与ダメージ上昇、Lv2で装備1つごとに攻撃力上昇
+  if (lv('victoria') >= 1) {
+    for (const uid of members('victoria')) {
+      const o = board.find((b) => b.uid === uid);
+      const items = o?.items ?? [];
+      if (!items.length) continue;
+      apply([uid], { damageMult: v('victoria', 'base_damage_scale') + v('victoria', 'damage_scale_per_stack') * sk('victoria') });
+      if (lv('victoria') >= 2) {
+        const atk = items.reduce((sum, i) => sum + v('victoria', 'atk_normal_equip') + (i.star === 2 ? v('victoria', 'atk_golden_equip') : 0), 0);
+        apply([uid], { atkPct: atk });
+      }
+    }
+  }
   // 炎
   if (lv('yan') >= 1) apply(members('yan'), { atkPct: v('yan', 'base_atk') + v('yan', 'atk_per_stack') * sk('yan') });
   // サルゴン
@@ -355,6 +400,77 @@ export function battleSetup(
   }
   // 孤高
   if (lv('solo') >= 1) apply(members('solo'), { atkPct: v('solo', 'atk'), startSp: v('solo', 'sp') });
+
+  // 装備
+  for (const o of board) {
+    for (const it of o.items ?? []) {
+      const def = getItem(it.itemId);
+      for (const b of itemState(def, it.star).buffs) {
+        const n = (k: string) => Number(b[k] ?? 0);
+        const has = (id: string) => (o.items ?? []).some((x) => x.itemId === id);
+        const bonds = ownedBonds(o);
+        switch (b.key) {
+          case 'attr_common_global_buff':
+          case 'act1autochess_equip_acarm044_global_buff':
+            apply([o.uid], { atkPct: n('atk'), aspd: n('attack_speed') });
+            break;
+          case 'act1autochess_equip_acarm050_global_buff':
+            apply([o.uid], { spRegen: n('sp_recovery_per_sec') });
+            break;
+          case 'magic_penetrate_global_buff':
+            apply([o.uid], { resIgnorePct: n('magic_resist_penetrate') });
+            break;
+          case 'act1autochess_equip_acarm063_global_buff':
+            if (isRanged(getUnit(o.defId))) apply([o.uid], { damageMult: n('damage_scale') });
+            break;
+          case 'act1vautochess_equip_acarm024_global_buff':
+            apply([o.uid], { atkPerCast: n('atk'), atkPerCastMax: n('atk_buff_cnt') });
+            break;
+          case 'act1autochess_equip_acarm051_global_buff': {
+            const others = board.filter((x) => x !== o && ownedBonds(x).some((bb) => bonds.includes(bb))).length;
+            apply([o.uid], { startSp: n('sp_each_person') * (1 + others) });
+            break;
+          }
+          case 'act1vautochess_equip_acarm037_global_buff':
+            apply([o.uid], { aspdPerAttack: n('attack_speed'), aspdPerAttackMax: n('max_buff_cnt') });
+            break;
+          case 'act2autochess_equip_acarm120_global_buff':
+            apply([o.uid], { flagScale: n('damage_scale'), flagDuration: n('interval'), flagStep: n('ex_interval'), flagMinus: n('damage_scale_minus') });
+            break;
+          case 'act1autochess_equip_acarm067_global_buff':
+            apply([o.uid], { weakDamage: true });
+            break;
+          case 'act2autochess_equip_acarm117_global_buff':
+            if (has('5_09')) apply([o.uid], { trueDmgPct: n('atk_scale') });
+            break;
+          case 'act1autochess_equip_acarm076_global_buff':
+            if (bonds.includes('laterano')) apply([o.uid], { extraShotProb: n('prob'), extraShotScale: has('4_08') ? n('atk_scale_2') : n('atk_scale_1') });
+            break;
+          case 'act1autochess_equip_acarm077_global_buff':
+            if (bonds.includes('yan')) apply([o.uid], { aspd: Math.min(opts.roundGained ?? 0, n('max_cnt')) * n('attack_speed') });
+            break;
+          case 'act1autochess_equip_acarm103_global_buff':
+            apply([o.uid], { startSp: n('init_sp') });
+            if (bonds.includes('sargon')) {
+              apply([o.uid], { firstSkillEndSp: n('sp') });
+              if (has('2_04') && lv('sargon') >= 1) {
+                globals.sargonSpOnSkill = { members: members('sargon'), sp: (globals.sargonSpOnSkill?.sp ?? 0) + n('addition_sp') };
+              }
+            }
+            break;
+          case 'act1autochess_equip_acarm079_global_buff':
+            // 蒸気の心臓：【ヴィクトリア】が装備すると盤面の加速ハンマーの効果を得る（自身が持っていれば2倍）
+            if (bonds.includes('victoria') && board.some((x) => (x.items ?? []).some((i) => i.itemId === '3_10'))) {
+              apply([o.uid], { aspd: n('attack_speed') * (has('3_10') ? 2 : 1) });
+            }
+            break;
+          case 'act2autochess_equip_acarm121_ability':
+            for (const side of sidesOf(board, o)) apply([side.uid], { aspd: n('attack_speed') });
+            break;
+        }
+      }
+    }
+  }
 
   // 堅守特性（付与されたものを含む）
   const garrisons = effectiveGarrisons(board);

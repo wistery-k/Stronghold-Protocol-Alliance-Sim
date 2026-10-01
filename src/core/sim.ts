@@ -162,6 +162,16 @@ interface Runtime {
   pulseTimer: number;
   events: GarrisonEvent[];
   result: SimUnitResult;
+  attacks: number;
+  firstEndDone: boolean;
+}
+
+/** カジミエーシュの競技旗：配置後しばらく与ダメージ上昇、その後減衰 */
+function flagFactor(mods: Modifier, t: number): number {
+  if (!mods.flagScale) return 1;
+  if (t < (mods.flagDuration ?? 0)) return mods.flagScale;
+  const steps = Math.floor((t - (mods.flagDuration ?? 0)) / (mods.flagStep || 0.5)) + 1;
+  return Math.max(1, mods.flagScale + (mods.flagMinus ?? 0) * steps);
 }
 
 export interface SimOptions {
@@ -227,6 +237,8 @@ export function simulateDps(units: SimUnitInput[], enemy: EnemyDef, opts: SimOpt
       ammoUsed: 0,
       sargonBuffs: [],
       pulseTimer: g.kazimierzPulse?.interval ?? 0,
+      attacks: 0,
+      firstEndDone: false,
       events: garrisonEvents(input),
       result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0 },
     };
@@ -284,7 +296,7 @@ export function simulateDps(units: SimUnitInput[], enemy: EnemyDef, opts: SimOpt
     const { def, mods, uid } = u.input;
     const raw = atk * scale;
     const type = bestType(def.damageType, raw, defense, mods);
-    const dmg = hitDamage(raw, type, defense, mods, type === 'arts' ? artsVuln() : 0);
+    const dmg = hitDamage(raw, type, defense, mods, type === 'arts' ? artsVuln() : 0) * flagFactor(mods, t);
     deal(u, dmg);
     if (type !== 'heal') {
       if (mods.trueDmgPct) deal(u, atk * mods.trueDmgPct * defense.damageTaken);
@@ -295,6 +307,10 @@ export function simulateDps(units: SimUnitInput[], enemy: EnemyDef, opts: SimOpt
 
   const endSkill = (u: Runtime) => {
     u.sp += u.input.mods.spOnSkillEnd ?? 0;
+    if (!u.firstEndDone) {
+      u.firstEndDone = true;
+      u.sp += u.input.mods.firstSkillEndSp ?? 0;
+    }
   };
 
   const castSkill = (u: Runtime, outerAtkPct: number) => {
@@ -316,6 +332,9 @@ export function simulateDps(units: SimUnitInput[], enemy: EnemyDef, opts: SimOpt
         if (o.sargonBuffs.length < g.sargon.maxStacks) o.sargonBuffs.push(t + g.sargon.duration);
       }
     }
+    if (g.sargonSpOnSkill?.members.has(uid)) {
+      for (const o of rt) if (g.sargonSpOnSkill.members.has(o.input.uid) && o !== u) o.sp += g.sargonSpOnSkill.sp;
+    }
     for (const ev of u.events) if (ev.kind === 'useskill') gainStacks(ev);
   };
 
@@ -329,7 +348,8 @@ export function simulateDps(units: SimUnitInput[], enemy: EnemyDef, opts: SimOpt
 
       const sargonCount = u.sargonBuffs.filter((until) => until > t).length;
       const lateranoAtk = g.laterano?.members.has(uid) ? Math.min(lateranoAmmo * g.laterano.atkPerAmmo, g.laterano.maxAtk) : 0;
-      const outerAtkPct = (g.sargon ? sargonCount * g.sargon.atkPct : 0) + lateranoAtk;
+      const castAtk = Math.min(u.result.skillCasts, mods.atkPerCastMax ?? 0) * (mods.atkPerCast ?? 0);
+      const outerAtkPct = (g.sargon ? sargonCount * g.sargon.atkPct : 0) + lateranoAtk + castAtk;
 
       // スキル発動判定
       const skillActive = () => u.skillLeft > 0 || u.ammoLeft > 0;
@@ -344,6 +364,7 @@ export function simulateDps(units: SimUnitInput[], enemy: EnemyDef, opts: SimOpt
         (mods.aspd ?? 0) +
         (activeNow ? s.aspd : 0) +
         (g.sargon ? sargonCount * g.sargon.aspd : 0) +
+        Math.min(u.attacks, mods.aspdPerAttackMax ?? 0) * (mods.aspdPerAttack ?? 0) +
         (g.siracusa?.members.has(uid) && t < g.siracusa.duration ? g.siracusa.aspd : 0);
       const interval = attackInterval(stats.interval, aspd, activeNow && !s.passive ? s.intervalAdd : 0);
       const scale = activeNow && !s.instant && !s.passive ? s.atkScale : 1;
@@ -353,6 +374,10 @@ export function simulateDps(units: SimUnitInput[], enemy: EnemyDef, opts: SimOpt
       while (u.atkTimer <= 1e-9 && hp > 0) {
         for (let h = 0; h < hits; h++) strike(u, atk, scale);
         u.result.hits += hits;
+        u.attacks++;
+        if (mods.extraShotProb && def.damageType !== 'heal') {
+          deal(u, mods.extraShotProb * hitDamage(atk * (mods.extraShotScale ?? 1), 'physical', defense, mods));
+        }
         u.atkTimer += interval;
         if (u.ammoLeft > 0) {
           u.ammoLeft--;

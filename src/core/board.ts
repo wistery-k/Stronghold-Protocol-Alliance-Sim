@@ -65,6 +65,12 @@ export function behindOf(board: OwnedUnit[], o: OwnedUnit): OwnedUnit | undefine
   return offset(board, o, -dx, -dy);
 }
 
+/** 向きから見て左右両隣のオペレーター */
+export function sidesOf(board: OwnedUnit[], o: OwnedUnit): OwnedUnit[] {
+  const [dx, dy] = DIR_DELTA[o.dir ?? DEFAULT_DIRECTION];
+  return [offset(board, o, -dy, dx), offset(board, o, dy, -dx)].filter((x): x is OwnedUnit => !!x);
+}
+
 /** 左右一直線上（絶対方角の横一列）のオペレーター（自身を含む） */
 export function sameRow(board: OwnedUnit[], o: OwnedUnit): OwnedUnit[] {
   if (o.pos === undefined) return [];

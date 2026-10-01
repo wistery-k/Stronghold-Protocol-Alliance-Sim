@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateAlliances } from '../src/core/alliance';
+import { battleSetup, evaluateAlliances } from '../src/core/alliance';
 import { behindOf, frontOf, sameRow } from '../src/core/board';
 import { applyAction, createGame, levelUpCost, priceOf, type GameState } from '../src/core/game';
 import { UNITS, getUnit } from '../src/core/data/units';
@@ -274,5 +274,80 @@ describe('向き・控えの超過・特別招集', () => {
     s = applyAction(s, { type: 'sell', uid: owned(s)[0].uid }).state;
     expect(s.choices).toHaveLength(1);
     for (const c of s.choices[0].options) expect(getUnit(c).tier).toBe(1);
+  });
+});
+
+describe('装備', () => {
+  const withItemShop = (s: GameState, itemId: string, gold = 100): GameState => ({ ...s, itemShop: itemId, gold });
+
+  it('購入して2つ揃うと強化される', () => {
+    let s = withItemShop(createGame(1), '1_01');
+    s = applyAction(s, { type: 'buyItem' }).state;
+    s = applyAction({ ...s, itemShop: '1_01' }, { type: 'buyItem' }).state;
+    const items = s.itemStore.filter(Boolean);
+    expect(items).toHaveLength(1);
+    expect(items[0]!.star).toBe(2);
+  });
+
+  it('装備は1人2つまで、売却すると保管庫に戻る', () => {
+    let s = withShop(createGame(1), ['インサイダー']);
+    s = applyAction(s, { type: 'buy', slot: 0 }).state;
+    const unit = owned(s)[0];
+    for (const id of ['1_01', '1_02', '1_05']) s = applyAction({ ...s, itemShop: id, gold: 100 }, { type: 'buyItem' }).state;
+    const ids = s.itemStore.filter(Boolean).map((i) => i!.uid);
+    s = applyAction(s, { type: 'equip', itemUid: ids[0], unitUid: unit.uid }).state;
+    s = applyAction(s, { type: 'equip', itemUid: ids[1], unitUid: unit.uid }).state;
+    expect(applyAction(s, { type: 'equip', itemUid: ids[2], unitUid: unit.uid }).error).toBeDefined();
+    expect(owned(s)[0].items).toHaveLength(2);
+    s = applyAction(s, { type: 'sell', uid: unit.uid }).state;
+    expect(s.itemStore.filter(Boolean)).toHaveLength(3);
+  });
+
+  it('消耗型（盟約のコイン）は装備時に消滅して資金を得る', () => {
+    let s = withShop(createGame(1), ['インサイダー']);
+    s = applyAction(s, { type: 'buy', slot: 0 }).state;
+    s = applyAction({ ...s, itemShop: '1_03', gold: 10 }, { type: 'buyItem' }).state;
+    const gold = s.gold;
+    const it = s.itemStore.find(Boolean)!;
+    s = applyAction(s, { type: 'equip', itemUid: it.uid, unitUid: owned(s)[0].uid }).state;
+    expect(s.gold).toBe(gold + 1);
+    expect(s.itemStore.filter(Boolean)).toHaveLength(0);
+    expect(owned(s)[0].items ?? []).toHaveLength(0);
+  });
+
+  it('攻撃力の装備で攻撃力が上がる', () => {
+    const u = { ...ou(1, 'スカジ'), pos: 0, items: [{ uid: 9, itemId: '1_01', star: 1 as const }] };
+    expect(battleSetup([u], [], {}).mods.get(1)?.atkPct).toBeCloseTo(0.15);
+  });
+
+  it('変形同構体は他の装備の盟約を追加する', () => {
+    const u = { ...ou(1, 'グム'), pos: 0, items: [{ uid: 8, itemId: '6_09', star: 1 as const }, { uid: 9, itemId: '1_01', star: 1 as const }] };
+    const others = [{ ...ou(2, 'ヴァンデラ'), pos: 1 }, { ...ou(3, 'ミント'), pos: 2 }];
+    const st = evaluateAlliances([u, ...others]).find((a) => a.id === 'victoria')!;
+    expect(st.count).toBe(3);
+    expect(st.level).toBe(1);
+  });
+});
+
+describe('盟約BAN', () => {
+  it('核心盟約から3つがBANされ、BAN盟約を2つ以上持つオペレーターは出現しない', () => {
+    const s = createGame(11);
+    expect(s.banned).toHaveLength(3);
+    const blocked = UNITS.filter((u) => u.bonds.filter((b) => s.banned.includes(b)).length >= 2).map((u) => u.id);
+    for (let i = 0; i < 30; i++) {
+      const r = applyAction({ ...s, gold: 100 }, { type: 'refresh' }).state;
+      for (const id of r.shop) expect(blocked.includes(id!)).toBe(false);
+    }
+  });
+
+  it('BANされた盟約は人数を満たしても発動しない', () => {
+    const board = [ou(1, 'マッターホルン'), ou(2, 'ハロルド'), ou(3, 'スノーハンター')];
+    const kj = evaluateAlliances(board, [], ['kjerag']).find((a) => a.id === 'kjerag')!;
+    expect(kj.level).toBe(0);
+    expect(kj.banned).toBe(true);
+  });
+
+  it('BANなしでも遊べる', () => {
+    expect(createGame(1, { ban: 'none' }).banned).toEqual([]);
   });
 });

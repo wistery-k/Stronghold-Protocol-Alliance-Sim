@@ -529,6 +529,2014 @@
    }
   }
  },
+ "items": [
+  {
+   "id": "1_01",
+   "tier": 1,
+   "giveBond": "victoria",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "ヴィクトリア式ハンマー",
+    "description": "攻撃力+15%",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.15
+     }
+    ]
+   },
+   "golden": {
+    "name": "ヴィクトリア式ハンマー",
+    "description": "攻撃力+25%",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.25
+     }
+    ]
+   }
+  },
+  {
+   "id": "1_02",
+   "tier": 1,
+   "giveBond": "stead",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "堅守の盾",
+    "description": "防御力+20%",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "def": 0.2
+     }
+    ]
+   },
+   "golden": {
+    "name": "堅守の盾",
+    "description": "防御力+35%",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "def": 0.35
+     }
+    ]
+   }
+  },
+  {
+   "id": "1_03",
+   "tier": 1,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "盟約のコイン",
+    "description": "装備時に消滅し、資金+1",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "equip_destory_gain_random_coin",
+      "min": 1.0,
+      "max": 1.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "盟約のコイン",
+    "description": "装備時に消滅し、資金+2",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "equip_destory_gain_random_coin",
+      "min": 2.0,
+      "max": 2.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "1_04",
+   "tier": 1,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "携帯身分証",
+    "description": "装備時に消滅し、装備者が所属する盟約の加算数+3（盟約の有効化不要）",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "use_equip_reward_char_chess_bond_layer",
+      "layer": 3.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "携帯身分証",
+    "description": "装備時に消滅し、装備者が所属する盟約の加算数+6（盟約の有効化不要）",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "use_equip_reward_char_chess_bond_layer",
+      "layer": 6.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "1_05",
+   "tier": 1,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "源石溶剤",
+    "description": "装備者のHPが毎秒60減少し、攻撃力+40%",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.4
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "periodic_damage",
+      "damage": 60.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "源石溶剤",
+    "description": "装備者のHPが毎秒60減少し、攻撃力+60%",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.6
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "periodic_damage",
+      "damage": 60.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "2_01",
+   "tier": 2,
+   "giveBond": "indom",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "不屈のカタパルト",
+    "description": "再配置時間-30%、最大HP-30%",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm056_global_buff",
+      "respawn_time": -0.3,
+      "max_hp": -0.3
+     }
+    ]
+   },
+   "golden": {
+    "name": "不屈のカタパルト",
+    "description": "再配置時間-50%、最大HP-30%",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm056_global_buff",
+      "respawn_time": -0.5,
+      "max_hp": -0.3
+     }
+    ]
+   }
+  },
+  {
+   "id": "2_02",
+   "tier": 2,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "緊急招集券",
+    "description": "装備時に消滅し、招集欄からランダムに1名を獲得（招集欄からは消える）",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "use_equip_reward_random_char_chess_in_shop",
+      "count": 1.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "緊急招集券",
+    "description": "装備時に消滅し、招集欄からランダムに2名を獲得（招集欄からは消える）",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "use_equip_reward_random_char_chess_in_shop",
+      "count": 2.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "2_03",
+   "tier": 2,
+   "giveBond": "victoria",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "戦慄のヴィクトリア式ハンマー",
+    "description": "攻撃力+20%。地上オペレーターなら攻撃時10%の確率で対象を2秒間戦慄状態にする",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.2
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm045_global_buff",
+      "prob": 0.1,
+      "disarmed_duration": 2.0,
+      "big_hammer": "chess_item_6_05_e"
+     }
+    ]
+   },
+   "golden": {
+    "name": "戦慄のヴィクトリア式ハンマー",
+    "description": "攻撃力+35%。地上オペレーターなら攻撃時10%の確率で対象を2秒間戦慄状態にする",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.35
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm045_global_buff",
+      "prob": 0.1,
+      "disarmed_duration": 2.0,
+      "big_hammer": "chess_item_6_05_e"
+     }
+    ]
+   }
+  },
+  {
+   "id": "2_04",
+   "tier": 2,
+   "giveBond": "sargon",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "サルゴンの濃茶",
+    "description": "SP自然回復速度+0.15/秒",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm050_global_buff",
+      "sp_recovery_per_sec": 0.15
+     }
+    ]
+   },
+   "golden": {
+    "name": "サルゴンの濃茶",
+    "description": "SP自然回復速度+0.25/秒",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm050_global_buff",
+      "sp_recovery_per_sec": 0.25
+     }
+    ]
+   }
+  },
+  {
+   "id": "2_05",
+   "tier": 2,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "倹約家の人形",
+    "description": "装備時に消滅し、以降のラウンド開始時に資金+1",
+    "price": 3,
+    "buffs": [
+     {
+      "type": "gain_coin_when_round_start",
+      "count": 1.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "倹約家の人形",
+    "description": "装備時に消滅し、以降のラウンド開始時に資金+2",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "gain_coin_when_round_start",
+      "count": 2.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "2_06",
+   "tier": 2,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "簡易通信機",
+    "description": "装備時に消滅し、装備者と同じ盟約のオペレーターをランダムに1名獲得",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "use_equip_reward_char_chess_with_same_bond",
+      "count": 1.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "簡易通信機",
+    "description": "装備時に消滅し、装備者と同じ盟約のオペレーターをランダムに2名獲得",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "use_equip_reward_char_chess_with_same_bond",
+      "count": 2.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "2_07",
+   "tier": 2,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "守銭奴の人形",
+    "description": "装備時に消滅し、次のラウンドで資金+2",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "use_equip_gain_coin_when_next_round_start",
+      "count": 2.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "守銭奴の人形",
+    "description": "装備時に消滅し、次のラウンドで資金+4",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "use_equip_gain_coin_when_next_round_start",
+      "count": 4.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_01",
+   "tier": 3,
+   "giveBond": "siracusa",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "シラクーザの正装",
+    "description": "攻撃速度+15。装備者の向きから見て左右両隣の味方の攻撃速度+10",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "attack_speed": 15.0
+     },
+     {
+      "type": "char_dynamic_ability_new",
+      "at_root": 1.0,
+      "key": "act2autochess_equip_acarm121_ability",
+      "attack_speed": 10.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "シラクーザの正装",
+    "description": "攻撃速度+25。装備者の向きから見て左右両隣の味方の攻撃速度+15",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "attack_speed": 25.0
+     },
+     {
+      "type": "char_dynamic_ability_new",
+      "at_root": 1.0,
+      "key": "act2autochess_equip_acarm121_ability",
+      "attack_speed": 15.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_02",
+   "tier": 3,
+   "giveBond": "preci",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "精密スコープ",
+    "description": "自身から3マス以上離れた敵への与ダメージ+30%（DPSチェックでは遠距離職に常に適用）",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm063_global_buff",
+      "radius": 3.0,
+      "damage_scale": 1.3
+     }
+    ]
+   },
+   "golden": {
+    "name": "精密スコープ",
+    "description": "自身から3マス以上離れた敵への与ダメージ+50%（DPSチェックでは遠距離職に常に適用）",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm063_global_buff",
+      "radius": 3.0,
+      "damage_scale": 1.5
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_03",
+   "tier": 3,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "レーザー発射機",
+    "description": "攻撃が敵の術耐性を25%無視",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "magic_penetrate_global_buff",
+      "magic_resist_penetrate": 0.25
+     }
+    ]
+   },
+   "golden": {
+    "name": "レーザー発射機",
+    "description": "攻撃が敵の術耐性を45%無視",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "magic_penetrate_global_buff",
+      "magic_resist_penetrate": 0.45
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_04",
+   "tier": 3,
+   "giveBond": "yan",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "炎国の短刀",
+    "description": "スキル発動のたびに攻撃力+5%（最大10回）",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1vautochess_equip_acarm024_global_buff",
+      "prob": 1.0,
+      "atk": 0.05,
+      "atk_buff_cnt": 10.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "炎国の短刀",
+    "description": "スキル発動のたびに攻撃力+8%（最大10回）",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1vautochess_equip_acarm024_global_buff",
+      "prob": 1.0,
+      "atk": 0.08,
+      "atk_buff_cnt": 10.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_05",
+   "tier": 3,
+   "giveBond": "swift",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "俊敏の携行食",
+    "description": "配置時にSP+3。同じ盟約の他のオペレーター1名ごとにさらにSP+3",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm051_global_buff",
+      "sp_each_person": 3.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "俊敏の携行食",
+    "description": "配置時にSP+6。同じ盟約の他のオペレーター1名ごとにさらにSP+6",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm051_global_buff",
+      "sp_each_person": 6.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_06",
+   "tier": 3,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "ゴリアテのヘルメット",
+    "description": "最大HP+25%。配置時に前方1マスに味方がいなければさらに最大HP+15%",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm049_global_buff",
+      "init_max_hp": 0.25,
+      "ex_max_hp": 0.15
+     }
+    ]
+   },
+   "golden": {
+    "name": "ゴリアテのヘルメット",
+    "description": "最大HP+45%。配置時に前方1マスに味方がいなければさらに最大HP+25%",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm049_global_buff",
+      "init_max_hp": 0.45,
+      "ex_max_hp": 0.25
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_07",
+   "tier": 3,
+   "giveBond": "egir",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "エーギルの重刃",
+    "description": "攻撃力+40%、攻撃速度-10",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.4,
+      "attack_speed": -10.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "エーギルの重刃",
+    "description": "攻撃力+60%、攻撃速度-10",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.6,
+      "attack_speed": -10.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_08",
+   "tier": 3,
+   "giveBond": "arcane",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "秘術の法陣",
+    "description": "術耐性+20。攻撃した対象の特殊能力を5秒間失わせる",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "magic_resistance": 20.0
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "silence_attachment",
+      "silence": 5.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "秘術の法陣",
+    "description": "術耐性+30。攻撃した対象の特殊能力を5秒間失わせる",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "magic_resistance": 30.0
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "silence_attachment",
+      "silence": 5.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_09",
+   "tier": 3,
+   "giveBond": "victoria",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "堅固なヴィクトリア式ハンマー",
+    "description": "攻撃力+25%。初めて致命傷を受けた時、8秒間HPが1未満にならない",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.25
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm043_global_buff",
+      "undeadable_duration": 8.0,
+      "big_hammer": "chess_item_6_05_e"
+     }
+    ]
+   },
+   "golden": {
+    "name": "堅固なヴィクトリア式ハンマー",
+    "description": "攻撃力+45%。初めて致命傷を受けた時、8秒間HPが1未満にならない",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.45
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm043_global_buff",
+      "undeadable_duration": 8.0,
+      "big_hammer": "chess_item_6_05_e"
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_10",
+   "tier": 3,
+   "giveBond": "victoria",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "加速のヴィクトリア式ハンマー",
+    "description": "攻撃力+25%、攻撃速度+30",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.25
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm044_global_buff",
+      "attack_speed": 30.0,
+      "big_hammer": "chess_item_6_05_e"
+     }
+    ]
+   },
+   "golden": {
+    "name": "加速のヴィクトリア式ハンマー",
+    "description": "攻撃力+45%、攻撃速度+30",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.45
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm044_global_buff",
+      "attack_speed": 30.0,
+      "big_hammer": "chess_item_6_05_e"
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_11",
+   "tier": 3,
+   "giveBond": "raid",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "強襲グレネード",
+    "description": "配置後10秒間、攻撃した対象を2秒間スタンさせる",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm064_global_buff",
+      "stun": 2.0,
+      "duration": 10.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "強襲グレネード",
+    "description": "配置後15秒間、攻撃した対象を2秒間スタンさせる",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm064_global_buff",
+      "stun": 2.0,
+      "duration": 15.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "3_12",
+   "tier": 3,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "騎士の貯金箱",
+    "description": "装備時に消滅し、資金をランダムに1〜6獲得",
+    "price": 3,
+    "buffs": [
+     {
+      "type": "equip_destory_gain_random_coin",
+      "min": 1.0,
+      "max": 6.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "騎士の貯金箱",
+    "description": "装備時に消滅し、資金をランダムに2〜12獲得",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "equip_destory_gain_random_coin",
+      "min": 2.0,
+      "max": 12.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_01",
+   "tier": 4,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 100,
+   "normal": {
+    "name": "ページャーモジュール",
+    "description": "装備時に消滅し、装備者と同じ盟約のオペレーター3名（管理レベル以下の等級）を提示、1名を無料で獲得",
+    "price": 4,
+    "buffs": [
+     {
+      "type": "use_equip_reward_special_goods_char_chess",
+      "refresh_cnt": 3.0,
+      "choice_cnt": 1.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "ページャーモジュール",
+    "description": "装備時に消滅し、装備者と同じ盟約のオペレーター3名（管理レベル以下の等級）を提示、1名を無料で獲得",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "use_equip_reward_special_goods_char_chess",
+      "refresh_cnt": 3.0,
+      "choice_cnt": 1.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_02",
+   "tier": 4,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "ブザー",
+    "description": "敵に狙われやすくなり、最大HP+40%",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm054_global_buff",
+      "taunt_level": 1.0
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "max_hp": 0.4
+     }
+    ]
+   },
+   "golden": {
+    "name": "ブザー",
+    "description": "敵に狙われやすくなり、最大HP+60%",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm054_global_buff",
+      "taunt_level": 1.0
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "max_hp": 0.6
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_03",
+   "tier": 4,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "リミテッドアクセラレーター",
+    "description": "攻撃か治療のたびに、この戦闘中の攻撃速度+1（最大60層）",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1vautochess_equip_acarm037_global_buff",
+      "attack_speed": 1.0,
+      "max_buff_cnt": 60.0,
+      "atk": 0.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "リミテッドアクセラレーター",
+    "description": "攻撃か治療のたびに、この戦闘中の攻撃速度+2（最大60層）",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1vautochess_equip_acarm037_global_buff",
+      "attack_speed": 2.0,
+      "max_buff_cnt": 60.0,
+      "atk": 0.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_04",
+   "tier": 4,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "迷彩服",
+    "description": "初めてダメージを受けた後、15秒間ステルス状態になる",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm055_global_buff",
+      "duration": 15.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "迷彩服",
+    "description": "初めてダメージを受けた後、25秒間ステルス状態になる",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm055_global_buff",
+      "duration": 25.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_05",
+   "tier": 4,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "暴徒鎮圧シールド",
+    "description": "ブロック中、ブロックしていない敵から受けるダメージ-40%",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm060_global_buff",
+      "damage_scale": 0.6
+     }
+    ]
+   },
+   "golden": {
+    "name": "暴徒鎮圧シールド",
+    "description": "ブロック中、ブロックしていない敵から受けるダメージ-70%",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm060_global_buff",
+      "damage_scale": 0.3
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_06",
+   "tier": 4,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "休眠する末裔",
+    "description": "対象を1体攻撃するたびに、最大HPの2%を回復",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1vautochess_equip_acarm025_global_buff",
+      "hp_ratio": 0.02
+     }
+    ]
+   },
+   "golden": {
+    "name": "休眠する末裔",
+    "description": "対象を1体攻撃するたびに、最大HPの4%を回復",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1vautochess_equip_acarm025_global_buff",
+      "hp_ratio": 0.04
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_07",
+   "tier": 4,
+   "giveBond": "kazimierz",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "カジミエーシュの競技旗",
+    "description": "配置後15秒間、与ダメージが135%に上昇し、その後徐々に減衰",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm120_global_buff",
+      "damage_scale": 1.35,
+      "interval": 15.0,
+      "ex_interval": 0.5,
+      "damage_scale_minus": -0.04
+     }
+    ]
+   },
+   "golden": {
+    "name": "カジミエーシュの競技旗",
+    "description": "配置後15秒間、与ダメージが160%に上昇し、その後徐々に減衰",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm120_global_buff",
+      "damage_scale": 1.6,
+      "interval": 15.0,
+      "ex_interval": 0.5,
+      "damage_scale_minus": -0.07
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_08",
+   "tier": 4,
+   "giveBond": "laterano",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "ラテラーノのブリッジクリップ",
+    "description": "弾薬スキルの残弾が1発の時、50%の確率で弾薬を40%回復（配置ごとに最大3回）",
+    "price": 1,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm057_global_buff",
+      "prob": 0.5,
+      "ammo_percent": 0.4,
+      "max_trigger_cnt": 3.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "ラテラーノのブリッジクリップ",
+    "description": "弾薬スキルの残弾が1発の時、60%の確率で弾薬を60%回復（配置ごとに最大3回）",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm057_global_buff",
+      "prob": 0.6,
+      "ammo_percent": 0.6,
+      "max_trigger_cnt": 3.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_09",
+   "tier": 4,
+   "giveBond": "victoria",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "灼燃のヴィクトリア式ハンマー",
+    "description": "攻撃力+30%。術ダメージを与えると、ダメージの10%の灼燃損傷を付与",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.3
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm042_global_buff",
+      "damage_scale": 0.1,
+      "big_hammer": "chess_item_6_05_e"
+     }
+    ]
+   },
+   "golden": {
+    "name": "灼燃のヴィクトリア式ハンマー",
+    "description": "攻撃力+50%。術ダメージを与えると、ダメージの10%の灼燃損傷を付与",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.5
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm042_global_buff",
+      "damage_scale": 0.1,
+      "big_hammer": "chess_item_6_05_e"
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_10",
+   "tier": 4,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "濃縮気付け薬",
+    "description": "HPが70%より多い時、スタン・凍結などの特殊状態を無効化",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm059_global_buff",
+      "hp_ratio": 0.7
+     }
+    ]
+   },
+   "golden": {
+    "name": "濃縮気付け薬",
+    "description": "HPが40%より多い時、スタン・凍結などの特殊状態を無効化",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm059_global_buff",
+      "hp_ratio": 0.4
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_11",
+   "tier": 4,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "シールドドローン",
+    "description": "治療時、10%の確率で対象にバリアを1層付与（最大1層）",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm061_global_buff",
+      "prob": 0.1,
+      "max_stack_cnt": 1.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "シールドドローン",
+    "description": "治療時、15%の確率で対象にバリアを1層付与（最大1層）",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm061_global_buff",
+      "prob": 0.15,
+      "max_stack_cnt": 1.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "4_12",
+   "tier": 4,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "M3コクーンアーマー",
+    "description": "戦闘中に倒れた時、即座に復活（戦闘1回につき1回）",
+    "price": 3,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm068_global_buff",
+      "max_respawn_cnt": 1.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "M3コクーンアーマー",
+    "description": "戦闘中に倒れた時、即座に復活（戦闘1回につき2回）",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm068_global_buff",
+      "max_respawn_cnt": 2.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "5_01",
+   "tier": 5,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "催涙ガス",
+    "description": "攻撃時3%の確率で対象に麻痺を1層付与",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm058_global_buff",
+      "prob": 0.03
+     }
+    ]
+   },
+   "golden": {
+    "name": "催涙ガス",
+    "description": "攻撃時5%の確率で対象に麻痺を1層付与",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm058_global_buff",
+      "prob": 0.05
+     }
+    ]
+   }
+  },
+  {
+   "id": "5_02",
+   "tier": 5,
+   "giveBond": "kjerag",
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "イェラグの不融氷",
+    "description": "攻撃時12%の確率で対象を1.5秒間寒冷状態にする",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1vautochess_equip_acarm003_global_buff",
+      "prob": 0.12,
+      "cold": 1.5
+     }
+    ]
+   },
+   "golden": {
+    "name": "イェラグの不融氷",
+    "description": "攻撃時20%の確率で対象を1.5秒間寒冷状態にする",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1vautochess_equip_acarm003_global_buff",
+      "prob": 0.2,
+      "cold": 1.5
+     }
+    ]
+   }
+  },
+  {
+   "id": "5_03",
+   "tier": 5,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "デュアルモードアーム",
+    "description": "攻撃力+30%。与える物理・術ダメージが弱点ダメージになる",
+    "price": 3,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm067_global_buff"
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.3
+     }
+    ]
+   },
+   "golden": {
+    "name": "デュアルモードアーム",
+    "description": "攻撃力+50%。与える物理・術ダメージが弱点ダメージになる",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm067_global_buff"
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.5
+     }
+    ]
+   }
+  },
+  {
+   "id": "5_04",
+   "tier": 5,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 100,
+   "normal": {
+    "name": "ビーコン",
+    "description": "装備時、装備者とこの装備が消滅し、装備者と同じ等級のオペレーター2名を提示、1名を無料で獲得",
+    "price": 3,
+    "buffs": [
+     {
+      "type": "use_equip_recruit_new_char_and_give_char_to_player_most_bond",
+      "refresh_cnt": 2.0,
+      "choice_cnt": 1.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "ビーコン",
+    "description": "装備時、装備者とこの装備が消滅し、装備者と同じ等級のオペレーター2名を提示、1名を無料で獲得",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "use_equip_recruit_new_char_and_give_char_to_player_most_bond",
+      "refresh_cnt": 2.0,
+      "choice_cnt": 1.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "5_05",
+   "tier": 5,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 100,
+   "normal": {
+    "name": "擬態物質",
+    "description": "装備時に消滅。そのオペレーターを2名以上所持していれば同じオペレーターを1名獲得、そうでなければ同じ盟約のオペレーターをランダムに1名獲得",
+    "price": 4,
+    "buffs": [
+     {
+      "type": "use_equip_reward_char_chess"
+     }
+    ]
+   },
+   "golden": {
+    "name": "擬態物質",
+    "description": "装備時に消滅。そのオペレーターを2名以上所持していれば同じオペレーターを1名獲得、そうでなければ同じ盟約のオペレーターをランダムに1名獲得",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "use_equip_reward_char_chess"
+     }
+    ]
+   }
+  },
+  {
+   "id": "5_06",
+   "tier": 5,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "ドクターのホログラム",
+    "description": "誰でも装備可能。次のラウンド開始時に消滅し、装備者を精鋭化する",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "equip_round_start_upgrade_char"
+     }
+    ]
+   },
+   "golden": {
+    "name": "ドクターのホログラム",
+    "description": "誰でも装備可能。次のラウンド開始時に消滅し、装備者を精鋭化する",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "use_equip_upgrade_char"
+     }
+    ]
+   }
+  },
+  {
+   "id": "5_07",
+   "tier": 5,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "商業パッケージ案",
+    "description": "オペレーターを8名売却するごとに、装備者と同じ盟約のオペレーター（管理レベル以下の等級）を1名獲得",
+    "price": 3,
+    "buffs": [
+     {
+      "type": "sell_char_count_gain_equip_owner_bond",
+      "count": 8.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "商業パッケージ案",
+    "description": "オペレーターを7名売却するごとに、装備者と同じ盟約のオペレーター（管理レベル以下の等級）を1名獲得",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "sell_char_count_gain_equip_owner_bond",
+      "count": 7.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "5_08",
+   "tier": 5,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 100,
+   "normal": {
+    "name": "突然変異細胞",
+    "description": "戦闘終了後、装備者が1つ上の等級のランダムなオペレーターに置き換わる",
+    "price": 2,
+    "buffs": [
+     {
+      "type": "char_chess_transformation_equip"
+     }
+    ]
+   },
+   "golden": {
+    "name": "突然変異細胞",
+    "description": "戦闘終了後、装備者が1つ上の等級のランダムなオペレーターに置き換わる",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "char_chess_transformation_equip"
+     }
+    ]
+   }
+  },
+  {
+   "id": "5_09",
+   "tier": 5,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "天馬の兜",
+    "description": "最大HP+50%。「天馬の槍」と同時に装備すると、毎秒最大HPの8%を回復",
+    "price": 3,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "max_hp": 0.5
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm118_global_buff",
+      "hp_recovery_per_sec_by_max_hp_ratio": 0.08,
+      "equip_chess_id": "chess_item_6_01_e"
+     }
+    ]
+   },
+   "golden": {
+    "name": "天馬の兜",
+    "description": "最大HP+75%。「天馬の槍」と同時に装備すると、毎秒最大HPの8%を回復",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "max_hp": 0.75
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm118_global_buff",
+      "hp_recovery_per_sec_by_max_hp_ratio": 0.08,
+      "equip_chess_id": "chess_item_6_01_e"
+     }
+    ]
+   }
+  },
+  {
+   "id": "6_01",
+   "tier": 6,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "天馬の槍",
+    "description": "攻撃力+40%。「天馬の兜」と同時に装備すると、与ダメージ時に追加で30%の確定ダメージ",
+    "price": 3,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.4
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm117_global_buff",
+      "equip_chess_id": "chess_item_5_09_e",
+      "atk_scale": 0.3
+     }
+    ]
+   },
+   "golden": {
+    "name": "天馬の槍",
+    "description": "攻撃力+60%。「天馬の兜」と同時に装備すると、与ダメージ時に追加で30%の確定ダメージ",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.6
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm117_global_buff",
+      "equip_chess_id": "chess_item_5_09_e",
+      "atk_scale": 0.3
+     }
+    ]
+   }
+  },
+  {
+   "id": "6_02",
+   "tier": 6,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "銃騎の威光",
+    "description": "攻撃力+40%。【ラテラーノ】が装備すると、攻撃時35%の確率で範囲内の敵1体に攻撃力の150%の物理ダメージを与える弾丸を追加発射\n「ラテラーノのブリッジクリップ」も装備していると、弾丸のダメージが攻撃力の300%になる",
+    "price": 4,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm076_global_buff",
+      "equip_chess_id": "chess_item_4_08_e",
+      "prob": 0.35,
+      "atk_scale_1": 1.5,
+      "atk_scale_2": 3.0
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.4
+     }
+    ]
+   },
+   "golden": {
+    "name": "銃騎の威光",
+    "description": "攻撃力+60%。【ラテラーノ】が装備すると、攻撃時35%の確率で範囲内の敵1体に攻撃力の150%の物理ダメージを与える弾丸を追加発射\n「ラテラーノのブリッジクリップ」も装備していると、弾丸のダメージが攻撃力の300%になる",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm076_global_buff",
+      "equip_chess_id": "chess_item_4_08_e",
+      "prob": 0.35,
+      "atk_scale_1": 1.5,
+      "atk_scale_2": 3.0
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "atk": 0.6
+     }
+    ]
+   }
+  },
+  {
+   "id": "6_03",
+   "tier": 6,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "天師の古鼎",
+    "description": "最大HP+45%。【炎】が装備すると、このラウンドにオペレーターを1名獲得するごとに戦闘開始後の攻撃速度+25（最大3層）\n「炎国の短刀」も装備していると、オペレーターを獲得するたびに資金+2（1ラウンド最大3回）",
+    "price": 4,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm077_global_buff",
+      "equip_chess_id": "chess_item_3_04_e",
+      "attack_speed": 25.0,
+      "max_cnt": 3.0
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "max_hp": 0.45
+     },
+     {
+      "type": "equip_with_another_gain_coin_when_gain_char",
+      "other_equip": "chess_item_3_04_e_a,chess_item_3_04_e_b",
+      "count": 2.0,
+      "max": 3.0,
+      "bond": "yanShip"
+     }
+    ]
+   },
+   "golden": {
+    "name": "天師の古鼎",
+    "description": "最大HP+70%。【炎】が装備すると、このラウンドにオペレーターを1名獲得するごとに戦闘開始後の攻撃速度+25（最大3層）\n「炎国の短刀」も装備していると、オペレーターを獲得するたびに資金+2（1ラウンド最大3回）",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm077_global_buff",
+      "equip_chess_id": "chess_item_3_04_e",
+      "attack_speed": 25.0,
+      "max_cnt": 3.0
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "max_hp": 0.7
+     },
+     {
+      "type": "equip_with_another_gain_coin_when_gain_char",
+      "other_equip": "chess_item_3_04_e_a,chess_item_3_04_e_b",
+      "count": 2.0,
+      "max": 3.0,
+      "bond": "yanShip"
+     }
+    ]
+   }
+  },
+  {
+   "id": "6_04",
+   "tier": 6,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "海溝の実験体",
+    "description": "ダメージを180軽減。【エーギル】が装備すると、被ダメージ時に攻撃元へ攻撃力の50%の術ダメージ（0.5秒ごとに最大1回）\n「エーギルの重刃」も装備していると、さらに攻撃力の50%の術ダメージ（0.5秒ごとに最大1回）",
+    "price": 4,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm078_global_buff",
+      "equip_chess_id": "chess_item_3_07_e",
+      "lock_duration": 0.5,
+      "atk_scale": 0.5
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "halfidle_block_fixed_damage",
+      "value": 180.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "海溝の実験体",
+    "description": "ダメージを300軽減。【エーギル】が装備すると、被ダメージ時に攻撃元へ攻撃力の50%の術ダメージ（0.5秒ごとに最大1回）\n「エーギルの重刃」も装備していると、さらに攻撃力の50%の術ダメージ（0.5秒ごとに最大1回）",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm078_global_buff",
+      "equip_chess_id": "chess_item_3_07_e",
+      "lock_duration": 0.5,
+      "atk_scale": 0.5
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "halfidle_block_fixed_damage",
+      "value": 300.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "6_05",
+   "tier": 6,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "蒸気の心臓",
+    "description": "攻撃速度+35。【ヴィクトリア】が装備すると、場にあるすべてのヴィクトリア式ハンマーの特殊効果を得る\n「ヴィクトリア式ハンマー」系の装備もしていると、そのハンマーの特殊効果が強化される（効果2倍）",
+    "price": 4,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm079_global_buff",
+      "hammer_1": "chess_item_4_09_e",
+      "hammer_2": "chess_item_3_09_e",
+      "hammer_3": "chess_item_3_10_e",
+      "hammer_4": "chess_item_2_03_e",
+      "damage_scale": 0.1,
+      "undeadable_duration": 8.0,
+      "attack_speed": 30.0,
+      "prob": 0.1,
+      "disarmed_duration": 2.0,
+      "big_hammer": "none"
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "attack_speed": 35.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "蒸気の心臓",
+    "description": "攻撃速度+55。【ヴィクトリア】が装備すると、場にあるすべてのヴィクトリア式ハンマーの特殊効果を得る\n「ヴィクトリア式ハンマー」系の装備もしていると、そのハンマーの特殊効果が強化される（効果2倍）",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm079_global_buff",
+      "hammer_1": "chess_item_4_09_e",
+      "hammer_2": "chess_item_3_09_e",
+      "hammer_3": "chess_item_3_10_e",
+      "hammer_4": "chess_item_2_03_e",
+      "damage_scale": 0.1,
+      "undeadable_duration": 8.0,
+      "attack_speed": 30.0,
+      "prob": 0.1,
+      "disarmed_duration": 2.0,
+      "big_hammer": "none"
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "attack_speed": 55.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "6_06",
+   "tier": 6,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "イェラガンドの涙",
+    "description": "術耐性+30。【イェラグ】が装備すると、攻撃範囲内の寒冷・凍結した敵に毎秒攻撃力の30%の術ダメージ\n「イェラグの不融氷」も装備していると、そのダメージが攻撃力の100%になる",
+    "price": 4,
+    "buffs": [
+     {
+      "type": "char_dynamic_ability_new",
+      "key": "act2autochess_equip_acarm102_ability",
+      "atk_scale": 0.3,
+      "interval": 1.0,
+      "atk_scale_ex": 1.0,
+      "equip_chess_id": "chess_item_5_02_e"
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "magic_resistance": 30.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "イェラガンドの涙",
+    "description": "術耐性+50。【イェラグ】が装備すると、攻撃範囲内の寒冷・凍結した敵に毎秒攻撃力の30%の術ダメージ\n「イェラグの不融氷」も装備していると、そのダメージが攻撃力の100%になる",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "char_dynamic_ability_new",
+      "key": "act2autochess_equip_acarm102_ability",
+      "atk_scale": 0.3,
+      "interval": 1.0,
+      "atk_scale_ex": 1.0,
+      "equip_chess_id": "chess_item_5_02_e"
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "attr_common_global_buff",
+      "magic_resistance": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "6_07",
+   "tier": 6,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "黄砂の羅針盤",
+    "description": "初期SP+30。【サルゴン】が装備すると、最初のスキル終了時に即座にSPを30回復\n「サルゴンの濃茶」も装備していると、スキル発動のたびにすべての【サルゴン】のSPを3回復",
+    "price": 4,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm103_global_buff",
+      "equip_chess_id": "chess_item_2_04_e",
+      "sp": 30.0,
+      "addition_sp": 3.0,
+      "init_sp": 30.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "黄砂の羅針盤",
+    "description": "初期SP+50。【サルゴン】が装備すると、最初のスキル終了時に即座にSPを30回復\n「サルゴンの濃茶」も装備していると、スキル発動のたびにすべての【サルゴン】のSPを3回復",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm103_global_buff",
+      "equip_chess_id": "chess_item_2_04_e",
+      "sp": 30.0,
+      "addition_sp": 3.0,
+      "init_sp": 50.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "6_08",
+   "tier": 6,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 100,
+   "normal": {
+    "name": "人事部の書類",
+    "description": "装備時に消滅し、最大配置人数が9になる",
+    "price": 4,
+    "buffs": [
+     {
+      "type": "equip_destory_deployment_cnt_change",
+      "count": 9.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "人事部の書類",
+    "description": "装備時に消滅し、最大配置人数が9になる",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "equip_destory_deployment_cnt_change",
+      "count": 9.0
+     }
+    ]
+   }
+  },
+  {
+   "id": "6_09",
+   "tier": 6,
+   "giveBond": null,
+   "canGiveBond": true,
+   "mergeCount": 100,
+   "normal": {
+    "name": "変形同構体",
+    "description": "装備者がもう1つの装備に対応する盟約を追加で得る",
+    "price": 3,
+    "buffs": []
+   },
+   "golden": {
+    "name": "変形同構体",
+    "description": "装備者がもう1つの装備に対応する盟約を追加で得る",
+    "price": 5,
+    "buffs": []
+   }
+  },
+  {
+   "id": "6_10",
+   "tier": 6,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "騎士の戒律",
+    "description": "再配置時間-40%。【カジミエーシュ】が装備すると、スキル発動後20秒間、攻撃範囲内の敵の攻撃速度-35%・移動速度-35%\n「カジミエーシュの競技旗」も装備していると、スキル中は攻撃力+100%、致命傷を受けても撤退せずスキル終了後に退場",
+    "price": 4,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm056_global_buff",
+      "respawn_time": -0.4,
+      "max_hp": 0.0
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm119_global_buff",
+      "duration": 20.0,
+      "equip_chess_id": "chess_item_4_07_e",
+      "atk": 1.0
+     },
+     {
+      "type": "char_dynamic_ability_new",
+      "key": "act2autochess_equip_acarm119_ability",
+      "move_speed": 0.65,
+      "attack_speed": 0.65
+     }
+    ]
+   },
+   "golden": {
+    "name": "騎士の戒律",
+    "description": "再配置時間-60%。【カジミエーシュ】が装備すると、スキル発動後20秒間、攻撃範囲内の敵の攻撃速度-35%・移動速度-35%\n「カジミエーシュの競技旗」も装備していると、スキル中は攻撃力+100%、致命傷を受けても撤退せずスキル終了後に退場",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm056_global_buff",
+      "respawn_time": -0.6,
+      "max_hp": 0.0
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm119_global_buff",
+      "duration": 20.0,
+      "equip_chess_id": "chess_item_4_07_e",
+      "atk": 1.0
+     },
+     {
+      "type": "char_dynamic_ability_new",
+      "key": "act2autochess_equip_acarm119_ability",
+      "move_speed": 0.65,
+      "attack_speed": 0.65
+     }
+    ]
+   }
+  },
+  {
+   "id": "6_11",
+   "tier": 6,
+   "giveBond": null,
+   "canGiveBond": false,
+   "mergeCount": 2,
+   "normal": {
+    "name": "ファミリーの紋章",
+    "description": "SP自然回復速度+0.2/秒。【シラクーザ】が装備すると、ステルス中に攻撃力が徐々に200%まで上昇（ステルス解除後の最初のダメージか退場まで）\n「シラクーザの正装」も装備していると、ステルス解除後の最初のダメージで攻撃力の800%の確定ダメージを追加",
+    "price": 4,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm050_global_buff",
+      "sp_recovery_per_sec": 0.2
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm122_global_buff",
+      "equip_chess_id": "chess_item_3_01_e",
+      "atk_per_sec": 0.02,
+      "max_atk": 1.0,
+      "atk_scale": 8.0
+     }
+    ]
+   },
+   "golden": {
+    "name": "ファミリーの紋章",
+    "description": "SP自然回復速度+0.35/秒。【シラクーザ】が装備すると、ステルス中に攻撃力が徐々に200%まで上昇（ステルス解除後の最初のダメージか退場まで）\n「シラクーザの正装」も装備していると、ステルス解除後の最初のダメージで攻撃力の800%の確定ダメージを追加",
+    "price": 5,
+    "buffs": [
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act1autochess_equip_acarm050_global_buff",
+      "sp_recovery_per_sec": 0.35
+     },
+     {
+      "type": "env_gbuff_new_with_verify",
+      "key": "act2autochess_equip_acarm122_global_buff",
+      "equip_chess_id": "chess_item_3_01_e",
+      "atk_per_sec": 0.02,
+      "max_atk": 1.0,
+      "atk_scale": 8.0
+     }
+    ]
+   }
+  }
+ ],
  "units": [
   {
    "id": "1_01",

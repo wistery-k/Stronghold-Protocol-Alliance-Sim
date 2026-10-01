@@ -19,6 +19,9 @@ from pathlib import Path
 
 ACT_ID = 'act2autochess'  # 堅守協定：盟約（後期）
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from item_ja import ITEM_JA, ITEM_JA_FIXED  # noqa: E402
+
 # 日本版データにまだ無いオペレーターの日本語名
 NAME_OVERRIDES = {
     'char_4196_reckpr': 'レコードキーパー',
@@ -442,6 +445,52 @@ def main():
             'values': values,
         }
 
+    # 装備（アイテム）
+    items = []
+    for item_id, shop in act['trapShopChessDatas'].items():
+        if shop['hideInShop'] or shop['itemType'] != 'EQUIP':
+            continue
+        base = item_id.replace('chess_item_', '').removesuffix('_e_a')
+        states = {}
+        for key, cid in (('normal', item_id), ('golden', shop['goldenItemId'])):
+            c = act['trapChessDataDict'][cid]
+            eff = act['effectInfoDataDict'][c['effectId']]
+            cn = strip_tags(eff['effectDesc'])
+            if base in ITEM_JA_FIXED:
+                name, desc = ITEM_JA_FIXED[base]
+            elif base in ITEM_JA:
+                name, tmpl = ITEM_JA[base]
+                nums = NUM_RE.findall(cn)
+                need = len(set(re.findall(r'\{(\d+)\}', tmpl)))
+                if need != len(nums):
+                    print(f'warning: item number mismatch {cid}: {nums} vs {tmpl}', file=sys.stderr)
+                    desc = tmpl.format(*(nums + ['?'] * need))
+                else:
+                    desc = tmpl.format(*nums)
+            else:
+                print(f'warning: no item translation {cid}: {cn}', file=sys.stderr)
+                name, desc = eff['effectName'], cn
+            buffs = []
+            for b in act['effectBuffInfoDataDict'].get(c['effectId'], []):
+                buffs.append({'type': b['key'], **{x['key']: (x['valueStr'] if x['valueStr'] is not None else x['value']) for x in b['blackboard']}})
+            states[key] = {
+                'name': name,
+                'description': desc,
+                'price': c['purchasePrice'],
+                'buffs': buffs,
+            }
+        c0 = act['trapChessDataDict'][item_id]
+        items.append({
+            'id': base,
+            'tier': shop['itemLevel'],
+            'giveBond': BOND_ID.get(c0['giveBondId']) if c0['giveBondId'] else None,
+            'canGiveBond': c0['canGiveBond'],
+            'mergeCount': c0['upgradeNum'],
+            'normal': states['normal'],
+            'golden': states['golden'],
+        })
+    items.sort(key=lambda x: x['id'])
+
     prices = {}
     for tier, infos in act['shopCharChessInfoData'].items():
         normal = next(i for i in infos if not i['isGolden'])
@@ -463,6 +512,7 @@ def main():
         },
         'bonds': bonds,
         'givenGarrisons': given,
+        'items': items,
         'units': units,
     }
     dest = Path(__file__).resolve().parent.parent / 'src/core/data/gamedata.json'

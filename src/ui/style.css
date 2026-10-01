@@ -834,3 +834,115 @@ aside {
 .panel.overflow {
   border-color: var(--ng);
 }
+
+/* ---------- 盟約まとめ・折りたたみ ---------- */
+.alliance-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--core);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 13px;
+}
+.chip.extra {
+  border-left-color: var(--extra);
+}
+.chip-stack {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+.chip-stack::before {
+  content: '加算 ';
+  color: var(--muted);
+  font-size: 10px;
+}
+.ban-list {
+  margin-left: auto;
+  color: var(--ng);
+}
+.alliance details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.alliance details > summary::-webkit-details-marker {
+  display: none;
+}
+.alliance details > summary::before {
+  content: '▸';
+  color: var(--muted);
+  font-size: 10px;
+  margin-right: 2px;
+}
+.alliance details[open] > summary::before {
+  content: '▾';
+}
+.alliance.banned {
+  opacity: 0.5;
+}
+
+/* ---------- 装備 ---------- */
+.card.item {
+  min-height: 84px;
+  border-style: solid;
+  border-top-style: double;
+}
+.item-desc {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  white-space: pre-line;
+}
+.card-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.item-chip {
+  --tc: var(--t1);
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--tc) 22%, transparent);
+  border: 1px solid var(--tc);
+}
+.item-over {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 1px;
+}
+.cards.items {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+/* ---------- リザルトの加算数 ---------- */
+.stack-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.stack-table th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.stack-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+}

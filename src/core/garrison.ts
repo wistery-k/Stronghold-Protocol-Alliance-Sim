@@ -1,5 +1,7 @@
 import { evaluateAlliances, activeAllianceIds, bondKey, effectiveGarrisons } from './alliance';
 import { gainRandom, rollChoices } from './acquire';
+import { gainItem, gainItemFromPool, gainRandomItem } from './items';
+import { itemKey } from './data/items';
 import { behindOf, egirDevour, frontOf, sameRow } from './board';
 import { ALLIANCES, v } from './data/alliances';
 import { UNITS, getUnit, unitState } from './data/units';
@@ -15,7 +17,7 @@ export function benchUnits(state: GameState): OwnedUnit[] {
 }
 
 export function currentActive(state: GameState): Set<AllianceId> {
-  return activeAllianceIds(evaluateAlliances(state.board, benchUnits(state)));
+  return activeAllianceIds(evaluateAlliances(state.board, benchUnits(state), state.banned));
 }
 
 /** 加算数を増やし、加算数に応じた報酬（先見・奇跡）を処理する */
@@ -43,6 +45,14 @@ export function stackRewards(state: GameState, active: Set<AllianceId>): void {
     if (s >= v('visi', 'layer2') && !r.allDiscount) {
       r.allDiscount = true;
       state.log.push('【先見】150層：すべての購入価格-1');
+    }
+  }
+  if (active.has('victoria')) {
+    // 【ヴィクトリア】25層ごとにヴィクトリア式ハンマーを獲得
+    const quarters = Math.floor((state.stacks.victoria ?? 0) / 25);
+    while (r.victoriaQuarters < quarters) {
+      r.victoriaQuarters++;
+      gainItemFromPool(state, 'pool_equip_vict', '【ヴィクトリア】');
     }
   }
   if (active.has('mira')) {
@@ -211,8 +221,8 @@ function runGarrison(
       return true;
     }
     case 'SERVER_MOST_BOND': {
-      const statuses = evaluateAlliances(state.board, benchUnits(state));
-      const top = statuses.sort((a, b) => b.count - a.count)[0];
+      const statuses = evaluateAlliances(state.board, benchUnits(state), state.banned);
+      const top = statuses.filter((s) => !s.banned).sort((a, b) => b.count - a.count)[0];
       if (!top) return true;
       const cands = UNITS.filter((u) => u.bonds.includes(top.id) && u.tier <= state.level).map((u) => ({ id: u.id, weight: 1 }));
       gainRandom(state, cands, name);
@@ -228,6 +238,15 @@ function runGarrison(
       }
       return true;
     }
+    case 'SERVER_GAIN_EQUIP':
+      for (let i = 0; i < n('count'); i++) gainItem(state, itemKey(String(bb.chess)), name);
+      return true;
+    case 'SERVER_POOL_EQUIP':
+      gainItemFromPool(state, String(bb.pool), name, n('count'));
+      return true;
+    case 'SERVER_GAIN_RANDOM_EQUIP_CHESS_IN_POOL':
+      if (String(bb.round_list ?? '').split(',').map(Number).includes(state.round)) gainRandomItem(state, name, n('count'));
+      return true;
     case 'SERVER_POOL_CHAR': {
       const pool = POOL_CHARS[String(bb.pool)] ?? [];
       for (let i = 0; i < n('count'); i++) gainRandom(state, pool.map(([nm, w]) => ({ id: idByName(nm), weight: w })), name);
@@ -285,7 +304,7 @@ export function allTargets(state: GameState): { unit: OwnedUnit; where: 'board' 
 
 /** 【助力】：準備フェーズ終了時、有効化中の盟約の加算数+2（3名で+4） */
 export function deputBonus(state: GameState): void {
-  const statuses = evaluateAlliances(state.board, benchUnits(state));
+  const statuses = evaluateAlliances(state.board, benchUnits(state), state.banned);
   const deput = statuses.find((s) => s.id === 'deput');
   if (!deput || deput.level === 0) return;
   const add = deput.level >= 2 ? v('deput', 'more_layer') : v('deput', 'layer');
@@ -296,7 +315,7 @@ export function deputBonus(state: GameState): void {
 
 /** 〈配置時〉〈戦闘開始時〉に加算数を得る特性と、エーギルの捕食による加算数（戦闘前に反映） */
 export function onDeployStacks(state: GameState): void {
-  const statuses = evaluateAlliances(state.board, benchUnits(state));
+  const statuses = evaluateAlliances(state.board, benchUnits(state), state.banned);
   const active = activeAllianceIds(statuses);
   const egir = statuses.find((s) => s.id === 'egir');
   if (egir && egir.level > 0) {
