@@ -180,6 +180,17 @@ export interface OwnedItem {
   star: Star;
 }
 
+/** 控えの枠：オペレーターか装備 */
+export type BenchEntry = OwnedUnit | OwnedItem | null;
+
+export function isItemEntry(e: BenchEntry | undefined): e is OwnedItem {
+  return !!e && 'itemId' in e;
+}
+
+export function isUnitEntry(e: BenchEntry | undefined): e is OwnedUnit {
+  return !!e && 'defId' in e;
+}
+
 export interface OwnedUnit {
   uid: number;
   defId: string;

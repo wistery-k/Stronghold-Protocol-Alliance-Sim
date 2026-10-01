@@ -1,29 +1,20 @@
-import { allOwned, gainRandom, gainUnit, rollChoices, withRng } from './acquire';
+import { allOwned, compactBench, gainRandom, gainUnit, putOnBench, rollChoices, withRng } from './acquire';
 import { ownedBonds } from './alliance';
-import { ITEMS, ITEM_POOLS, ITEM_STORE_SIZE, findBuff, getItem, isConsumable, itemState } from './data/items';
+import { ITEMS, ITEM_POOLS, findBuff, getItem, isConsumable, itemState } from './data/items';
 import { UNITS, getUnit } from './data/units';
 import { addStacks, benchUnits, currentActive } from './garrison';
 import { TIER_ODDS } from './rules';
 import type { GameState } from './game';
-import type { OwnedItem, OwnedUnit, Tier } from './types';
+import { isItemEntry, type OwnedItem, type OwnedUnit, type Tier } from './types';
 
 // 装備（アイテム）の入手・装備・効果（準備フェーズ側）
 
 export const MAX_EQUIP = 2;
 export const ITEM_SELL_PRICE = 1;
 
+/** 控えにある装備 */
 export function storedItems(state: GameState): OwnedItem[] {
-  return state.itemStore.filter((i): i is OwnedItem => i !== null);
-}
-
-export function itemOverflow(state: GameState): number {
-  return Math.max(0, storedItems(state).length - ITEM_STORE_SIZE);
-}
-
-export function compactItemStore(store: (OwnedItem | null)[]): (OwnedItem | null)[] {
-  const items = store.filter((i): i is OwnedItem => i !== null);
-  if (items.length > ITEM_STORE_SIZE) return items;
-  return [...items, ...Array(ITEM_STORE_SIZE - items.length).fill(null)];
+  return state.bench.filter(isItemEntry);
 }
 
 /** ショップの装備枠を更新する（等級は管理レベルの出現率に従う） */
@@ -35,27 +26,24 @@ export function rollItemShop(state: GameState): void {
   });
 }
 
-/** 同じ装備が2つ揃ったら強化する（保管庫の中だけ） */
+/** 同じ装備が2つ揃ったら強化する（控えにあるものだけ） */
 function mergeItems(state: GameState, itemId: string): void {
   const def = getItem(itemId);
   const same = storedItems(state).filter((i) => i.itemId === itemId && i.star === 1);
   if (same.length < def.mergeCount) return;
   const [keep, ...rest] = same;
   const remove = new Set(rest.slice(0, def.mergeCount - 1).map((i) => i.uid));
-  state.itemStore = state.itemStore.map((i) => (i && remove.has(i.uid) ? null : i));
+  state.bench = state.bench.map((i) => (i && remove.has(i.uid) ? null : i));
   keep.star = 2;
   state.log.push(`${def.normal.name} を強化！`);
 }
 
-/** 装備を獲得して保管庫に入れる（上限を超えても破棄しない） */
+/** 装備を獲得して控えに入れる（上限を超えても破棄しない） */
 export function gainItem(state: GameState, itemId: string, source?: string): void {
-  const item: OwnedItem = { uid: state.nextUid++, itemId, star: 1 };
-  const idx = state.itemStore.slice(0, ITEM_STORE_SIZE).indexOf(null);
-  if (idx >= 0 && itemOverflow(state) === 0) state.itemStore[idx] = item;
-  else state.itemStore.push(item);
+  putOnBench(state, { uid: state.nextUid++, itemId, star: 1 });
   if (source) state.log.push(`${source}：${getItem(itemId).normal.name} を獲得`);
   mergeItems(state, itemId);
-  state.itemStore = compactItemStore(state.itemStore);
+  state.bench = compactBench(state.bench);
 }
 
 export function gainItemFromPool(state: GameState, pool: string, source: string, count = 1): void {
@@ -86,25 +74,20 @@ function removeUnit(state: GameState, o: OwnedUnit): void {
   state.bench = state.bench.map((x) => (x === o ? null : x));
 }
 
-/** オペレーターの装備を保管庫に戻す（売却時） */
+/** オペレーターの装備を控えに戻す（売却時） */
 export function returnItems(state: GameState, o: OwnedUnit): void {
-  for (const it of o.items ?? []) {
-    const idx = state.itemStore.slice(0, ITEM_STORE_SIZE).indexOf(null);
-    if (idx >= 0 && itemOverflow(state) === 0) state.itemStore[idx] = it;
-    else state.itemStore.push(it);
-  }
+  for (const it of o.items ?? []) putOnBench(state, it);
   o.items = [];
-  state.itemStore = compactItemStore(state.itemStore);
 }
 
 /**
- * 保管庫の装備をオペレーターに装備する。消耗型の装備は効果を発動して消滅する。
+ * 控えの装備をオペレーターに装備する。消耗型の装備は効果を発動して消滅する。
  * エラーならメッセージを返す
  */
 export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit): string | undefined {
-  const idx = state.itemStore.findIndex((i) => i?.uid === itemUid);
+  const idx = state.bench.findIndex((i) => isItemEntry(i) && i.uid === itemUid);
   if (idx < 0) return '装備が見つかりません';
-  const item = state.itemStore[idx]!;
+  const item = state.bench[idx] as OwnedItem;
   const def = getItem(item.itemId);
   const st = itemState(def, item.star);
   const consumable = isConsumable(def);
@@ -112,14 +95,13 @@ export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit): s
   if (!consumable && !anyone && (unit.items?.length ?? 0) >= MAX_EQUIP) return `装備は1人${MAX_EQUIP}つまでです`;
   if (anyone && unit.star === 2) return 'すでに精鋭化しています';
 
-  state.itemStore[idx] = null;
+  state.bench[idx] = null;
   const name = getUnit(unit.defId).name;
   const n = (b: { [k: string]: unknown } | undefined, k: string) => Number(b?.[k] ?? 0);
 
   if (!consumable) {
     unit.items = [...(unit.items ?? []), item];
     state.log.push(`${name} に ${st.name} を装備`);
-    state.itemStore = compactItemStore(state.itemStore);
     return undefined;
   }
 
@@ -196,7 +178,6 @@ export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit): s
         break;
     }
   }
-  state.itemStore = compactItemStore(state.itemStore);
   return undefined;
 }
 

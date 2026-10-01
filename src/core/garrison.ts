@@ -6,14 +6,14 @@ import { behindOf, egirDevour, frontOf, sameRow } from './board';
 import { ALLIANCES, v } from './data/alliances';
 import { UNITS, getUnit, unitState } from './data/units';
 import type { GameState } from './game';
-import type { AllianceId, GarrisonData, OwnedUnit, Tier } from './types';
+import { isUnitEntry, type AllianceId, type GarrisonData, type OwnedUnit, type Tier } from './types';
 
 // 堅守特性のうち、準備フェーズ側（獲得時・準備フェーズ開始/終了時・売却時・更新時）の処理
 
 export type ServerEvent = 'SERVER_GAIN' | 'SERVER_PREP_START' | 'SERVER_PREP_FIN' | 'SERVER_CHESS_SOLD' | 'SERVER_REFRESH_SHOP';
 
 export function benchUnits(state: GameState): OwnedUnit[] {
-  return state.bench.filter((b): b is OwnedUnit => b !== null);
+  return state.bench.filter(isUnitEntry);
 }
 
 export function currentActive(state: GameState): Set<AllianceId> {
@@ -222,7 +222,7 @@ function runGarrison(
     }
     case 'SERVER_MOST_BOND': {
       const statuses = evaluateAlliances(state.board, benchUnits(state), state.banned);
-      const top = statuses.filter((s) => !s.banned).sort((a, b) => b.count - a.count)[0];
+      const top = statuses.sort((a, b) => b.count - a.count)[0];
       if (!top) return true;
       const cands = UNITS.filter((u) => u.bonds.includes(top.id) && u.tier <= state.level).map((u) => ({ id: u.id, weight: 1 }));
       gainRandom(state, cands, name);

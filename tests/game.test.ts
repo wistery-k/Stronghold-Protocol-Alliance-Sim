@@ -4,10 +4,11 @@ import { behindOf, frontOf, sameRow } from '../src/core/board';
 import { applyAction, createGame, levelUpCost, priceOf, type GameState } from '../src/core/game';
 import { UNITS, getUnit } from '../src/core/data/units';
 import { BENCH_SIZE, DEPLOY_CAP, roundIncome } from '../src/core/rules';
-import type { OwnedUnit } from '../src/core/types';
+import type { OwnedItem, OwnedUnit } from '../src/core/types';
 
 const id = (name: string) => UNITS.find((u) => u.name === name)!.id;
-const owned = (s: GameState) => [...s.board, ...s.bench.filter((b): b is OwnedUnit => !!b)];
+const owned = (s: GameState) => [...s.board, ...s.bench.filter((b): b is OwnedUnit => !!b && 'defId' in b)];
+const benchItems = (s: GameState) => s.bench.filter((b): b is OwnedItem => !!b && 'itemId' in b);
 const ou = (uid: number, name: string, star: 1 | 2 = 1): OwnedUnit => ({ uid, defId: id(name), star });
 
 /** ショップの中身を差し替え、資金を多めにする */
@@ -284,23 +285,23 @@ describe('装備', () => {
     let s = withItemShop(createGame(1), '1_01');
     s = applyAction(s, { type: 'buyItem' }).state;
     s = applyAction({ ...s, itemShop: '1_01' }, { type: 'buyItem' }).state;
-    const items = s.itemStore.filter(Boolean);
+    const items = benchItems(s);
     expect(items).toHaveLength(1);
-    expect(items[0]!.star).toBe(2);
+    expect(items[0].star).toBe(2);
   });
 
-  it('装備は1人2つまで、売却すると保管庫に戻る', () => {
+  it('装備は控えに入り、1人2つまで、売却すると控えに戻る', () => {
     let s = withShop(createGame(1), ['インサイダー']);
     s = applyAction(s, { type: 'buy', slot: 0 }).state;
     const unit = owned(s)[0];
     for (const id of ['1_01', '1_02', '1_05']) s = applyAction({ ...s, itemShop: id, gold: 100 }, { type: 'buyItem' }).state;
-    const ids = s.itemStore.filter(Boolean).map((i) => i!.uid);
+    const ids = benchItems(s).map((i) => i.uid);
     s = applyAction(s, { type: 'equip', itemUid: ids[0], unitUid: unit.uid }).state;
     s = applyAction(s, { type: 'equip', itemUid: ids[1], unitUid: unit.uid }).state;
     expect(applyAction(s, { type: 'equip', itemUid: ids[2], unitUid: unit.uid }).error).toBeDefined();
     expect(owned(s)[0].items).toHaveLength(2);
     s = applyAction(s, { type: 'sell', uid: unit.uid }).state;
-    expect(s.itemStore.filter(Boolean)).toHaveLength(3);
+    expect(benchItems(s)).toHaveLength(3);
   });
 
   it('消耗型（盟約のコイン）は装備時に消滅して資金を得る', () => {
@@ -308,10 +309,10 @@ describe('装備', () => {
     s = applyAction(s, { type: 'buy', slot: 0 }).state;
     s = applyAction({ ...s, itemShop: '1_03', gold: 10 }, { type: 'buyItem' }).state;
     const gold = s.gold;
-    const it = s.itemStore.find(Boolean)!;
+    const it = benchItems(s)[0];
     s = applyAction(s, { type: 'equip', itemUid: it.uid, unitUid: owned(s)[0].uid }).state;
     expect(s.gold).toBe(gold + 1);
-    expect(s.itemStore.filter(Boolean)).toHaveLength(0);
+    expect(benchItems(s)).toHaveLength(0);
     expect(owned(s)[0].items ?? []).toHaveLength(0);
   });
 
@@ -330,9 +331,10 @@ describe('装備', () => {
 });
 
 describe('盟約BAN', () => {
-  it('核心盟約から3つがBANされ、BAN盟約を2つ以上持つオペレーターは出現しない', () => {
+  it('核心盟約3つ・追加盟約4つがBANされ、BAN盟約を2つ以上持つオペレーターは出現しない', () => {
     const s = createGame(11);
-    expect(s.banned).toHaveLength(3);
+    expect(s.banned).toHaveLength(7);
+    expect(s.banned.filter((b) => ['yan', 'sargon', 'victoria', 'kjerag', 'laterano', 'egir', 'siracusa', 'kazimierz'].includes(b))).toHaveLength(3);
     const blocked = UNITS.filter((u) => u.bonds.filter((b) => s.banned.includes(b)).length >= 2).map((u) => u.id);
     for (let i = 0; i < 30; i++) {
       const r = applyAction({ ...s, gold: 100 }, { type: 'refresh' }).state;
@@ -340,14 +342,27 @@ describe('盟約BAN', () => {
     }
   });
 
-  it('BANされた盟約は人数を満たしても発動しない', () => {
+  it('BANされた盟約も人数を満たせば発動する', () => {
     const board = [ou(1, 'マッターホルン'), ou(2, 'ハロルド'), ou(3, 'スノーハンター')];
     const kj = evaluateAlliances(board, [], ['kjerag']).find((a) => a.id === 'kjerag')!;
-    expect(kj.level).toBe(0);
+    expect(kj.level).toBe(1);
     expect(kj.banned).toBe(true);
   });
 
   it('BANなしでも遊べる', () => {
     expect(createGame(1, { ban: 'none' }).banned).toEqual([]);
+  });
+});
+
+describe('凍結', () => {
+  it('凍結中もラウンド開始時に購入済みの枠は補充され、売れ残りはそのまま', () => {
+    let s = { ...createGame(3), gold: 100 };
+    const before = [...s.shop];
+    s = applyAction(s, { type: 'buy', slot: 0 }).state;
+    s = applyAction(s, { type: 'toggleFreeze' }).state;
+    s = applyAction(s, { type: 'battle' }).state;
+    s = applyAction(s, { type: 'next' }).state;
+    expect(s.shop[0]).not.toBeNull();
+    expect(s.shop.slice(1)).toEqual(before.slice(1));
   });
 });

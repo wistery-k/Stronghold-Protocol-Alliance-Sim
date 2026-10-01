@@ -92,6 +92,3 @@ export const ITEM_POOLS: Record<string, [string, number][]> = {
     ['6_07', 10],
   ],
 };
-
-/** アイテム保管庫の枠数（本家データ storeCntMax） */
-export const ITEM_STORE_SIZE = 6;

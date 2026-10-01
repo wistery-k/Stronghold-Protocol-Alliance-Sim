@@ -57,7 +57,7 @@ export function evaluateAlliances(board: OwnedUnit[], bench: OwnedUnit[] = [], b
     counts.set(id, { count: distinctCount(pool), members: onBoard });
   }
 
-  const maniActive = (counts.get('mani')?.count ?? 0) >= 1 && !banned.includes('mani');
+  const maniActive = (counts.get('mani')?.count ?? 0) >= 1;
   const maniUnits = counts.get('mani')?.members ?? [];
 
   const result: AllianceStatus[] = [];
@@ -68,10 +68,6 @@ export function evaluateAlliances(board: OwnedUnit[], bench: OwnedUnit[] = [], b
       count += 1;
     }
     if (count === 0) continue;
-    if (banned.includes(id)) {
-      result.push({ id, count, level: 0, next: null, memberUids: [], banned: true });
-      continue;
-    }
     let level = 0;
     let next: number | null = null;
     if (def.countMode === 'exactlyOne') {
@@ -86,7 +82,7 @@ export function evaluateAlliances(board: OwnedUnit[], bench: OwnedUnit[] = [], b
     if (maniActive && level > 0 && CORE_IDS.includes(id as never)) {
       members = [...members, ...maniUnits.filter((m) => !members.includes(m))];
     }
-    result.push({ id, count, level, next, memberUids: members.map((m) => m.uid) });
+    result.push({ id, count, level, next, memberUids: members.map((m) => m.uid), banned: banned.includes(id) || undefined });
   }
   return result.sort((a, b) => b.level - a.level || b.count - a.count);
 }

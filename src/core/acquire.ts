@@ -4,7 +4,7 @@ import { Rng } from './rng';
 import { itemOnGain, unitAvailable } from './items';
 import { BENCH_SIZE } from './rules';
 import type { GameState } from './game';
-import type { OwnedUnit, Star, Tier } from './types';
+import type { BenchEntry, OwnedUnit, Star, Tier } from './types';
 
 // オペレーターの獲得（購入・特性による獲得・精鋭化報酬）と精鋭化の処理
 
@@ -35,13 +35,20 @@ export function canReceive(state: GameState, defId: string): boolean {
  * 控えの並びを整える。上限を超えている間ははみ出したまま保持し（破棄しない）、
  * 上限以内に収まったら枠数を元に戻す
  */
-export function compactBench(bench: (OwnedUnit | null)[]): (OwnedUnit | null)[] {
+export function compactBench(bench: BenchEntry[]): BenchEntry[] {
   if (bench.length <= BENCH_SIZE) return bench;
-  const units = bench.filter((b): b is OwnedUnit => b !== null);
-  if (units.length > BENCH_SIZE) return units;
-  const out: (OwnedUnit | null)[] = bench.slice(0, BENCH_SIZE);
-  for (const u of units) if (!out.includes(u)) out[out.indexOf(null)] = u;
+  const entries = bench.filter((b): b is NonNullable<BenchEntry> => b !== null);
+  if (entries.length > BENCH_SIZE) return entries;
+  const out: BenchEntry[] = bench.slice(0, BENCH_SIZE);
+  for (const u of entries) if (!out.includes(u)) out[out.indexOf(null)] = u;
   return out;
+}
+
+/** 控えに入れる（上限を超えてもはみ出させて保持する） */
+export function putOnBench(state: GameState, entry: NonNullable<BenchEntry>): void {
+  const emptyIdx = state.bench.slice(0, BENCH_SIZE).indexOf(null);
+  if (emptyIdx >= 0 && benchOverflow(state) === 0) state.bench[emptyIdx] = entry;
+  else state.bench.push(entry);
 }
 
 /** 指定等級から3名を提示する（精鋭化の報酬・特別招集） */
@@ -88,9 +95,7 @@ export function gainUnit(state: GameState, defId: string): boolean {
   state.pool[defId]--;
   state.round_.gained++;
   const unit: OwnedUnit = { uid: state.nextUid++, defId, star: 1 };
-  const emptyIdx = state.bench.slice(0, BENCH_SIZE).indexOf(null);
-  if (emptyIdx >= 0 && benchOverflow(state) === 0) state.bench[emptyIdx] = unit;
-  else state.bench.push(unit);
+  putOnBench(state, unit);
   triggerGarrisons(state, 'SERVER_GAIN', [{ unit, where: 'bench' }], gainTriggerTimes(state, currentActive(state)));
   itemOnGain(state);
   mergeUnits(state, defId);

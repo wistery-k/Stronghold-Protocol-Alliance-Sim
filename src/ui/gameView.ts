@@ -15,8 +15,8 @@ import {
   deployCapOf,
 } from '../core/game';
 import { BENCH_SIZE, MAX_ROUND, REFRESH_COST, TIER_ODDS } from '../core/rules';
-import { ITEM_STORE_SIZE, getItem } from '../core/data/items';
-import { itemOverflow, storedItems } from '../core/items';
+import { getItem } from '../core/data/items';
+import { isItemEntry } from '../core/types';
 import { benchOverflow } from '../core/acquire';
 import { simulateDps } from '../core/sim';
 import type { AllianceId } from '../core/types';
@@ -78,14 +78,7 @@ function prepView(p: GameViewProps): HTMLElement {
   const ownedNormal = new Set(allOwned(state).filter((o) => o.star === 1).map((o) => o.defId));
   const hasChoice = state.choices.length > 0;
   const overflow = benchOverflow(state);
-  const itemOver = itemOverflow(state);
-  const blockReason = hasChoice
-    ? '無料獲得の候補を先に選んでください'
-    : overflow > 0
-      ? `控えが上限を${overflow}名超えています`
-      : itemOver > 0
-        ? `装備の保管庫が上限を${itemOver}つ超えています`
-        : null;
+  const blockReason = hasChoice ? '無料獲得の候補を先に選んでください' : overflow > 0 ? `控えが上限を${overflow}つ超えています` : null;
 
   // 詳細表示：マウスオーバー中のユニットを優先し、なければ選択中のユニット。
   // マウスオーバーでは全体を再描画せず（ドラッグが途切れるため）、詳細パネルだけを差し替える
@@ -141,21 +134,22 @@ function prepView(p: GameViewProps): HTMLElement {
     onItemDrop: (itemUid: number) => dispatch({ type: 'equip', itemUid, unitUid: uid }),
   });
 
-  const itemSlots = state.itemStore.map((it, index) =>
-    h(
-      'div',
-      { class: `slot item-slot${index >= ITEM_STORE_SIZE ? ' over' : ''}` },
-      it ? itemCard(it.itemId, { star: it.star, dragItemUid: it.uid }) : emptySlot(),
-    ),
-  );
-
+  // 控えにはオペレーターと装備を一緒に置く
   const benchSlots = state.bench.map((o, index) => {
     const slot = h(
       'div',
       { class: `slot${index >= BENCH_SIZE ? ' over' : ''}` },
-      o ? unitCard(o.defId, { star: o.star, dragUid: o.uid, ...cardFor(o.uid, 'bench') }) : emptySlot(),
+      isItemEntry(o)
+        ? itemCard(o.itemId, { star: o.star, dragItemUid: o.uid })
+        : o
+          ? unitCard(o.defId, { star: o.star, dragUid: o.uid, ...cardFor(o.uid, 'bench') })
+          : emptySlot(),
     );
-    return makeDropTarget(slot, (uid) => dispatch({ type: 'move', uid, to: { zone: 'bench', index } }));
+    return makeDropTarget(
+      slot,
+      (uid) => dispatch({ type: 'move', uid, to: { zone: 'bench', index } }),
+      (itemUid) => dispatch({ type: 'moveItem', uid: itemUid, index }),
+    );
   });
 
   const odds = TIER_ODDS[state.level - 1];
@@ -274,19 +268,15 @@ function prepView(p: GameViewProps): HTMLElement {
         h(
           'section',
           { class: `panel${overflow > 0 ? ' overflow' : ''}` },
-          h('h2', null, `控え（${bench.length}/${BENCH_SIZE}）`, overflow > 0 ? h('span', { class: 'ng' }, `　${overflow}名超過：配置か売却で上限内に戻してください`) : null),
-          h('div', { class: 'cards bench' }, benchSlots),
-        ),
-        h(
-          'section',
-          { class: `panel${itemOver > 0 ? ' overflow' : ''}` },
           h(
             'h2',
             null,
-            `装備（${storedItems(state).length}/${ITEM_STORE_SIZE}）`,
-            h('span', { class: 'muted small' }, '　オペレーターへドラッグで装備（1人2つまで・外せません）、招集欄へドロップで売却'),
+            `控え（${state.bench.filter(Boolean).length}/${BENCH_SIZE}）`,
+            overflow > 0
+              ? h('span', { class: 'ng' }, `　${overflow}つ超過：配置・装備・売却で上限内に戻してください`)
+              : h('span', { class: 'muted small' }, '　装備はオペレーターへドラッグで装備（1人2つまで・外せません）'),
           ),
-          h('div', { class: 'cards items' }, itemSlots),
+          h('div', { class: 'cards bench' }, benchSlots),
         ),
         choicePanel,
         shopPanel,

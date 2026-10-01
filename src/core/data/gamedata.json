@@ -630,7 +630,7 @@
    "canGiveBond": false,
    "mergeCount": 2,
    "normal": {
-    "name": "携帯身分証",
+    "name": "ネームタグ",
     "description": "装備時に消滅し、装備者が所属する盟約の加算数+3（盟約の有効化不要）",
     "price": 1,
     "buffs": [
@@ -641,7 +641,7 @@
     ]
    },
    "golden": {
-    "name": "携帯身分証",
+    "name": "ネームタグ",
     "description": "装備時に消滅し、装備者が所属する盟約の加算数+6（盟約の有効化不要）",
     "price": 5,
     "buffs": [

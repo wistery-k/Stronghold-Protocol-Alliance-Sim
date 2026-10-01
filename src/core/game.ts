@@ -12,23 +12,21 @@ import {
   triggerGarrisons,
 } from './garrison';
 import { miraProb } from './data/alliances';
-import { allOwned, benchOverflow, canReceive, compactBench, gainUnit, withRng } from './acquire';
+import { allOwned, benchOverflow, canReceive, compactBench, gainUnit, putOnBench, withRng } from './acquire';
 import {
   ITEM_SELL_PRICE,
-  compactItemStore,
   gainItem,
   equipItem,
   itemBattleEnd,
   itemOnSold,
-  itemOverflow,
   itemRoundStart,
   returnItems,
   rollItemShop,
   storedItems,
   unitAvailable,
 } from './items';
-import { ITEM_STORE_SIZE, getItem, itemState } from './data/items';
-import { CORE_IDS } from './data/alliances';
+import { getItem, itemState } from './data/items';
+import { ALLIANCE_IDS, CORE_IDS } from './data/alliances';
 import { firstFreeCell, normalizePositions, unitAt } from './board';
 import {
   BENCH_SIZE,
@@ -47,7 +45,7 @@ import {
   shopSlots,
 } from './rules';
 import { simulateDps, type SimResult } from './sim';
-import type { AllianceId, Direction, OwnedItem, OwnedUnit } from './types';
+import { isItemEntry, isUnitEntry, type AllianceId, type BenchEntry, type Direction, type OwnedItem, type OwnedUnit } from './types';
 
 export type Phase = 'prep' | 'result' | 'gameover' | 'clear';
 
@@ -68,7 +66,7 @@ export interface BattleReport {
 }
 
 export interface GameState {
-  version: 5;
+  version: 6;
   seed: number;
   rngState: number;
   round: number;
@@ -80,8 +78,6 @@ export interface GameState {
   shop: (string | null)[];
   /** ショップの装備枠 */
   itemShop: string | null;
-  /** 装備の保管庫（上限を超えても保持し、超過中は戦闘不可） */
-  itemStore: (OwnedItem | null)[];
   frozen: boolean;
   /** 盟約BANされた盟約 */
   banned: AllianceId[];
@@ -91,7 +87,8 @@ export interface GameState {
   deployCapOverride: number | null;
   /** 売却したオペレーターの累計（商業パッケージ案） */
   soldCount: number;
-  bench: (OwnedUnit | null)[];
+  /** 控え：オペレーターと装備を一緒に保管する（上限を超えても保持し、超過中は戦闘不可） */
+  bench: BenchEntry[];
   board: OwnedUnit[];
   pool: Record<string, number>;
   stacks: Partial<Record<AllianceId, number>>;
@@ -117,6 +114,7 @@ export type Action =
   | { type: 'buyItem' }
   | { type: 'sellItem'; uid: number }
   | { type: 'equip'; itemUid: number; unitUid: number }
+  | { type: 'moveItem'; uid: number; index: number }
   | { type: 'sell'; uid: number }
   | { type: 'deploy'; uid: number; pos?: number }
   | { type: 'undeploy'; uid: number }
@@ -140,17 +138,20 @@ export interface ActionResult {
 // ------------------------------------------------------------
 
 export interface GameOptions {
-  /** 盟約BAN：'random' = 核心盟約からランダムに3つ、'none' = なし */
+  /** 盟約BAN：'random' = 核心盟約3つ・追加盟約4つをランダムに、'none' = なし */
   ban?: 'random' | 'none';
 }
 
-export const BAN_COUNT = 3;
+export const BAN_CORE_COUNT = 3;
+export const BAN_EXTRA_COUNT = 4;
+/** BANの対象にならない追加盟約（本家データで出現の重みが0のもの） */
+const BAN_EXEMPT: AllianceId[] = ['invest', 'mani', 'empty'];
 
 export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: GameOptions = {}): GameState {
   const pool: Record<string, number> = {};
   for (const u of UNITS) pool[u.id] = POOL_COPIES[u.tier];
   const state: GameState = {
-    version: 5,
+    version: 6,
     seed,
     rngState: seed,
     round: 1,
@@ -160,7 +161,6 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
     levelDiscount: 0,
     shop: [],
     itemShop: null,
-    itemStore: Array(ITEM_STORE_SIZE).fill(null),
     frozen: false,
     banned: [],
     extraRoundGold: 0,
@@ -184,10 +184,13 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
   };
   if ((opts.ban ?? 'random') === 'random') {
     state.banned = withRng(state, (rng) => {
-      const cands = [...CORE_IDS];
-      const out: AllianceId[] = [];
-      while (out.length < BAN_COUNT && cands.length) out.push(cands.splice(rng.int(cands.length), 1)[0]);
-      return out;
+      const pick = (cands: AllianceId[], n: number) => {
+        const out: AllianceId[] = [];
+        while (out.length < n && cands.length) out.push(cands.splice(rng.int(cands.length), 1)[0]);
+        return out;
+      };
+      const extras = ALLIANCE_IDS.filter((id) => !CORE_IDS.includes(id as never) && !BAN_EXEMPT.includes(id));
+      return [...pick([...CORE_IDS], BAN_CORE_COUNT), ...pick(extras, BAN_EXTRA_COUNT)];
     });
   }
   rollShop(state);
@@ -198,11 +201,19 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
 // 補助関数
 // ------------------------------------------------------------
 
-export function rollShop(state: GameState): void {
+/**
+ * ショップを更新する。refillOnly のときは（凍結中のラウンド開始時）、
+ * 売れ残っている枠はそのままにして、購入済みの空き枠だけを補充する
+ */
+export function rollShop(state: GameState, refillOnly = false): void {
   withRng(state, (rng) => {
     const odds = TIER_ODDS[state.level - 1];
     const shop: (string | null)[] = [];
     for (let i = 0; i < shopSlots(state.level); i++) {
+      if (refillOnly && state.shop[i]) {
+        shop.push(state.shop[i]);
+        continue;
+      }
       let tier = rng.weighted(odds) + 1;
       let picked: string | null = null;
       for (; tier >= 1 && !picked; tier--) {
@@ -214,14 +225,14 @@ export function rollShop(state: GameState): void {
     }
     state.shop = shop;
   });
-  rollItemShop(state);
+  if (!refillOnly || !state.itemShop) rollItemShop(state);
 }
 
 export function findOwned(state: GameState, uid: number): { unit: OwnedUnit; where: 'board' | 'bench'; index: number } | null {
   const bi = state.board.findIndex((o) => o.uid === uid);
   if (bi >= 0) return { unit: state.board[bi], where: 'board', index: bi };
-  const ni = state.bench.findIndex((o) => o?.uid === uid);
-  if (ni >= 0) return { unit: state.bench[ni]!, where: 'bench', index: ni };
+  const ni = state.bench.findIndex((o) => isUnitEntry(o) && o.uid === uid);
+  if (ni >= 0) return { unit: state.bench[ni] as OwnedUnit, where: 'bench', index: ni };
   return null;
 }
 
@@ -305,7 +316,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       const price = def.normal.price;
       if (state.gold < price) return fail('資金が足りません');
       const canMerge = storedItems(state).filter((i) => i.itemId === def.id && i.star === 1).length >= def.mergeCount - 1;
-      if (!state.itemStore.slice(0, ITEM_STORE_SIZE).includes(null) && !canMerge) return fail('装備の保管庫がいっぱいです');
+      if (!(state.bench.slice(0, BENCH_SIZE).includes(null) && benchOverflow(state) === 0) && !canMerge) return fail('控えがいっぱいです');
       spend(state, price);
       state.itemShop = null;
       state.log.push(`${def.normal.name} を購入（-${price}）`);
@@ -313,13 +324,20 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       return { state };
     }
     case 'sellItem': {
-      const idx = state.itemStore.findIndex((i) => i?.uid === action.uid);
+      const idx = state.bench.findIndex((i) => isItemEntry(i) && i.uid === action.uid);
       if (idx < 0) return fail('装備が見つかりません');
-      const it = state.itemStore[idx]!;
-      state.itemStore[idx] = null;
-      state.itemStore = compactItemStore(state.itemStore);
+      const it = state.bench[idx] as OwnedItem;
+      state.bench[idx] = null;
       state.gold += ITEM_SELL_PRICE;
       state.log.push(`${itemState(getItem(it.itemId), it.star).name} を売却（+${ITEM_SELL_PRICE}）`);
+      return { state };
+    }
+    case 'moveItem': {
+      const from = state.bench.findIndex((i) => isItemEntry(i) && i.uid === action.uid);
+      if (from < 0) return fail('装備が見つかりません');
+      const other = state.bench[action.index] ?? null;
+      state.bench[action.index] = state.bench[from];
+      state.bench[from] = other;
       return { state };
     }
     case 'equip': {
@@ -423,7 +441,6 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
     case 'battle': {
       if (state.choices.length) return fail(CHOICE_LOCK_MESSAGE);
       if (benchOverflow(state) > 0) return fail(`控えが上限を${benchOverflow(state)}名超えています。配置するか売却してください`);
-      if (itemOverflow(state) > 0) return fail(`装備の保管庫が上限を${itemOverflow(state)}つ超えています。装備するか売却してください`);
       normalizePositions(state.board);
       resolveBattle(state);
       return { state };
@@ -453,7 +470,7 @@ function startRound(state: GameState, round: number): void {
   state.round_ = { gained: 0, spent: 0, refreshes: 0, cauldron: 0 };
   itemRoundStart(state);
   state.levelDiscount++;
-  if (!state.frozen) rollShop(state);
+  rollShop(state, state.frozen);
   state.frozen = false;
   triggerGarrisons(state, 'SERVER_PREP_START', allTargets(state));
   stackRewards(state, currentActive(state));
@@ -490,12 +507,14 @@ function moveUnit(
       state.bench[to.index] = u;
     } else {
       state.board = state.board.filter((o) => o !== u);
-      if (other) {
+      if (isUnitEntry(other)) {
         other.pos = u.pos;
         state.board.push(other);
       }
       delete u.pos;
       state.bench[to.index] = u;
+      // 装備がいた枠なら、その装備は別の枠へ
+      if (isItemEntry(other)) putOnBench(state, other);
     }
   }
 }
