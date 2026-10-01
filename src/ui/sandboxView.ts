@@ -1,12 +1,13 @@
 import { ALLIANCES } from '../core/data/alliances';
 import { BOSSES, enemyForRound } from '../core/data/enemies';
-import { UNITS } from '../core/data/units';
+import { UNITS, getUnit } from '../core/data/units';
 import { activeAllianceIds } from '../core/alliance';
 import { buildSimInputs } from '../core/game';
 import { DEPLOY_CAP, MAX_ROUND } from '../core/rules';
 import { simulateDps } from '../core/sim';
 import type { AllianceId, EnemyDef, OwnedUnit, Star } from '../core/types';
-import { alliancePanel, enemyInfo, simSummary, unitCard } from './components';
+import { alliancePanel, boardGrid, enemyInfo, simSummary, unitCard } from './components';
+import { firstFreeCell } from '../core/board';
 import { h } from './dom';
 
 // 好きな編成で任意の敵に対するDPSを試せるサンドボックス
@@ -16,12 +17,13 @@ export interface SandboxState {
   enemyId: string;
   stacks: Partial<Record<AllianceId, number>>;
   nextUid: number;
+  selectedUid: number | null;
 }
 
 export const SANDBOX_MAX_UNITS = DEPLOY_CAP;
 
 export function createSandbox(): SandboxState {
-  return { units: [], enemyId: BOSSES[0].id, stacks: {}, nextUid: 1 };
+  return { units: [], enemyId: BOSSES[0].id, stacks: {}, nextUid: 1, selectedUid: null };
 }
 
 function allEnemies(): EnemyDef[] {
@@ -38,7 +40,8 @@ function allEnemies(): EnemyDef[] {
 export function sandboxView(sb: SandboxState, update: (f: (s: SandboxState) => void) => void): HTMLElement {
   const enemies = allEnemies();
   const enemy = enemies.find((e) => e.id === sb.enemyId) ?? enemies[0];
-  const { inputs, statuses, globals } = buildSimInputs(sb.units, [], sb.stacks);
+  const { inputs, statuses, globals, excluded } = buildSimInputs(sb.units, [], sb.stacks);
+  const selected = sb.units.find((u) => u.uid === sb.selectedUid);
   const activeIds = activeAllianceIds(statuses);
   const result = sb.units.length ? simulateDps(inputs, enemy, { globals, activeAlliances: activeIds, stacks: sb.stacks }) : null;
   const stackAlliances = statuses.map((st) => ALLIANCES[st.id]);
@@ -65,22 +68,34 @@ export function sandboxView(sb: SandboxState, update: (f: (s: SandboxState) => v
             ? h('p', { class: 'muted' }, '下の一覧からオペレーターを追加してください')
             : h(
                 'div',
-                { class: 'cards' },
-                sb.units.map((o) =>
-                  h(
-                    'div',
-                    { class: 'sb-unit' },
-                    unitCard(o.defId, { star: o.star, highlight: activeIds }),
-                    h(
+                null,
+                boardGrid(sb.units, {
+                  cardOptions: (o) => ({
+                    highlight: activeIds,
+                    selected: o.uid === sb.selectedUid,
+                    dim: excluded.has(o.uid),
+                    onClick: () => update((s) => { s.selectedUid = s.selectedUid === o.uid ? null : o.uid; }),
+                  }),
+                  onDropCell: (pos, uid) =>
+                    update((s) => {
+                      const u = s.units.find((x) => x.uid === uid);
+                      if (!u) return;
+                      const other = s.units.find((x) => x.pos === pos);
+                      if (other) other.pos = u.pos;
+                      u.pos = pos;
+                    }),
+                }),
+                selected
+                  ? h(
                       'div',
-                      { class: 'row tight' },
+                      { class: 'row' },
+                      h('b', null, getUnit(selected.defId).name),
                       ([1, 2] as Star[]).map((st) =>
-                        h('button', { class: `btn tiny ${o.star === st ? 'on' : ''}`, onclick: () => update((s) => { s.units.find((u) => u.uid === o.uid)!.star = st; }) }, st === 2 ? '昇進' : '通常'),
+                        h('button', { class: `btn tiny ${selected.star === st ? 'on' : ''}`, onclick: () => update((s) => { s.units.find((u) => u.uid === selected.uid)!.star = st; }) }, st === 2 ? '精鋭' : '通常'),
                       ),
-                      h('button', { class: 'btn tiny danger', onclick: () => update((s) => { s.units = s.units.filter((u) => u.uid !== o.uid); }) }, '×'),
-                    ),
-                  ),
-                ),
+                      h('button', { class: 'btn tiny danger', onclick: () => update((s) => { s.units = s.units.filter((u) => u.uid !== selected.uid); s.selectedUid = null; }) }, '外す'),
+                    )
+                  : h('p', { class: 'muted small' }, 'クリックで選択して精鋭化・外す。ドラッグで位置を変更'),
               ),
         ),
         h('section', { class: 'panel' }, h('h2', null, '結果'), result ? simSummary(result) : h('p', { class: 'muted' }, '編成すると自動で計算されます')),
@@ -103,7 +118,9 @@ export function sandboxView(sb: SandboxState, update: (f: (s: SandboxState) => v
                     onClick: () =>
                       update((s) => {
                         if (s.units.length >= SANDBOX_MAX_UNITS) return;
-                        s.units.push({ uid: s.nextUid++, defId: u.id, star: 1 });
+                        const pos = firstFreeCell(s.units);
+                        if (pos === null) return;
+                        s.units.push({ uid: s.nextUid++, defId: u.id, star: 1, pos });
                       }),
                   }),
                 ),

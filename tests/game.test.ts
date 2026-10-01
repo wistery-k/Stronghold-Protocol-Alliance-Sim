@@ -176,3 +176,55 @@ describe('進行', () => {
     expect(s.frozen).toBe(false);
   });
 });
+
+describe('精鋭化の報酬', () => {
+  it('精鋭化すると管理レベル+1の等級から3名が提示され、選ぶと無料で獲得', () => {
+    let s = withShop(createGame(1), ['インサイダー', 'インサイダー', 'インサイダー']);
+    for (const slot of [0, 1, 2]) s = applyAction(s, { type: 'buy', slot }).state;
+    expect(s.eliteChoices).toHaveLength(1);
+    expect(s.eliteChoices[0]).toHaveLength(3);
+    for (const c of s.eliteChoices[0]) expect(getUnit(c).tier).toBe(2);
+    // 選ぶまで戦闘できない
+    expect(applyAction(s, { type: 'battle' }).error).toBeDefined();
+    const gold = s.gold;
+    const pick = s.eliteChoices[0][0];
+    s = applyAction(s, { type: 'chooseElite', index: 0 }).state;
+    expect(s.gold).toBe(gold);
+    expect(s.eliteChoices).toHaveLength(0);
+    expect(owned(s).some((o) => o.defId === pick)).toBe(true);
+  });
+});
+
+describe('配置エリア', () => {
+  it('指定マスへ配置し、ドラッグで入れ替えられる', () => {
+    let s = withShop(createGame(1), ['インサイダー', 'グム']);
+    for (const slot of [0, 1]) s = applyAction(s, { type: 'buy', slot }).state;
+    const [a, b] = owned(s);
+    s = applyAction(s, { type: 'move', uid: a.uid, to: { zone: 'board', pos: 5 } }).state;
+    s = applyAction(s, { type: 'move', uid: b.uid, to: { zone: 'board', pos: 6 } }).state;
+    expect(s.board.find((o) => o.uid === a.uid)!.pos).toBe(5);
+    s = applyAction(s, { type: 'move', uid: a.uid, to: { zone: 'board', pos: 6 } }).state;
+    expect(s.board.find((o) => o.uid === a.uid)!.pos).toBe(6);
+    expect(s.board.find((o) => o.uid === b.uid)!.pos).toBe(5);
+    // 盤面→控えの埋まった枠へ：入れ替え
+    s = applyAction(s, { type: 'move', uid: a.uid, to: { zone: 'bench', index: 0 } }).state;
+    expect(s.board.map((o) => o.uid)).toEqual([b.uid]);
+    expect(s.bench[0]!.uid).toBe(a.uid);
+  });
+
+  it('ミニマリストの購入価格は1', () => {
+    expect(priceOf(createGame(1), id('ミニマリスト'))).toBe(1);
+  });
+
+  it('前方1マスを参照する特性（アルケット：自身と前方の盟約の加算数）', () => {
+    const run = (archetPos: number, tippiPos: number) => {
+      let s = createGame(1);
+      s = { ...s, board: [{ ...ou(1, 'アルケット'), pos: archetPos }, { ...ou(2, 'ティッピ'), pos: tippiPos }] };
+      s = applyAction(s, { type: 'battle' }).state;
+      s = applyAction(s, { type: 'next' }).state;
+      return s.stacks.skillful ?? 0;
+    };
+    // ティッピがアルケットの前方（右）にいると、ティッピの盟約にも加算される
+    expect(run(0, 1)).toBeGreaterThan(run(1, 0));
+  });
+});

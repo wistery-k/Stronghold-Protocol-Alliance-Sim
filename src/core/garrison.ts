@@ -1,6 +1,8 @@
-import { evaluateAlliances, activeAllianceIds, bondKey } from './alliance';
+import { evaluateAlliances, activeAllianceIds, bondKey, effectiveGarrisons } from './alliance';
+import { gainRandom } from './acquire';
+import { behindOf, egirDevour, frontOf, sameRow } from './board';
 import { ALLIANCES, v } from './data/alliances';
-import { getUnit, unitState } from './data/units';
+import { UNITS, getUnit, unitState } from './data/units';
 import type { GameState } from './game';
 import type { AllianceId, GarrisonData, OwnedUnit } from './types';
 
@@ -73,6 +75,22 @@ function distinctTiers(state: GameState, bond: AllianceId): number {
   return new Set(state.board.filter((o) => getUnit(o.defId).bonds.includes(bond)).map((o) => getUnit(o.defId).tier)).size;
 }
 
+/** 特性で獲得できるオペレーターの候補（名前と重み） */
+const POOL_CHARS: Record<string, [string, number][]> = {
+  pool_chess_glady: [
+    ['スカジ', 1],
+    ['スペクター', 1],
+    ['アンダーフロー', 1],
+  ],
+  pool_char_pinus: [
+    ['ワイルドメイン', 45],
+    ['アッシュロック', 45],
+    ['ファートゥース', 10],
+  ],
+};
+
+const idByName = (name: string) => UNITS.find((u) => u.name === name)!.id;
+
 const bondList = (s: unknown) => String(s ?? '').split(',').filter(Boolean).map(bondKey);
 
 /** 1つの特性を処理する。処理できた（再現している）なら true */
@@ -85,9 +103,9 @@ function runGarrison(
 ): boolean {
   const bb = g.blackboard;
   const n = (k: string) => Number(bb[k] ?? 0);
-  const needBoard = bb.conditionkey === 'character_target_inboard';
-  if (bb.conditionkey === 'character_same_row') return false;
+  const needBoard = bb.conditionkey === 'character_target_inboard' || bb.conditionkey === 'character_same_row';
   if (needBoard && where !== 'board') return true;
+  if (bb.conditionkey === 'character_same_row' && sameRow(state.board, unit).length < Number(bb.check_count ?? 0)) return true;
   const def = getUnit(unit.defId);
   const name = def.name;
   // 「有効化中の」盟約だけが対象かどうか
@@ -121,6 +139,7 @@ function runGarrison(
       if (bb.add_method === 'shoplv') give(bond, state.level * multi);
       else if (bb.add_method === 'round_gain_char') give(bond, state.round_.gained * multi);
       else if (bb.add_method === 'same_bond_diff_lv') give(bond, distinctTiers(state, bond[0]) * multi);
+      else if (bb.add_method === 'same_row') give(bond, sameRow(state.board, unit).length * multi);
       else return false;
       return true;
     }
@@ -181,6 +200,51 @@ function runGarrison(
       return true;
     case 'SERVER_CHESS_PRICE':
       return true; // 価格計算側で処理
+    case 'SERVER_ADD_BOND_POSITION': {
+      const other = bb.dir === 'behind' ? behindOf(state.board, unit) : frontOf(state.board, unit);
+      for (const o of [unit, other]) {
+        if (!o) continue;
+        const bonds = getUnit(o.defId).bonds.filter((b) => active.has(b));
+        for (const b of bonds) addStacks(state, b, n('count'), active);
+        if (bonds.length) state.log.push(`${name}：${getUnit(o.defId).name}の盟約の加算数+${n('count')}`);
+      }
+      return true;
+    }
+    case 'SERVER_MOST_BOND': {
+      const statuses = evaluateAlliances(state.board, benchUnits(state));
+      const top = statuses.sort((a, b) => b.count - a.count)[0];
+      if (!top) return true;
+      const cands = UNITS.filter((u) => u.bonds.includes(top.id) && u.tier <= state.level).map((u) => ({ id: u.id, weight: 1 }));
+      gainRandom(state, cands, name);
+      return true;
+    }
+    case 'SERVER_POOL_CHAR': {
+      const pool = POOL_CHARS[String(bb.pool)] ?? [];
+      for (let i = 0; i < n('count'); i++) gainRandom(state, pool.map(([nm, w]) => ({ id: idByName(nm), weight: w })), name);
+      return true;
+    }
+    case 'SERVER_TRIGGER_ANOTHER':
+    case 'SERVER_TRIGGER_FRONT_COUNT': {
+      const front = frontOf(state.board, unit);
+      if (!front) return true;
+      const times = g.effect === 'SERVER_TRIGGER_FRONT_COUNT' ? n('count') : 1;
+      for (const fg of unitState(getUnit(front.defId), front.star).garrisons) {
+        if (fg.event !== 'SERVER_GAIN') continue;
+        for (let i = 0; i < times; i++) runGarrison(state, fg, front, 'board', active);
+      }
+      return true;
+    }
+    case 'SERVER_FRONT_SAME_EFFECT_PREP_START':
+    case 'SERVER_FRONT_SAME_EFFECT_PREP_FIN': {
+      const front = frontOf(state.board, unit);
+      if (!front) return true;
+      const ev = g.effect === 'SERVER_FRONT_SAME_EFFECT_PREP_START' ? 'SERVER_PREP_START' : 'SERVER_PREP_FIN';
+      for (const fg of unitState(getUnit(front.defId), front.star).garrisons) {
+        if (fg.event !== ev || fg.effect.startsWith('SERVER_FRONT_SAME')) continue;
+        runGarrison(state, fg, unit, 'board', active);
+      }
+      return true;
+    }
     default:
       return false;
   }
@@ -220,12 +284,22 @@ export function deputBonus(state: GameState): void {
   state.log.push(`【助力】有効化中の盟約の加算数+${add}`);
 }
 
-/** 〈配置時〉〈戦闘開始時〉に加算数を得る特性（戦闘前に反映） */
+/** 〈配置時〉〈戦闘開始時〉に加算数を得る特性と、エーギルの捕食による加算数（戦闘前に反映） */
 export function onDeployStacks(state: GameState): void {
-  const active = currentActive(state);
+  const statuses = evaluateAlliances(state.board, benchUnits(state));
+  const active = activeAllianceIds(statuses);
+  const egir = statuses.find((s) => s.id === 'egir');
+  if (egir && egir.level > 0) {
+    const dv = egirDevour(state.board, new Set(egir.memberUids), v('egir', 'damage_value'));
+    if (dv.stacks > 0) {
+      addStacks(state, 'egir', dv.stacks, active);
+      state.log.push(`【エーギル】捕食：加算数+${dv.stacks}`);
+    }
+  }
+  const garrisons = effectiveGarrisons(state.board);
   for (const o of state.board) {
     const def = getUnit(o.defId);
-    for (const g of unitState(def, o.star).garrisons) {
+    for (const g of garrisons.get(o.uid) ?? []) {
       const bb = g.blackboard;
       if (g.event !== 'IN_BATTLE' || bb.key !== 'act2autochess_gar_event_onstart' || bb.bond_add_type !== 'by_count') continue;
       const bonds = bb.bond_type === 'bond_self' ? def.bonds : bondList(bb.bond_id);

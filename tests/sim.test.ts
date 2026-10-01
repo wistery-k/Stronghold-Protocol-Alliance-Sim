@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { attackInterval, hitDamage, parseSkill, simulateDps } from '../src/core/sim';
+import { battleSetup } from '../src/core/alliance';
 import { UNITS, getUnit } from '../src/core/data/units';
 import type { EnemyDef, UnitDef } from '../src/core/types';
 
@@ -114,5 +115,15 @@ describe('simulateDps', () => {
     expect(r.stackGains.sargon).toBe(5);
     const r2 = simulateDps([{ uid: 1, def, star: 1, mods: {} }], dummy({ duration: 60 }), { activeAlliances: new Set() });
     expect(r2.stackGains.sargon).toBeUndefined();
+  });
+});
+
+describe('位置による効果', () => {
+  it('器用は周囲4マスのオペレーターにも攻撃速度を与える', () => {
+    const u = (uid: number, name: string, pos: number) => ({ uid, defId: byName(name).id, star: 1 as const, pos });
+    const board = [u(1, 'ティッピ', 0), u(2, 'アルケット', 8), u(3, 'スカジ', 1), u(4, 'スペクター', 15)];
+    const setup = battleSetup(board, [], {});
+    expect(setup.mods.get(3)?.aspd ?? 0).toBeGreaterThan(0); // ティッピの右隣
+    expect(setup.mods.get(4)?.aspd ?? 0).toBe(0); // 離れている
   });
 });

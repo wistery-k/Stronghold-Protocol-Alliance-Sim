@@ -1,6 +1,6 @@
 import { bondKey, type BattleGlobals } from './alliance';
 import { unitState } from './data/units';
-import type { AllianceId, DamageType, EnemyDef, EnemyPhase, Modifier, SkillData, Star, UnitDef } from './types';
+import type { AllianceId, DamageType, EnemyDef, EnemyPhase, GarrisonData, Modifier, SkillData, Star, UnitDef } from './types';
 
 // 単体標的に対する DPS チェックの時間刻みシミュレーション。
 // 本家のスキルデータ（blackboard）から攻撃力・攻撃速度・倍率などを読み取り、
@@ -11,6 +11,12 @@ export interface SimUnitInput {
   def: UnitDef;
   star: Star;
   mods: Modifier;
+  /** 戦闘中に持つ特性（省略時はオペレーター自身の特性） */
+  garrisons?: GarrisonData[];
+  /** 同じ行のオペレーター数 */
+  rowCount?: number;
+  /** 特性で加算数が増える時の追加量 */
+  bonusGain?: number;
 }
 
 export interface SimUnitResult {
@@ -166,14 +172,21 @@ export interface SimOptions {
   stacks?: Partial<Record<AllianceId, number>>;
 }
 
-function garrisonEvents(def: UnitDef, star: Star): GarrisonEvent[] {
+function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
+  const { def, star } = input;
+  const rowCount = input.rowCount ?? 1;
   const out: GarrisonEvent[] = [];
-  for (const g of unitState(def, star).garrisons) {
+  for (const g of input.garrisons ?? unitState(def, star).garrisons) {
     if (g.event !== 'IN_BATTLE' || g.effect !== 'ADD_BOND') continue;
     const bb = g.blackboard;
     const key = bb.key as string | undefined;
     const kind = key === 'act1autochess_gar_event_useskill' ? 'useskill' : key === 'act1autochess_gar_event_selfkillenemy' ? 'kill' : key === 'act1autochess_gar_event_consume_ammo' ? 'ammo' : null;
-    if (!kind || bb.bond_add_type !== 'by_count') continue;
+    if (!kind) continue;
+    if (bb.conditionkey === 'character_same_row' && rowCount < Number(bb.check_count ?? 0)) continue;
+    let count: number;
+    if (bb.bond_add_type === 'by_count') count = Number(bb.bond_add_count ?? 0);
+    else if (bb.bond_add_type === 'by_charcount_samerow') count = Number(bb.bond_add_count_multi ?? 0) * rowCount;
+    else continue;
     const bonds =
       bb.bond_type === 'bond_by_id'
         ? String(bb.bond_id).split(',').map(bondKey)
@@ -186,7 +199,7 @@ function garrisonEvents(def: UnitDef, star: Star): GarrisonEvent[] {
     out.push({
       kind,
       bonds,
-      count: Number(bb.bond_add_count ?? 0),
+      count: count + (input.bonusGain ?? 0),
       max: Number(bb.max_add_count_per_battle ?? Infinity),
       every: Number(bb.consume_count ?? 1),
       gained: 0,
@@ -214,7 +227,7 @@ export function simulateDps(units: SimUnitInput[], enemy: EnemyDef, opts: SimOpt
       ammoUsed: 0,
       sargonBuffs: [],
       pulseTimer: g.kazimierzPulse?.interval ?? 0,
-      events: garrisonEvents(input.def, input.star),
+      events: garrisonEvents(input),
       result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0 },
     };
   });

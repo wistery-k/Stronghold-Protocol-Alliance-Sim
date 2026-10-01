@@ -3,41 +3,55 @@ import { DAMAGE_TYPE_NAME, PROFESSION_NAME, getUnit, unitState } from '../core/d
 import { isGarrisonImplemented, type AllianceStatus } from '../core/alliance';
 import { attackInterval, baseAtk, type SimResult } from '../core/sim';
 import type { AllianceId, EnemyDef, Modifier, OwnedUnit, Star } from '../core/types';
+import { BOARD_CELLS } from '../core/board';
 import { fmt, h, pct, s } from './dom';
 
 export function starBadge(star: Star) {
-  return star === 2 ? h('span', { class: 'promoted', title: '昇進済み' }, '昇進') : null;
+  return star === 2 ? h('span', { class: 'promoted', title: '精鋭' }, '精鋭') : null;
 }
 
-const TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
+/** ドラッグ中のユニット uid を運ぶ MIME 型 */
+export const DRAG_MIME = 'application/x-sp-unit';
 
-export function unitCard(
-  defId: string,
-  opts: {
-    star?: Star;
-    price?: number;
-    selected?: boolean;
-    dim?: boolean;
-    onClick?: () => void;
-    highlight?: Set<AllianceId>;
-  } = {},
-) {
+export interface CardOptions {
+  star?: Star;
+  price?: number;
+  selected?: boolean;
+  /** 所持中（非精鋭）のオペレーターと同じものを強調 */
+  owned?: boolean;
+  dim?: boolean;
+  onClick?: () => void;
+  onDblClick?: () => void;
+  /** マウスオーバー時（true）と離れた時（false） */
+  onHover?: (enter: boolean) => void;
+  /** ドラッグで運ぶユニットの uid */
+  dragUid?: number;
+  highlight?: Set<AllianceId>;
+}
+
+export function unitCard(defId: string, opts: CardOptions = {}) {
   const d = getUnit(defId);
   const st = unitState(d, opts.star ?? 1);
-  return h(
-    'button',
+  // button 要素はブラウザによってドラッグできないので div にする
+  const card = h(
+    'div',
     {
-      class: `card tier-${d.tier}${opts.selected ? ' selected' : ''}${opts.dim ? ' dim' : ''}${opts.star === 2 ? ' golden' : ''}`,
+      role: 'button',
+      tabindex: 0,
+      class: `card tier-${d.tier}${opts.selected ? ' selected' : ''}${opts.owned ? ' owned' : ''}${opts.dim ? ' dim' : ''}${opts.star === 2 ? ' golden' : ''}`,
       onclick: opts.onClick ? () => opts.onClick!() : undefined,
-      title: `${d.name}（等級${TIER_ROMAN[d.tier]} ${PROFESSION_NAME[d.profession]}）\n${st.skill.name}：${st.skill.description}\n\n${st.garrisons.map((g) => g.description).join('\n')}`,
+      ondblclick: opts.onDblClick ? () => opts.onDblClick!() : undefined,
+      onmouseenter: opts.onHover ? () => opts.onHover!(true) : undefined,
+      onmouseleave: opts.onHover ? () => opts.onHover!(false) : undefined,
+      draggable: opts.dragUid !== undefined ? 'true' : undefined,
+      title: `${d.name}（${PROFESSION_NAME[d.profession]}）\n${st.skill.name}：${st.skill.description}\n\n${st.garrisons.map((g) => g.description).join('\n')}`,
     },
     h(
       'div',
       { class: 'card-top' },
-      h('span', { class: 'tier' }, `等級${TIER_ROMAN[d.tier]}`),
+      h('span', { class: 'card-name' }, d.name),
       opts.price !== undefined ? h('span', { class: 'price' }, `${opts.price}`) : opts.star ? starBadge(opts.star) : null,
     ),
-    h('div', { class: 'card-name' }, d.name),
     h('div', { class: 'card-cls' }, `${PROFESSION_NAME[d.profession]}・${DAMAGE_TYPE_NAME[d.damageType]}`),
     h(
       'div',
@@ -45,6 +59,52 @@ export function unitCard(
       d.bonds.map((t) => h('span', { class: `tag ${ALLIANCES[t].kind}${opts.highlight?.has(t) ? ' on' : ''}` }, ALLIANCES[t].name)),
     ),
   );
+  if (opts.dragUid !== undefined) {
+    const uid = opts.dragUid;
+    card.addEventListener('dragstart', (e) => {
+      e.dataTransfer?.setData(DRAG_MIME, String(uid));
+      e.dataTransfer?.setData('text/plain', String(uid));
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      document.body.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => document.body.classList.remove('dragging'));
+  }
+  return card;
+}
+
+/** 要素をドロップ先にする。ユニットの uid を受け取る */
+export function makeDropTarget<T extends HTMLElement>(el: T, onDrop: (uid: number) => void): T {
+  el.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    el.classList.add('drop-over');
+  });
+  el.addEventListener('dragleave', (e) => {
+    if (!el.contains(e.relatedTarget as Node | null)) el.classList.remove('drop-over');
+  });
+  el.addEventListener('drop', (e) => {
+    e.preventDefault();
+    el.classList.remove('drop-over');
+    document.body.classList.remove('dragging');
+    const raw = e.dataTransfer?.getData(DRAG_MIME) || e.dataTransfer?.getData('text/plain');
+    const uid = Number(raw);
+    if (raw && Number.isFinite(uid)) onDrop(uid);
+  });
+  return el;
+}
+
+/** 4x4 の配置エリア。右が前方 */
+export function boardGrid(
+  board: OwnedUnit[],
+  opts: { cardOptions: (o: OwnedUnit) => CardOptions; onDropCell: (pos: number, uid: number) => void },
+) {
+  const cells: HTMLElement[] = [];
+  for (let pos = 0; pos < BOARD_CELLS; pos++) {
+    const o = board.find((b) => b.pos === pos);
+    const cell = h('div', { class: 'cell' }, o ? unitCard(o.defId, { star: o.star, dragUid: o.uid, ...opts.cardOptions(o) }) : null);
+    cells.push(makeDropTarget(cell, (uid) => opts.onDropCell(pos, uid)));
+  }
+  return h('div', { class: 'grid-wrap' }, h('div', { class: 'front-label' }, '敵の来る方向（前方） →'), h('div', { class: 'board-grid' }, cells));
 }
 
 export function emptySlot(label = '') {
@@ -147,7 +207,7 @@ export function unitDetail(o: OwnedUnit, mods: Modifier | undefined) {
     'div',
     { class: 'detail' },
     h('div', { class: 'detail-name' }, d.name, ' ', starBadge(o.star)),
-    h('div', { class: 'muted small' }, `等級${TIER_ROMAN[d.tier]}・${PROFESSION_NAME[d.profession]}・${DAMAGE_TYPE_NAME[d.damageType]}　${phaseText}`),
+    h('div', { class: 'muted small' }, `${PROFESSION_NAME[d.profession]}・${DAMAGE_TYPE_NAME[d.damageType]}　${phaseText}`),
     h(
       'dl',
       { class: 'stats' },

@@ -1,5 +1,6 @@
 import { ALLIANCES, ALLIANCE_IDS, CORE_IDS, v } from './data/alliances';
-import { getUnit, isRanged, unitState } from './data/units';
+import { GIVEN_GARRISONS, getUnit, isRanged, unitState } from './data/units';
+import { egirDevour, frontOf, neighbors, rightmostInRow, sameRow } from './board';
 import type { AllianceId, GarrisonData, Modifier, OwnedUnit } from './types';
 
 export interface AllianceStatus {
@@ -95,6 +96,47 @@ export interface BattleSetup {
   statuses: AllianceStatus[];
   mods: Map<number, Modifier>;
   globals: BattleGlobals;
+  /** 各ユニットが戦闘中に持つ特性（他のオペレーターから付与されたものを含む） */
+  garrisons: Map<number, GarrisonData[]>;
+  /** 同じ行のオペレーター数 */
+  rowCount: Map<number, number>;
+  /** 特性で加算数が増える時の追加量（シヴィライト・エテルナ） */
+  bonusGain: Map<number, number>;
+  /** 戦闘開始時に倒れているユニット（エーギルの捕食） */
+  excluded: Set<number>;
+}
+
+/** 特性を付与する特性の対象（付与元の特性IDの番号 → 対象） */
+const GIVE_TARGET: Record<string, 'front' | 'selfFront' | 'rowRightmost' | 'frontKjerag' | 'siracusaAll'> = {
+  '72': 'front',
+  '73': 'front',
+  '145': 'selfFront',
+  '160': 'selfFront',
+  '148': 'rowRightmost',
+  '126': 'frontKjerag',
+  '118': 'siracusaAll',
+};
+
+/** 盤面の各ユニットが戦闘中に持つ特性（自身の特性＋付与された特性） */
+export function effectiveGarrisons(board: OwnedUnit[]): Map<number, GarrisonData[]> {
+  const out = new Map<number, GarrisonData[]>();
+  for (const o of board) out.set(o.uid, [...unitState(getUnit(o.defId), o.star).garrisons]);
+  for (const o of board) {
+    for (const g of unitState(getUnit(o.defId), o.star).garrisons) {
+      const gid = g.blackboard.give_garrison_id as string | undefined;
+      if (!gid || !GIVEN_GARRISONS[gid]) continue;
+      const kind = GIVE_TARGET[g.id.split('_')[1]] ?? 'front';
+      const front = frontOf(board, o);
+      let targets: OwnedUnit[] = [];
+      if (kind === 'front' && front) targets = [front];
+      else if (kind === 'selfFront') targets = front ? [o, front] : [o];
+      else if (kind === 'rowRightmost') targets = [rightmostInRow(board, o)].filter((x): x is OwnedUnit => !!x);
+      else if (kind === 'frontKjerag' && front && getUnit(front.defId).bonds.includes('kjerag')) targets = [front];
+      else if (kind === 'siracusaAll') targets = board.filter((b) => getUnit(b.defId).bonds.includes('siracusa'));
+      for (const t of targets) out.get(t.uid)!.push(GIVEN_GARRISONS[gid]);
+    }
+  }
+  return out;
 }
 
 function add(m: Modifier, d: Modifier): void {
@@ -133,6 +175,11 @@ export function garrisonBattleModifier(g: GarrisonData, stacks: Partial<Record<A
     const times = Math.floor(bondStacks() / n('divide_num'));
     return { atkFlat: times * n('atk') };
   }
+  if (key === 'act1autochess_gar_eff_respawnTimeByBond') {
+    // 説明文では再配置時間短縮に加えて攻撃速度が上がる（-1.5%ごとに+0.5）
+    const times = Math.floor(bondStacks() / n('divide_num'));
+    return { aspd: (times * -n('respawn_time')) / 0.03 };
+  }
   return null;
 }
 
@@ -146,13 +193,17 @@ export function isGarrisonImplemented(g: GarrisonData): boolean {
         key === 'attr_common_global_buff' ||
         key === 'act1autochess_gar_eff_chaos' ||
         key === 'act1autochess_gar_eff_attrByBond' ||
-        key === 'act2autochess_gar_eff_attrByBond_add_onstart'
+        key === 'act2autochess_gar_eff_attrByBond_add_onstart' ||
+        key === 'act1autochess_gar_eff_respawnTimeByBond' ||
+        key === 'act1autochess_gar_event_addition_cnt'
       );
     }
     if (g.effect === 'ADD_BOND') {
       const key = g.blackboard.key as string | undefined;
+      const give = g.blackboard.give_garrison_id as string | undefined;
+      if (give) return !!GIVEN_GARRISONS[give] && isGarrisonImplemented(GIVEN_GARRISONS[give]);
       return (
-        g.blackboard.bond_add_type === 'by_count' &&
+        ['by_count', 'by_charcount_samerow'].includes(String(g.blackboard.bond_add_type)) &&
         ['act1autochess_gar_event_useskill', 'act1autochess_gar_event_selfkillenemy', 'act1autochess_gar_event_consume_ammo', 'act2autochess_gar_event_onstart'].includes(
           key ?? '',
         )
@@ -160,7 +211,7 @@ export function isGarrisonImplemented(g: GarrisonData): boolean {
     }
     return g.effect === 'NONE';
   }
-  if (g.blackboard.conditionkey === 'character_same_row' || g.blackboard.add_method === 'same_row') return false;
+  if (g.effect === 'SERVER_POOL_CHAR') return true;
   return IMPLEMENTED_SERVER_EFFECTS.has(g.effect);
 }
 
@@ -179,6 +230,12 @@ export const IMPLEMENTED_SERVER_EFFECTS = new Set([
   'SERVER_ONCE_GOLD_WITH_BOND_CONDITION',
   'SERVER_GAIN_FREE_REFRESH_COUNT',
   'SERVER_CHESS_PRICE',
+  'SERVER_ADD_BOND_POSITION',
+  'SERVER_MOST_BOND',
+  'SERVER_TRIGGER_ANOTHER',
+  'SERVER_TRIGGER_FRONT_COUNT',
+  'SERVER_FRONT_SAME_EFFECT_PREP_START',
+  'SERVER_FRONT_SAME_EFFECT_PREP_FIN',
 ]);
 
 /** 盤面から、各ユニットの補正と戦闘中の全体効果を計算する */
@@ -257,8 +314,25 @@ export function battleSetup(
     apply(members('swift'), { spOnSkillEnd: p * v('swift', 'normal_sp') });
     if (sk('swift') >= v('swift', 'power_bond_stack_cnt')) apply(all, { spOnSkillEnd: p * v('swift', 'power_sp') });
   }
-  // 器用（配置位置がまだ無いので所属者のみ）
-  if (lv('skillful') >= 1) apply(members('skillful'), { aspd: v('skillful', 'base_attack_speed') + v('skillful', 'attack_speed_per_stack') * sk('skillful') });
+  // 器用：所属者と周囲4マス（40層で8マス）
+  if (lv('skillful') >= 1) {
+    const eight = sk('skillful') >= v('skillful', 'power_bond_stack_cnt');
+    const targets = new Set<number>();
+    for (const uid of members('skillful')) {
+      const o = board.find((b) => b.uid === uid);
+      if (!o) continue;
+      targets.add(uid);
+      for (const n of neighbors(board, o, eight)) targets.add(n.uid);
+    }
+    apply(targets, { aspd: v('skillful', 'base_attack_speed') + v('skillful', 'attack_speed_per_stack') * sk('skillful') });
+  }
+  // エーギル：前方1マスを捕食して基礎攻撃力を得る
+  let excluded = new Set<number>();
+  if (lv('egir') >= 1) {
+    const dv = egirDevour(board, members('egir'), v('egir', 'damage_value'));
+    for (const [uid, atk] of dv.atkGain) apply([uid], { atkFlat: atk });
+    excluded = dv.dead;
+  }
   // 秘術
   if (lv('arcane') >= 1) {
     globals.arcane = {
@@ -281,13 +355,21 @@ export function battleSetup(
   // 孤高
   if (lv('solo') >= 1) apply(members('solo'), { atkPct: v('solo', 'atk'), startSp: v('solo', 'sp') });
 
-  // 堅守特性（戦闘中のバフ）
+  // 堅守特性（付与されたものを含む）
+  const garrisons = effectiveGarrisons(board);
+  const rowCount = new Map<number, number>();
+  const bonusGain = new Map<number, number>();
   for (const o of board) {
-    for (const g of unitState(getUnit(o.defId), o.star).garrisons) {
+    rowCount.set(o.uid, sameRow(board, o).length);
+    for (const g of garrisons.get(o.uid) ?? []) {
       const m = garrisonBattleModifier(g, stacks);
       if (m) add(mods.get(o.uid)!, m);
+      if (g.blackboard.key === 'act1autochess_gar_event_addition_cnt') {
+        const front = frontOf(board, o);
+        if (front) bonusGain.set(front.uid, (bonusGain.get(front.uid) ?? 0) + Number(g.blackboard.extra_cnt ?? 0));
+      }
     }
   }
 
-  return { statuses, mods, globals };
+  return { statuses, mods, globals, garrisons, rowCount, bonusGain, excluded };
 }

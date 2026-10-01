@@ -343,6 +343,192 @@
    }
   }
  },
+ "givenGarrisons": {
+  "garrison_96_a": {
+   "id": "garrison_96_a",
+   "event": "IN_BATTLE",
+   "effect": "ADD_BOND",
+   "description": "〈戦闘中〉スキル発動時、有効化中の【精密】の加算数+1（戦闘1回につき最大10）",
+   "blackboard": {
+    "key": "act1autochess_gar_event_useskill",
+    "bond_type": "bond_by_id",
+    "bond_id": "preciShip",
+    "bond_add_type": "by_count",
+    "bond_add_count": 1.0,
+    "max_add_count_per_battle": 10.0,
+    "garrison_key": "garrison_96_a"
+   }
+  },
+  "garrison_96_b": {
+   "id": "garrison_96_b",
+   "event": "IN_BATTLE",
+   "effect": "ADD_BOND",
+   "description": "〈戦闘中〉スキル発動時、有効化中の【精密】の加算数+2",
+   "blackboard": {
+    "key": "act1autochess_gar_event_useskill",
+    "bond_type": "bond_by_id",
+    "bond_id": "preciShip",
+    "bond_add_type": "by_count",
+    "bond_add_count": 2.0,
+    "max_add_count_per_battle": 20.0,
+    "garrison_key": "garrison_96_b"
+   }
+  },
+  "garrison_108_a": {
+   "id": "garrison_108_a",
+   "event": "IN_BATTLE",
+   "effect": "ADD_BOND",
+   "description": "〈配置時〉有効化中の【カジミエーシュ】【精密】の加算数+4（戦闘1回につき最大24）",
+   "blackboard": {
+    "key": "act2autochess_gar_event_onstart",
+    "bond_type": "bond_by_id",
+    "bond_id": "kazimierzShip,preciShip",
+    "bond_add_type": "by_count",
+    "bond_add_count": 4.0,
+    "max_add_count_per_battle": 24.0,
+    "garrison_key": "garrison_108_a"
+   }
+  },
+  "garrison_108_b": {
+   "id": "garrison_108_b",
+   "event": "IN_BATTLE",
+   "effect": "ADD_BOND",
+   "description": "〈配置時〉有効化中の【カジミエーシュ】【精密】の加算数+8（戦闘1回につき最大48）",
+   "blackboard": {
+    "key": "act2autochess_gar_event_onstart",
+    "bond_type": "bond_by_id",
+    "bond_id": "kazimierzShip,preciShip",
+    "bond_add_type": "by_count",
+    "bond_add_count": 8.0,
+    "max_add_count_per_battle": 48.0,
+    "garrison_key": "garrison_108_b"
+   }
+  },
+  "garrison_95_a": {
+   "id": "garrison_95_a",
+   "event": "IN_BATTLE",
+   "effect": "ADD_BOND",
+   "description": "〈戦闘中〉スキル発動時、自身が所属する有効化中の盟約の加算数+1（戦闘1回につき最大7）",
+   "blackboard": {
+    "key": "act1autochess_gar_event_useskill",
+    "bond_type": "bond_self",
+    "bond_add_type": "by_count",
+    "bond_add_count": 1.0,
+    "max_add_count_per_battle": 7.0,
+    "garrison_key": "garrison_95_a"
+   }
+  },
+  "garrison_95_b": {
+   "id": "garrison_95_b",
+   "event": "IN_BATTLE",
+   "effect": "ADD_BOND",
+   "description": "〈戦闘中〉スキル発動時、自身が所属する有効化中の盟約の加算数+2",
+   "blackboard": {
+    "key": "act1autochess_gar_event_useskill",
+    "bond_type": "bond_self",
+    "bond_add_type": "by_count",
+    "bond_add_count": 2.0,
+    "max_add_count_per_battle": 14.0,
+    "garrison_key": "garrison_95_b"
+   }
+  },
+  "garrison_29_a": {
+   "id": "garrison_29_a",
+   "event": "IN_BATTLE",
+   "effect": "ADD_BOND",
+   "description": "〈戦闘中〉範囲内の敵1体が凍結するたびに、60%の確率で有効化中の【イェラグ】の加算数+1",
+   "blackboard": {
+    "key": "act1autochess_gar_event_enemy_abflag_inrange",
+    "check_ab_flag": 16.0,
+    "bond_add_count": 1.0,
+    "bond_type": "bond_by_id",
+    "bond_id": "kjeragShip",
+    "bond_add_type": "by_count",
+    "prob": 0.6,
+    "max_add_count_per_battle": 200.0,
+    "garrison_key": "garrison_29_a"
+   }
+  },
+  "garrison_29_b": {
+   "id": "garrison_29_b",
+   "event": "IN_BATTLE",
+   "effect": "ADD_BOND",
+   "description": "〈戦闘中〉範囲内の敵1体が凍結するたびに、60%の確率で有効化中の【イェラグ】の加算数+2",
+   "blackboard": {
+    "key": "act1autochess_gar_event_enemy_abflag_inrange",
+    "check_ab_flag": 16.0,
+    "bond_add_count": 2.0,
+    "bond_type": "bond_by_id",
+    "bond_id": "kjeragShip",
+    "bond_add_type": "by_count",
+    "prob": 0.6
+   }
+  },
+  "garrison_144_a": {
+   "id": "garrison_144_a",
+   "event": "IN_BATTLE",
+   "effect": "GAIN_BUFF",
+   "description": "【カジミエーシュ】の加算数3ごとに、自身の再配置時間-1.5%、攻撃速度+0.5",
+   "blackboard": {
+    "key": "act1autochess_gar_eff_respawnTimeByBond",
+    "divide_num": 3.0,
+    "bond_id": "kazimierzShip",
+    "respawn_time": -0.015
+   }
+  },
+  "garrison_159_a": {
+   "id": "garrison_159_a",
+   "event": "IN_BATTLE",
+   "effect": "GAIN_BUFF",
+   "description": "【カジミエーシュ】の加算数3ごとに、自身の攻撃速度+0.5",
+   "blackboard": {
+    "key": "act1autochess_gar_eff_attrByBond",
+    "divide_num": 3.0,
+    "bond_id": "kazimierzShip",
+    "attack_speed": 0.5
+   }
+  },
+  "garrison_144_b": {
+   "id": "garrison_144_b",
+   "event": "IN_BATTLE",
+   "effect": "GAIN_BUFF",
+   "description": "【カジミエーシュ】の加算数3ごとに、自身の再配置時間-3%、攻撃速度+1",
+   "blackboard": {
+    "key": "act1autochess_gar_eff_respawnTimeByBond",
+    "divide_num": 3.0,
+    "bond_id": "kazimierzShip",
+    "respawn_time": -0.03
+   }
+  },
+  "garrison_159_b": {
+   "id": "garrison_159_b",
+   "event": "IN_BATTLE",
+   "effect": "GAIN_BUFF",
+   "description": "【カジミエーシュ】の加算数3ごとに、自身の攻撃速度+1",
+   "blackboard": {
+    "key": "act1autochess_gar_eff_attrByBond",
+    "divide_num": 3.0,
+    "bond_id": "kazimierzShip",
+    "attack_speed": 1.0
+   }
+  },
+  "garrison_117_b": {
+   "id": "garrison_117_b",
+   "event": "IN_BATTLE",
+   "effect": "ADD_BOND",
+   "description": "〈戦闘中〉敵を倒すたびに、有効化中の【シラクーザ】の加算数+2",
+   "blackboard": {
+    "key": "act1autochess_gar_event_selfkillenemy",
+    "check_cnt": 1.0,
+    "bond_type": "bond_by_id",
+    "bond_id": "siracusaShip",
+    "bond_add_type": "by_count",
+    "bond_add_count": 2.0,
+    "max_add_count_per_battle": 200.0,
+    "garrison_key": "garrison_117_b"
+   }
+  }
+ },
  "units": [
   {
    "id": "1_01",
@@ -2981,7 +3167,7 @@
       "id": "garrison_93_a",
       "event": "IN_BATTLE",
       "effect": "NONE",
-      "description": "同じオペレーターが2体揃えば昇進できる",
+      "description": "同じオペレーターが2体揃えば精鋭化できる",
       "blackboard": {}
      }
     ]
@@ -3021,7 +3207,7 @@
       "id": "garrison_93_b",
       "event": "IN_BATTLE",
       "effect": "NONE",
-      "description": "同じオペレーターが2体揃えば昇進できる",
+      "description": "同じオペレーターが2体揃えば精鋭化できる",
       "blackboard": {}
      }
     ]
@@ -4686,7 +4872,7 @@
       "id": "garrison_116_a",
       "event": "SERVER_CHESS_SOLD",
       "effect": "SERVER_SELL_CHESS_GAIN_SPECIAL_GOODS",
-      "description": "〈売却時〉等級Iのオペレーターを1回無料で特別招集（昇進後は等級Vの特別招集になる）",
+      "description": "〈売却時〉等級Iのオペレーターを1回無料で特別招集（精鋭化後は等級Vの特別招集になる）",
       "blackboard": {
        "pool1": "pool_chess_shop_1_reward",
        "pool2": "pool_chess_shop_1_reward",
@@ -4736,7 +4922,7 @@
       "id": "garrison_116_b",
       "event": "SERVER_CHESS_SOLD",
       "effect": "SERVER_SELL_CHESS_GAIN_SPECIAL_GOODS",
-      "description": "〈売却時〉等級Iのオペレーターを1回無料で特別招集（昇進後は等級Vの特別招集になる）",
+      "description": "〈売却時〉等級Iのオペレーターを1回無料で特別招集（精鋭化後は等級Vの特別招集になる）",
       "blackboard": {
        "pool1": "pool_chess_shop_5_reward",
        "pool2": "pool_chess_shop_5_reward",
@@ -12259,7 +12445,7 @@
       "id": "garrison_118_a",
       "event": "IN_BATTLE",
       "effect": "ADD_BOND",
-      "description": "〈戦闘中〉敵を倒すたびに有効化中の【シラクーザ】の加算数+2（荒蕪ラップランドを昇進させると、すべての【シラクーザ】オペレーターがこの効果を得る）",
+      "description": "〈戦闘中〉敵を倒すたびに有効化中の【シラクーザ】の加算数+2（荒蕪ラップランドを精鋭化すると、すべての【シラクーザ】オペレーターがこの効果を得る）",
       "blackboard": {
        "key": "act1autochess_gar_event_selfkillenemy",
        "check_cnt": 1.0,
@@ -12315,7 +12501,7 @@
       "id": "garrison_118_b",
       "event": "IN_BATTLE",
       "effect": "ADD_BOND",
-      "description": "〈戦闘中〉敵を倒すたびに有効化中の【シラクーザ】の加算数+2（荒蕪ラップランドを昇進させると、すべての【シラクーザ】オペレーターがこの効果を得る）",
+      "description": "〈戦闘中〉敵を倒すたびに有効化中の【シラクーザ】の加算数+2（荒蕪ラップランドを精鋭化すると、すべての【シラクーザ】オペレーターがこの効果を得る）",
       "blackboard": {
        "check_bond_id": "siracusaShip",
        "give_garrison_id": "garrison_117_b"

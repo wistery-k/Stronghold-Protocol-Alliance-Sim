@@ -1,5 +1,5 @@
 import gamedata from './gamedata.json';
-import type { DamageType, Profession, Star, UnitDef, UnitState } from '../types';
+import type { DamageType, GarrisonData, Profession, Star, UnitDef, UnitState } from '../types';
 
 // オペレーターのデータは本家から抽出した gamedata.json を使う
 // （scripts/extract_gamedata.py で生成）
@@ -14,6 +14,7 @@ export const GAMEDATA = gamedata as unknown as {
     levels: { level: number; upgradePrice: number; slots: number }[];
   };
   bonds: Record<string, { activeCount: number; condition: string; values: Record<string, number> }>;
+  givenGarrisons: Record<string, GarrisonData>;
   units: UnitDef[];
 };
 
@@ -54,4 +55,7 @@ export function isRanged(def: UnitDef): boolean {
   return ['sniper', 'caster', 'medic', 'supporter'].includes(def.profession);
 }
 
-export const STAR_NAME: Record<Star, string> = { 1: '通常', 2: '昇進' };
+export const STAR_NAME: Record<Star, string> = { 1: '通常', 2: '精鋭' };
+
+/** 他のオペレーターに付与される特性 */
+export const GIVEN_GARRISONS: Record<string, GarrisonData> = GAMEDATA.givenGarrisons;

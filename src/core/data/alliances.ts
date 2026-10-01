@@ -114,8 +114,7 @@ export const ALLIANCES: Record<AllianceId, AllianceDef> = {
     describe: (s) => [
       {
         count: 3,
-        text: `【エーギル】の最大HP+${pct(v('egir', 'base_max_hp') + v('egir', 'max_hp_per_stack') * s)}。戦闘開始時、前方1マスのオペレーターを捕食して基礎攻撃力とブロック数を得る`,
-        notSimulated: true,
+        text: `【エーギル】の最大HP+${pct(v('egir', 'base_max_hp') + v('egir', 'max_hp_per_stack') * s)}（HPは未再現）。戦闘開始時、左・上の者から順に前方1マスのオペレーターを捕食し、5000の物理ダメージを与えて基礎攻撃力とブロック数を得る。被捕食者の等級ぶん加算数+`,
       },
       { count: 5, text: '最初に倒された【エーギル】3名が即座に復活', notSimulated: true },
     ],
@@ -182,7 +181,7 @@ export const ALLIANCES: Record<AllianceId, AllianceDef> = {
     thresholds: [2],
     countMode: 'board',
     describe: (s) => [
-      { count: 2, text: `【器用】と周囲4マスのオペレーターの攻撃速度+${num(v('skillful', 'base_attack_speed') + v('skillful', 'attack_speed_per_stack') * s)}（配置位置は未実装のため【器用】自身のみ）` },
+      { count: 2, text: `【器用】と周囲4マスのオペレーターの攻撃速度+${num(v('skillful', 'base_attack_speed') + v('skillful', 'attack_speed_per_stack') * s)}` },
     ],
     stackMilestones: (s) => [{ at: 40, text: '40層：効果範囲が周囲8マスに拡大', reached: s >= 40 }],
   },
@@ -298,7 +297,7 @@ export const ALLIANCES: Record<AllianceId, AllianceDef> = {
     describe: () => [
       {
         count: 2,
-        text: `すべてのオペレーターの被物理・術ダメージ-20%。【共同防衛】の与ダメージ${pct(v('empty', 'damage_scale_normal'))}（昇進済みは${pct(v('empty', 'damage_scale_extra'))}）`,
+        text: `すべてのオペレーターの被物理・術ダメージ-20%。【共同防衛】の与ダメージ${pct(v('empty', 'damage_scale_normal'))}（精鋭は${pct(v('empty', 'damage_scale_extra'))}）`,
       },
     ],
   },

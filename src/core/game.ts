@@ -7,15 +7,16 @@ import {
   benchUnits,
   currentActive,
   deputBonus,
-  gainTriggerTimes,
   onDeployStacks,
   stackRewards,
   triggerGarrisons,
 } from './garrison';
 import { miraProb } from './data/alliances';
-import { Rng } from './rng';
+import { allOwned, canReceive, gainUnit, withRng } from './acquire';
+import { firstFreeCell, normalizePositions, unitAt } from './board';
 import {
   BENCH_SIZE,
+  BUY_LOCK_MESSAGE,
   MAX_ROUND,
   POOL_COPIES,
   REFRESH_COST,
@@ -30,7 +31,7 @@ import {
   shopSlots,
 } from './rules';
 import { simulateDps, type SimResult } from './sim';
-import type { AllianceId, OwnedUnit, Star } from './types';
+import type { AllianceId, OwnedUnit } from './types';
 
 export type Phase = 'prep' | 'result' | 'gameover' | 'clear';
 
@@ -46,7 +47,7 @@ export interface BattleReport {
 }
 
 export interface GameState {
-  version: 2;
+  version: 3;
   seed: number;
   rngState: number;
   round: number;
@@ -69,6 +70,8 @@ export interface GameState {
   /** このラウンドの集計（特性の計算に使う） */
   round_: { gained: number; spent: number; refreshes: number };
   rewards: { visiTens: number; miraHundreds: number; visiDiscount: boolean; allDiscount: boolean };
+  /** 精鋭化の報酬で選べる候補（先頭から順に選ぶ） */
+  eliteChoices: string[][];
   nextUid: number;
   phase: Phase;
   lastBattle: BattleReport | null;
@@ -79,8 +82,11 @@ export interface GameState {
 export type Action =
   | { type: 'buy'; slot: number }
   | { type: 'sell'; uid: number }
-  | { type: 'deploy'; uid: number }
+  | { type: 'deploy'; uid: number; pos?: number }
   | { type: 'undeploy'; uid: number }
+  | { type: 'move'; uid: number; to: { zone: 'board'; pos: number } | { zone: 'bench'; index: number } }
+  | { type: 'chooseElite'; index: number }
+  | { type: 'skipElite' }
   | { type: 'refresh' }
   | { type: 'levelUp' }
   | { type: 'toggleFreeze' }
@@ -100,7 +106,7 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31)): GameStat
   const pool: Record<string, number> = {};
   for (const u of UNITS) pool[u.id] = POOL_COPIES[u.tier];
   const state: GameState = {
-    version: 2,
+    version: 3,
     seed,
     rngState: seed,
     round: 1,
@@ -119,6 +125,7 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31)): GameStat
     pendingGold: 0,
     round_: { gained: 0, spent: 0, refreshes: 0 },
     rewards: { visiTens: 0, miraHundreds: 0, visiDiscount: false, allDiscount: false },
+    eliteChoices: [],
     nextUid: 1,
     phase: 'prep',
     lastBattle: null,
@@ -132,13 +139,6 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31)): GameStat
 // ------------------------------------------------------------
 // 補助関数
 // ------------------------------------------------------------
-
-function withRng<T>(state: GameState, f: (rng: Rng) => T): T {
-  const rng = new Rng(state.rngState);
-  const r = f(rng);
-  state.rngState = rng.state;
-  return r;
-}
 
 export function rollShop(state: GameState): void {
   withRng(state, (rng) => {
@@ -158,34 +158,12 @@ export function rollShop(state: GameState): void {
   });
 }
 
-export function allOwned(state: GameState): OwnedUnit[] {
-  return [...state.board, ...benchUnits(state)];
-}
-
 export function findOwned(state: GameState, uid: number): { unit: OwnedUnit; where: 'board' | 'bench'; index: number } | null {
   const bi = state.board.findIndex((o) => o.uid === uid);
   if (bi >= 0) return { unit: state.board[bi], where: 'board', index: bi };
   const ni = state.bench.findIndex((o) => o?.uid === uid);
   if (ni >= 0) return { unit: state.bench[ni]!, where: 'bench', index: ni };
   return null;
-}
-
-/** 同じオペレーターが必要枚数揃ったら昇進させる。盤面にいる個体を優先して残す */
-function mergeUnits(state: GameState, defId: string): string[] {
-  const def = getUnit(defId);
-  const same = allOwned(state).filter((o) => o.defId === defId && o.star === 1);
-  if (same.length < def.mergeCount) return [];
-  const keep = same.find((o) => state.board.includes(o)) ?? same[0];
-  const others = same.filter((o) => o !== keep);
-  const toRemove = new Set(
-    [...others.filter((o) => !state.board.includes(o)), ...others.filter((o) => state.board.includes(o))]
-      .slice(0, def.mergeCount - 1)
-      .map((o) => o.uid),
-  );
-  state.board = state.board.filter((o) => !toRemove.has(o.uid));
-  state.bench = state.bench.map((b) => (b && toRemove.has(b.uid) ? null : b));
-  keep.star = 2 as Star;
-  return [`${def.name} が昇進！`];
 }
 
 export function levelUpCost(state: Pick<GameState, 'level' | 'levelDiscount'>): number | null {
@@ -196,8 +174,9 @@ export function levelUpCost(state: Pick<GameState, 'level' | 'levelDiscount'>): 
 /** 購入価格（先見の割引・特性による価格固定を含む） */
 export function priceOf(state: GameState, defId: string): number {
   const def = getUnit(defId);
-  const fixed = def.normal.garrisons.find((g) => g.effect === 'SERVER_CHESS_PRICE');
-  let price = fixed ? Number(fixed.blackboard.price) : buyPrice(def.tier);
+  // 「購入価格が◯になる」特性：データ上は値下げ幅として持っている
+  const discount = def.normal.garrisons.find((g) => g.effect === 'SERVER_CHESS_PRICE');
+  let price = buyPrice(def.tier) - (discount ? Number(discount.blackboard.price) : 0);
   if (state.rewards.allDiscount) price -= 1;
   else if (state.rewards.visiDiscount && def.bonds.includes('visi')) price -= 1;
   return Math.max(0, price);
@@ -229,20 +208,11 @@ export function applyAction(prev: GameState, action: Action): ActionResult {
       const def = getUnit(defId);
       const price = priceOf(state, defId);
       if (state.gold < price) return fail('資金が足りません');
-      const emptyIdx = state.bench.indexOf(null);
-      const canMerge = allOwned(state).filter((o) => o.defId === defId && o.star === 1).length >= def.mergeCount - 1;
-      if (emptyIdx < 0 && !canMerge) return fail('控えがいっぱいです');
+      if (!canReceive(state, defId)) return fail('控えがいっぱいです');
       spend(state, price);
-      state.pool[defId]--;
       state.shop[action.slot] = null;
-      state.round_.gained++;
-      const unit: OwnedUnit = { uid: state.nextUid++, defId, star: 1 };
-      if (emptyIdx >= 0) state.bench[emptyIdx] = unit;
-      else state.bench.push(unit); // 一時的にはみ出させ、直後の昇進で解消する
       state.log.push(`${def.name} を招集（-${price}）`);
-      triggerGarrisons(state, 'SERVER_GAIN', [{ unit, where: 'bench' }], gainTriggerTimes(state, currentActive(state)));
-      state.log.push(...mergeUnits(state, defId));
-      state.bench = compactBench(state.bench);
+      gainUnit(state, defId);
       return { state };
     }
     case 'sell': {
@@ -262,7 +232,10 @@ export function applyAction(prev: GameState, action: Action): ActionResult {
       const f = findOwned(state, action.uid);
       if (!f || f.where !== 'bench') return fail('控えのユニットを選んでください');
       if (state.board.length >= deployCap(state.level)) return fail('配置上限に達しています');
+      const pos = action.pos ?? firstFreeCell(state.board);
+      if (pos === null || unitAt(state.board, pos)) return fail('そのマスには配置できません');
       state.bench[f.index] = null;
+      f.unit.pos = pos;
       state.board.push(f.unit);
       return { state };
     }
@@ -272,7 +245,30 @@ export function applyAction(prev: GameState, action: Action): ActionResult {
       const emptyIdx = state.bench.indexOf(null);
       if (emptyIdx < 0) return fail('控えがいっぱいです');
       state.board.splice(f.index, 1);
+      delete f.unit.pos;
       state.bench[emptyIdx] = f.unit;
+      return { state };
+    }
+    case 'move': {
+      const f = findOwned(state, action.uid);
+      if (!f) return fail('ユニットが見つかりません');
+      moveUnit(state, f, action.to);
+      if (state.board.length > deployCap(state.level)) return fail('配置上限に達しています');
+      return { state };
+    }
+    case 'chooseElite': {
+      const choices = state.eliteChoices[0];
+      const defId = choices?.[action.index];
+      if (!defId) return fail('選択肢がありません');
+      if (!canReceive(state, defId)) return fail('控えがいっぱいです。空きを作ってから選んでください');
+      state.eliteChoices.shift();
+      gainUnit(state, defId);
+      state.log.push(`精鋭化の報酬：${getUnit(defId).name} を獲得`);
+      return { state };
+    }
+    case 'skipElite': {
+      if (!state.eliteChoices.length) return fail('選択肢がありません');
+      state.eliteChoices.shift();
       return { state };
     }
     case 'refresh': {
@@ -318,6 +314,8 @@ export function applyAction(prev: GameState, action: Action): ActionResult {
       return { state };
     }
     case 'battle': {
+      if (state.eliteChoices.length) return fail(BUY_LOCK_MESSAGE);
+      normalizePositions(state.board);
       resolveBattle(state);
       return { state };
     }
@@ -350,24 +348,70 @@ function startRound(state: GameState, round: number): void {
   stackRewards(state, currentActive(state));
 }
 
-function compactBench(bench: (OwnedUnit | null)[]): (OwnedUnit | null)[] {
-  if (bench.length <= BENCH_SIZE) return bench;
-  const units = bench.filter((b): b is OwnedUnit => b !== null);
-  const out: (OwnedUnit | null)[] = bench.slice(0, BENCH_SIZE);
-  for (const u of units) if (!out.includes(u)) out[out.indexOf(null)] = u;
-  return out;
+/** ユニットを盤面のマス・控えの枠へ移動する。移動先にユニットがいれば入れ替える */
+function moveUnit(
+  state: GameState,
+  from: { unit: OwnedUnit; where: 'board' | 'bench'; index: number },
+  to: { zone: 'board'; pos: number } | { zone: 'bench'; index: number },
+): void {
+  const u = from.unit;
+  if (to.zone === 'board') {
+    const other = unitAt(state.board, to.pos);
+    if (other === u) return;
+    if (from.where === 'board') {
+      if (other) other.pos = u.pos;
+      u.pos = to.pos;
+    } else {
+      state.bench[from.index] = null;
+      if (other) {
+        state.board = state.board.filter((o) => o !== other);
+        delete other.pos;
+        state.bench[from.index] = other;
+      }
+      u.pos = to.pos;
+      state.board.push(u);
+    }
+  } else {
+    const other = state.bench[to.index];
+    if (other === u) return;
+    if (from.where === 'bench') {
+      state.bench[from.index] = other;
+      state.bench[to.index] = u;
+    } else {
+      state.board = state.board.filter((o) => o !== u);
+      if (other) {
+        other.pos = u.pos;
+        state.board.push(other);
+      }
+      delete u.pos;
+      state.bench[to.index] = u;
+    }
+  }
 }
 
 /** 盤面から戦闘入力を作る（UIの予測でも使う） */
 export function buildSimInputs(board: OwnedUnit[], bench: OwnedUnit[], stacks: Partial<Record<AllianceId, number>>) {
+  normalizePositions(board);
   const setup = battleSetup(board, bench, stacks);
   return {
     ...setup,
-    inputs: board.map((o) => ({ uid: o.uid, def: getUnit(o.defId), star: o.star, mods: setup.mods.get(o.uid) ?? {} })),
+    inputs: board
+      .filter((o) => !setup.excluded.has(o.uid))
+      .map((o) => ({
+        uid: o.uid,
+        def: getUnit(o.defId),
+        star: o.star,
+        mods: setup.mods.get(o.uid) ?? {},
+        garrisons: setup.garrisons.get(o.uid),
+        rowCount: setup.rowCount.get(o.uid),
+        bonusGain: setup.bonusGain.get(o.uid),
+      })),
   };
 }
 
 /** 戦闘を行うと準備フェーズ終了時〜配置時に加算数がどうなるかを、状態を変えずに求める */
+export { allOwned };
+
 export function previewBattleStacks(state: GameState): Partial<Record<AllianceId, number>> {
   const s = structuredClone(state);
   s.log = [];

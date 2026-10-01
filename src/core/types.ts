@@ -15,7 +15,7 @@ export type Profession =
   | 'specialist';
 
 export type Tier = 1 | 2 | 3 | 4 | 5 | 6;
-/** 1 = 通常, 2 = 昇進（精鋭） */
+/** 1 = 通常, 2 = 精鋭 */
 export type Star = 1 | 2;
 
 export type CoreAllianceId =
@@ -100,7 +100,7 @@ export interface UnitDef {
   subProfession: string;
   damageType: DamageType;
   bonds: AllianceId[];
-  /** 昇進に必要な枚数（通常3） */
+  /** 精鋭化に必要な枚数（通常3） */
   mergeCount: number;
   normal: UnitState;
   golden: UnitState;
@@ -159,4 +159,6 @@ export interface OwnedUnit {
   uid: number;
   defId: string;
   star: Star;
+  /** 配置エリアのマス（0〜15、左上から右へ）。控えにいる時は未設定 */
+  pos?: number;
 }
