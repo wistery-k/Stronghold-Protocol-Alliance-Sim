@@ -335,7 +335,8 @@ describe('盟約BAN', () => {
     const s = createGame(11);
     expect(s.banned).toHaveLength(7);
     expect(s.banned.filter((b) => ['yan', 'sargon', 'victoria', 'kjerag', 'laterano', 'egir', 'siracusa', 'kazimierz'].includes(b))).toHaveLength(3);
-    const blocked = UNITS.filter((u) => u.bonds.filter((b) => s.banned.includes(b)).length >= 2).map((u) => u.id);
+    const blocked = UNITS.filter((u) => u.bonds.filter((b) => s.banned.includes(b)).length >= Math.min(2, u.bonds.length)).map((u) => u.id);
+    expect(blocked.some((id) => UNITS.find((u) => u.id === id)!.bonds.length === 1)).toBe(true);
     for (let i = 0; i < 30; i++) {
       const r = applyAction({ ...s, gold: 100 }, { type: 'refresh' }).state;
       for (const id of r.shop) expect(blocked.includes(id!)).toBe(false);

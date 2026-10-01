@@ -239,7 +239,11 @@ export function itemOnGain(state: GameState): void {
   }
 }
 
-/** 盟約BAN：BANされた盟約を2つ以上持つオペレーターは出現しない */
+/**
+ * 盟約BAN：BANされた盟約を2つ以上持つオペレーターは出現しない。
+ * 盟約を1つしか持たないオペレーターは、その盟約がBANされていれば出現しない
+ */
 export function unitAvailable(state: Pick<GameState, 'banned'>, defId: string): boolean {
-  return getUnit(defId).bonds.filter((b) => state.banned.includes(b)).length < 2;
+  const bonds = getUnit(defId).bonds;
+  return bonds.filter((b) => state.banned.includes(b)).length < Math.min(2, bonds.length);
 }
