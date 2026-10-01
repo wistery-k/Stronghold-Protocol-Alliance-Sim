@@ -1,9 +1,9 @@
 import { ALLIANCES } from '../core/data/alliances';
 import { BOSSES, enemyForRound } from '../core/data/enemies';
 import { UNITS } from '../core/data/units';
-import { evaluateAlliances } from '../core/alliance';
+import { activeAllianceIds } from '../core/alliance';
 import { buildSimInputs } from '../core/game';
-import { MAX_ROUND } from '../core/rules';
+import { DEPLOY_CAP, MAX_ROUND } from '../core/rules';
 import { simulateDps } from '../core/sim';
 import type { AllianceId, EnemyDef, OwnedUnit, Star } from '../core/types';
 import { alliancePanel, enemyInfo, simSummary, unitCard } from './components';
@@ -18,7 +18,7 @@ export interface SandboxState {
   nextUid: number;
 }
 
-export const SANDBOX_MAX_UNITS = 9;
+export const SANDBOX_MAX_UNITS = DEPLOY_CAP;
 
 export function createSandbox(): SandboxState {
   return { units: [], enemyId: BOSSES[0].id, stacks: {}, nextUid: 1 };
@@ -30,17 +30,18 @@ function allEnemies(): EnemyDef[] {
     const e = enemyForRound(r);
     list.push({ ...e, name: `R${r} ${e.name}` });
   }
+  // ラウンドに出てこないボスも試せるようにする
+  for (const b of BOSSES) if (!list.some((e) => e.id === b.id)) list.push(b);
   return list;
 }
 
 export function sandboxView(sb: SandboxState, update: (f: (s: SandboxState) => void) => void): HTMLElement {
   const enemies = allEnemies();
   const enemy = enemies.find((e) => e.id === sb.enemyId) ?? enemies[0];
-  const statuses = evaluateAlliances(sb.units);
-  const activeIds = new Set(statuses.filter((s) => s.level > 0).map((s) => s.id));
-  const { inputs } = buildSimInputs(sb.units, sb.stacks);
-  const result = sb.units.length ? simulateDps(inputs, enemy) : null;
-  const stackAlliances = Object.values(ALLIANCES).filter((a) => a.gainsStacks);
+  const { inputs, statuses, globals } = buildSimInputs(sb.units, [], sb.stacks);
+  const activeIds = activeAllianceIds(statuses);
+  const result = sb.units.length ? simulateDps(inputs, enemy, { globals, activeAlliances: activeIds, stacks: sb.stacks }) : null;
+  const stackAlliances = statuses.map((st) => ALLIANCES[st.id]);
 
   return h(
     'div',
@@ -73,8 +74,8 @@ export function sandboxView(sb: SandboxState, update: (f: (s: SandboxState) => v
                     h(
                       'div',
                       { class: 'row tight' },
-                      ([1, 2, 3] as Star[]).map((st) =>
-                        h('button', { class: `btn tiny ${o.star === st ? 'on' : ''}`, onclick: () => update((s) => { s.units.find((u) => u.uid === o.uid)!.star = st; }) }, `★${st}`),
+                      ([1, 2] as Star[]).map((st) =>
+                        h('button', { class: `btn tiny ${o.star === st ? 'on' : ''}`, onclick: () => update((s) => { s.units.find((u) => u.uid === o.uid)!.star = st; }) }, st === 2 ? '昇進' : '通常'),
                       ),
                       h('button', { class: 'btn tiny danger', onclick: () => update((s) => { s.units = s.units.filter((u) => u.uid !== o.uid); }) }, '×'),
                     ),
@@ -91,7 +92,7 @@ export function sandboxView(sb: SandboxState, update: (f: (s: SandboxState) => v
             h(
               'div',
               { class: 'tier-group' },
-              h('h3', null, `等級${tier}`),
+              h('h3', null, `等級${['', 'I', 'II', 'III', 'IV', 'V', 'VI'][tier]}`),
               h(
                 'div',
                 { class: 'cards' },
@@ -129,6 +130,7 @@ export function sandboxView(sb: SandboxState, update: (f: (s: SandboxState) => v
           'section',
           { class: 'panel' },
           h('h2', null, '加算数'),
+          stackAlliances.length === 0 ? h('p', { class: 'muted small' }, '編成に含まれる盟約の加算数を設定できます') : null,
           stackAlliances.map((a) =>
             h(
               'label',

@@ -1,101 +1,135 @@
 // ゲーム全体で使う型定義。
-// 本家の仕様を厳密に再現するのではなく、「それっぽく妥当な挙動」をデータで表現する方針。
+// オペレーター・盟約・堅守特性のデータは本家（堅守協定：盟約（後期））のものを
+// scripts/extract_gamedata.py で抽出した data/gamedata.json から読み込む。
 
-export type DamageType = 'physical' | 'arts' | 'true';
+export type DamageType = 'physical' | 'arts' | 'true' | 'heal';
 
-/** 職分（クラス）。現状はDPS計算には使わず、表示と将来のオート戦闘用 */
-export type UnitClass =
+export type Profession =
   | 'vanguard'
   | 'guard'
   | 'defender'
   | 'sniper'
   | 'caster'
+  | 'medic'
   | 'supporter'
   | 'specialist';
 
 export type Tier = 1 | 2 | 3 | 4 | 5 | 6;
-export type Star = 1 | 2 | 3;
+/** 1 = 通常, 2 = 昇進（精鋭） */
+export type Star = 1 | 2;
 
-export type CoreAllianceId = 'iron' | 'gale' | 'star' | 'wolf' | 'abyss' | 'guild';
-export type ExtraAllianceId = 'precise' | 'combo' | 'arcane' | 'guardian';
+export type CoreAllianceId =
+  | 'yan'
+  | 'sargon'
+  | 'victoria'
+  | 'kjerag'
+  | 'laterano'
+  | 'egir'
+  | 'siracusa'
+  | 'kazimierz';
+export type ExtraAllianceId =
+  | 'preci'
+  | 'swift'
+  | 'skillful'
+  | 'arcane'
+  | 'stead'
+  | 'deput'
+  | 'visi'
+  | 'mira'
+  | 'invest'
+  | 'raid'
+  | 'indom'
+  | 'mani'
+  | 'empty'
+  | 'solo';
 export type AllianceId = CoreAllianceId | ExtraAllianceId;
 
-export interface SkillDef {
+export interface UnitStats {
+  hp: number;
+  atk: number;
+  def: number;
+  res: number;
+  /** 基礎攻撃間隔（秒） */
+  interval: number;
+  /** 攻撃速度（基準100） */
+  aspd: number;
+  block: number;
+  cost: number;
+}
+
+export interface SkillData {
+  id: string;
   name: string;
-  /** 発動に必要なSP */
-  spCost: number;
-  /** 初期SP */
-  initialSp: number;
-  /** 効果時間（秒）。0なら即時発動型 */
-  duration: number;
-  /** true: 攻撃するたびにSP+1（攻撃回復）。false: 毎秒SP+1（自然回復） */
-  spOnHit?: boolean;
-  /** スキル中の攻撃力上昇（0.5 = +50%） */
-  atkPct?: number;
-  /** スキル中の攻撃速度上昇（本家同様、間隔 = 基礎間隔 × 100 / (100 + 攻撃速度)） */
-  aspd?: number;
-  /** スキル中、1回の攻撃が何ヒットになるか */
-  hits?: number;
-  /** 発動時に攻撃力×burst の即時ダメージ */
-  burst?: number;
-  /** スキル中のダメージ種別の上書き */
-  damageType?: DamageType;
   description: string;
+  skillType: 'MANUAL' | 'AUTO' | 'PASSIVE';
+  durationType: 'NONE' | 'AMMO';
+  /** INCREASE_WITH_TIME / INCREASE_WHEN_ATTACK / INCREASE_WHEN_TAKEN_DAMAGE / 8(パッシブ) */
+  spType: string | number;
+  spCost: number;
+  initSp: number;
+  duration: number;
+  blackboard: Record<string, number>;
+}
+
+export interface GarrisonData {
+  id: string;
+  /** 発動タイミング（SERVER_GAIN, SERVER_PREP_FIN, IN_BATTLE など） */
+  event: string;
+  effect: string;
+  description: string;
+  blackboard: Record<string, string | number>;
+}
+
+export interface UnitState {
+  evolvePhase: number;
+  level: number;
+  skillLevel: number;
+  moduleLevel: number;
+  stats: UnitStats;
+  skill: SkillData;
+  garrisons: GarrisonData[];
 }
 
 export interface UnitDef {
+  /** "1_01" のような ID（等級_番号） */
   id: string;
+  charId: string;
   name: string;
   tier: Tier;
-  cls: UnitClass;
-  core: CoreAllianceId;
-  extra: ExtraAllianceId[];
-  atk: number;
-  /** 攻撃間隔（秒） */
-  interval: number;
+  profession: Profession;
+  subProfession: string;
   damageType: DamageType;
-  skill: SkillDef;
+  bonds: AllianceId[];
+  /** 昇進に必要な枚数（通常3） */
+  mergeCount: number;
+  normal: UnitState;
+  golden: UnitState;
 }
 
-/** 盟約などから付与される補正。複数ソースは基本的に加算で合成する */
+/** 盟約・特性などから付与される補正。基本は加算で合成する（damageMult のみ乗算） */
 export interface Modifier {
   atkPct?: number;
+  /** 基礎攻撃力への固定値加算 */
+  atkFlat?: number;
   aspd?: number;
-  /** 自然回復SPの毎秒追加量 */
   spRegen?: number;
-  /** 戦闘開始時の追加SP */
   startSp?: number;
-  /** 防御無視（割合） */
+  /** 防御力無視（割合） */
   defIgnorePct?: number;
-  /** 術耐性無視（固定値） */
-  resIgnore?: number;
-  /** 与ダメージ上昇（0.1 = +10%） */
+  /** 術耐性無視（割合） */
+  resIgnorePct?: number;
+  /** 与ダメージ上昇（加算） */
   damagePct?: number;
-  critChance?: number;
-  /** 会心ダメージ追加（基礎会心倍率は1.5） */
-  critDmg?: number;
+  /** 与ダメージ倍率（乗算） */
+  damageMult?: number;
   /** 命中ごとに攻撃力×この割合の確定ダメージを追加 */
   trueDmgPct?: number;
-}
-
-export interface AllianceDef {
-  id: AllianceId;
-  name: string;
-  kind: 'core' | 'extra';
-  /** 発動に必要な配置人数（異なるオペレーターの数） */
-  thresholds: number[];
-  /** 各段階の説明 */
-  levelText: string[];
-  /** 加算数の説明（加算数を持つ盟約のみ） */
-  stackText?: string;
-  /** 'members' = 所属者のみ, 'all' = 配置中の全員 */
-  scope: 'members' | 'all';
-  /** 発動段階（1始まり）と加算数から補正を得る */
-  modifier: (level: number, stacks: number) => Modifier;
-  /** 戦闘開始時に加算数が増えるか */
-  gainsStacks?: boolean;
-  /** ラウンド終了時の追加資金 */
-  incomeBonus?: (level: number, stacks: number) => number;
+  /** スキル終了時に回復するSP（期待値） */
+  spOnSkillEnd?: number;
+  /** 弾薬量の増加割合 */
+  ammoPct?: number;
+  /** 弱点ダメージ（物理と術の有利な方になる） */
+  weakDamage?: boolean;
 }
 
 export interface EnemyPhase {

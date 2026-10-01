@@ -3,7 +3,7 @@ import { h } from './ui/dom';
 import { gameView } from './ui/gameView';
 import { createSandbox, sandboxView, type SandboxState } from './ui/sandboxView';
 
-const SAVE_KEY = 'sp-sim:game:v1';
+const SAVE_KEY = 'sp-sim:game:v2';
 
 type Mode = 'game' | 'sandbox';
 
@@ -22,7 +22,7 @@ function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
-    return s.version === 1 ? s : null;
+    return s.version === 2 ? s : null;
   } catch {
     return null;
   }
@@ -83,7 +83,7 @@ function render() {
   const header = h(
     'header',
     { class: 'header' },
-    h('div', { class: 'title' }, h('b', null, '堅守協定シミュレーター'), h('span', { class: 'muted small' }, '非公式ファンメイド')),
+    h('div', { class: 'title' }, h('b', null, '堅守協定シミュレーター')),
     h(
       'nav',
       { class: 'tabs' },

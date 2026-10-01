@@ -1,13 +1,15 @@
 import { ALLIANCES } from '../core/data/alliances';
-import { CLASS_NAME, DAMAGE_TYPE_NAME, getUnit } from '../core/data/units';
-import type { AllianceStatus } from '../core/alliance';
-import { effectiveAtk, attackInterval, type SimResult } from '../core/sim';
+import { DAMAGE_TYPE_NAME, PROFESSION_NAME, getUnit, unitState } from '../core/data/units';
+import { isGarrisonImplemented, type AllianceStatus } from '../core/alliance';
+import { attackInterval, baseAtk, type SimResult } from '../core/sim';
 import type { AllianceId, EnemyDef, Modifier, OwnedUnit, Star } from '../core/types';
 import { fmt, h, pct, s } from './dom';
 
-export function stars(star: Star) {
-  return h('span', { class: 'stars' }, '★'.repeat(star));
+export function starBadge(star: Star) {
+  return star === 2 ? h('span', { class: 'promoted', title: '昇進済み' }, '昇進') : null;
 }
+
+const TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 
 export function unitCard(
   defId: string,
@@ -21,32 +23,26 @@ export function unitCard(
   } = {},
 ) {
   const d = getUnit(defId);
-  const tags = [d.core, ...d.extra];
+  const st = unitState(d, opts.star ?? 1);
   return h(
     'button',
     {
-      class: `card tier-${d.tier}${opts.selected ? ' selected' : ''}${opts.dim ? ' dim' : ''}`,
+      class: `card tier-${d.tier}${opts.selected ? ' selected' : ''}${opts.dim ? ' dim' : ''}${opts.star === 2 ? ' golden' : ''}`,
       onclick: opts.onClick ? () => opts.onClick!() : undefined,
-      title: `${d.name}（等級${d.tier} ${CLASS_NAME[d.cls]}）\n${d.skill.name}: ${d.skill.description}`,
+      title: `${d.name}（等級${TIER_ROMAN[d.tier]} ${PROFESSION_NAME[d.profession]}）\n${st.skill.name}：${st.skill.description}\n\n${st.garrisons.map((g) => g.description).join('\n')}`,
     },
     h(
       'div',
       { class: 'card-top' },
-      h('span', { class: 'tier' }, `等級${d.tier}`),
-      opts.price !== undefined ? h('span', { class: 'price' }, `${opts.price}`) : opts.star ? stars(opts.star) : null,
+      h('span', { class: 'tier' }, `等級${TIER_ROMAN[d.tier]}`),
+      opts.price !== undefined ? h('span', { class: 'price' }, `${opts.price}`) : opts.star ? starBadge(opts.star) : null,
     ),
     h('div', { class: 'card-name' }, d.name),
-    h('div', { class: 'card-cls' }, `${CLASS_NAME[d.cls]}・${DAMAGE_TYPE_NAME[d.damageType]}`),
+    h('div', { class: 'card-cls' }, `${PROFESSION_NAME[d.profession]}・${DAMAGE_TYPE_NAME[d.damageType]}`),
     h(
       'div',
       { class: 'card-tags' },
-      tags.map((t) =>
-        h(
-          'span',
-          { class: `tag ${ALLIANCES[t].kind}${opts.highlight?.has(t) ? ' on' : ''}` },
-          ALLIANCES[t].name,
-        ),
-      ),
+      d.bonds.map((t) => h('span', { class: `tag ${ALLIANCES[t].kind}${opts.highlight?.has(t) ? ' on' : ''}` }, ALLIANCES[t].name)),
     ),
   );
 }
@@ -62,7 +58,8 @@ export function alliancePanel(statuses: AllianceStatus[], stacks: Partial<Record
     { class: 'alliances' },
     statuses.map((st) => {
       const def = ALLIANCES[st.id];
-      const stack = stacks[st.id];
+      const stack = stacks[st.id] ?? 0;
+      const tiers = def.describe(stack);
       return h(
         'li',
         { class: `alliance ${st.level > 0 ? 'active' : ''} ${def.kind}` },
@@ -75,16 +72,22 @@ export function alliancePanel(statuses: AllianceStatus[], stacks: Partial<Record
             { class: 'thresholds' },
             def.thresholds.map((t, i) => h('span', { class: st.count >= t ? 'th on' : 'th' }, t, i < def.thresholds.length - 1 ? '/' : '')),
           ),
+          h('span', { class: 'stack', title: '加算数' }, `加算数 ${stack}`),
           h('span', { class: 'count' }, `${st.count}人`),
         ),
         h(
-          'div',
-          { class: 'alliance-body' },
-          st.level > 0 ? def.levelText[st.level - 1] : `あと${(st.next ?? 0) - st.count}人で発動：${def.levelText[0]}`,
+          'ul',
+          { class: 'alliance-tiers' },
+          tiers.map((t, i) =>
+            h(
+              'li',
+              { class: `${i < st.level ? 'on' : ''}${t.notSimulated ? ' nosim' : ''}`, title: t.notSimulated ? 'DPSチェックでは再現していません' : undefined },
+              h('span', { class: 'need' }, `${t.count}`),
+              t.text,
+            ),
+          ),
+          (def.stackMilestones?.(stack) ?? []).map((m) => h('li', { class: `milestone ${m.reached && st.level > 0 ? 'on' : ''}` }, m.text)),
         ),
-        def.gainsStacks
-          ? h('div', { class: 'alliance-stack' }, `加算数 ${stack ?? 0}　${def.stackText ?? ''}`)
-          : null,
       );
     }),
   );
@@ -114,38 +117,69 @@ export function predictionLine(r: SimResult) {
   return h('div', { class: 'predict ng' }, `撃破できない見込み：残りHP ${pct(r.remainingHp / r.enemy.hp)}`);
 }
 
+function modifierText(m: Modifier): string[] {
+  const out: string[] = [];
+  if (m.atkPct) out.push(`攻撃力+${pct(m.atkPct)}`);
+  if (m.atkFlat) out.push(`基礎攻撃力+${fmt(m.atkFlat)}`);
+  if (m.aspd) out.push(`攻撃速度+${Math.round(m.aspd * 10) / 10}`);
+  if (m.spRegen) out.push(`SP回復+${Math.round(m.spRegen * 100) / 100}/秒`);
+  if (m.startSp) out.push(`初期SP+${m.startSp}`);
+  if (m.defIgnorePct) out.push(`防御無視${pct(m.defIgnorePct)}`);
+  if (m.resIgnorePct) out.push(`術耐性無視${pct(m.resIgnorePct)}`);
+  if (m.damagePct) out.push(`与ダメ+${pct(m.damagePct)}`);
+  if (m.damageMult && m.damageMult !== 1) out.push(`与ダメ×${Math.round(m.damageMult * 100) / 100}`);
+  if (m.trueDmgPct) out.push(`確定追加${pct(m.trueDmgPct)}`);
+  if (m.spOnSkillEnd) out.push(`スキル終了時SP+${Math.round(m.spOnSkillEnd * 10) / 10}（期待値）`);
+  if (m.ammoPct) out.push(`弾薬+${pct(m.ammoPct)}`);
+  if (m.weakDamage) out.push('弱点ダメージ');
+  return out;
+}
+
 export function unitDetail(o: OwnedUnit, mods: Modifier | undefined) {
   const d = getUnit(o.defId);
+  const st = unitState(d, o.star);
   const m = mods ?? {};
-  const atk = effectiveAtk(d, o.star, m);
-  const interval = attackInterval(d, m.aspd ?? 0);
-  const modText: string[] = [];
-  if (m.atkPct) modText.push(`攻撃力+${pct(m.atkPct)}`);
-  if (m.aspd) modText.push(`攻撃速度+${m.aspd}`);
-  if (m.spRegen) modText.push(`SP回復+${m.spRegen}/秒`);
-  if (m.startSp) modText.push(`初期SP+${m.startSp}`);
-  if (m.defIgnorePct) modText.push(`防御無視${pct(m.defIgnorePct)}`);
-  if (m.resIgnore) modText.push(`術耐性無視${m.resIgnore}`);
-  if (m.damagePct) modText.push(`与ダメ+${pct(m.damagePct)}`);
-  if (m.critChance) modText.push(`会心率+${pct(m.critChance)}`);
-  if (m.critDmg) modText.push(`会心ダメ+${pct(m.critDmg)}`);
-  if (m.trueDmgPct) modText.push(`確定追加${pct(m.trueDmgPct)}`);
+  const atk = baseAtk(d, o.star, m);
+  const interval = attackInterval(st.stats.interval, st.stats.aspd + (m.aspd ?? 0));
+  const modText = modifierText(m);
+  const phaseText = `昇進${st.evolvePhase} Lv${st.level}・スキルLv${st.skillLevel}${st.moduleLevel ? `・モジュールLv${st.moduleLevel}` : ''}`;
   return h(
     'div',
     { class: 'detail' },
-    h('div', { class: 'detail-name' }, d.name, ' ', stars(o.star)),
-    h('div', { class: 'muted small' }, `等級${d.tier}・${CLASS_NAME[d.cls]}・${DAMAGE_TYPE_NAME[d.damageType]}ダメージ`),
+    h('div', { class: 'detail-name' }, d.name, ' ', starBadge(o.star)),
+    h('div', { class: 'muted small' }, `等級${TIER_ROMAN[d.tier]}・${PROFESSION_NAME[d.profession]}・${DAMAGE_TYPE_NAME[d.damageType]}　${phaseText}`),
     h(
       'dl',
       { class: 'stats' },
       h('dt', null, '攻撃力'),
-      h('dd', null, `${fmt(atk)}`, h('span', { class: 'muted' }, `（基礎 ${fmt(d.atk)}）`)),
+      h('dd', null, `${fmt(atk)}`, h('span', { class: 'muted' }, `（基礎 ${fmt(st.stats.atk)}）`)),
       h('dt', null, '攻撃間隔'),
       h('dd', null, `${interval.toFixed(2)}秒`),
+      h('dt', null, 'HP/防御/術耐'),
+      h('dd', null, `${fmt(st.stats.hp)} / ${fmt(st.stats.def)} / ${st.stats.res}`),
       h('dt', null, 'スキル'),
-      h('dd', null, h('b', null, d.skill.name), h('br'), h('span', { class: 'small' }, d.skill.description)),
-      h('dt', null, '盟約補正'),
-      h('dd', null, modText.length ? modText.join('、') : h('span', { class: 'muted' }, 'なし')),
+      h(
+        'dd',
+        null,
+        h('b', null, st.skill.name),
+        h('span', { class: 'muted small' }, `　SP ${st.skill.initSp}/${st.skill.spCost}${st.skill.duration > 0 ? `・${st.skill.duration}秒` : ''}`),
+        h('br'),
+        h('span', { class: 'small' }, st.skill.description),
+      ),
+      h('dt', null, '堅守特性'),
+      h(
+        'dd',
+        null,
+        st.garrisons.map((g) =>
+          h(
+            'div',
+            { class: `garrison small${isGarrisonImplemented(g) ? '' : ' nosim'}`, title: isGarrisonImplemented(g) ? undefined : 'まだシミュレーターで再現していない特性です' },
+            g.description,
+          ),
+        ),
+      ),
+      h('dt', null, '補正'),
+      h('dd', null, modText.length ? modText.join('、') : h('span', { class: 'muted' }, 'なし（配置すると表示）')),
     ),
   );
 }
@@ -195,7 +229,7 @@ export function damageBars(r: SimResult) {
       h(
         'li',
         null,
-        h('span', { class: 'bar-name' }, u.name, ' ', stars(u.star)),
+        h('span', { class: 'bar-name' }, u.name, ' ', starBadge(u.star)),
         h('span', { class: 'bar-track' }, h('span', { class: 'bar-fill', style: `width:${(u.damage / max) * 100}%` })),
         h('span', { class: 'bar-val' }, `${fmt(u.damage)}（${pct(u.damage / total)}）`),
         h('span', { class: 'bar-sub muted' }, `DPS ${fmt(u.damage / r.elapsed)}・スキル${u.skillCasts}回`),

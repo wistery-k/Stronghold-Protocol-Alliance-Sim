@@ -19,7 +19,7 @@ export const BOSSES: EnemyDef[] = [
   {
     id: 'boss_witch',
     name: '霧の魔女',
-    hp: 220000,
+    hp: 240000,
     def: 250,
     res: 60,
     duration: 60,
@@ -30,7 +30,7 @@ export const BOSSES: EnemyDef[] = [
   {
     id: 'boss_colossus',
     name: '終焉の巨像',
-    hp: 750000,
+    hp: 400000,
     def: 900,
     res: 40,
     duration: 75,
@@ -45,8 +45,8 @@ export const BOSSES: EnemyDef[] = [
 
 // ラウンドごとの必要DPS（防御・術耐性を無視した値）。HP = 必要DPS × 30秒
 const NORMAL_REQUIRED_DPS: Record<number, number> = {
-  1: 500, 2: 800, 3: 1100, 4: 1500, 6: 2200, 7: 2700, 8: 3200, 9: 3800,
-  11: 5000, 12: 5800, 13: 7000, 14: 9000,
+  1: 300, 2: 450, 3: 600, 4: 800, 5: 1000, 6: 1200, 7: 1450,
+  8: 1700, 9: 2000, 10: 2300, 11: 2600, 12: 3000, 13: 3400,
 };
 
 /** 通常ラウンドの標的。ラウンドごとにHPと防御が伸びる */
@@ -65,7 +65,8 @@ function normalEnemy(round: number): EnemyDef {
   };
 }
 
-const BOSS_ROUNDS: Record<number, number> = { 5: 0, 10: 1, 15: 2 };
+// 本家と同じくラウンド14・15がボス戦
+const BOSS_ROUNDS: Record<number, number> = { 14: 1, 15: 2 };
 
 export function enemyForRound(round: number): EnemyDef {
   const b = BOSS_ROUNDS[round];

@@ -620,3 +620,66 @@ aside {
   font-weight: 600;
   z-index: 20;
 }
+
+/* ---------- 本家データ対応で追加 ---------- */
+.promoted {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 0 5px;
+}
+.card.golden {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 14%, var(--panel-2)), var(--panel-2) 60%);
+}
+.alliance .stack {
+  font-size: 11px;
+  color: var(--accent);
+  margin-left: auto;
+}
+.alliance .stack + .count {
+  margin-left: 8px;
+}
+.alliance-tiers {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.alliance-tiers li {
+  color: var(--muted);
+}
+.alliance-tiers li.on {
+  color: var(--text);
+}
+.alliance-tiers .need {
+  display: inline-block;
+  min-width: 18px;
+  font-weight: 700;
+  margin-right: 4px;
+}
+.alliance-tiers li.milestone::before {
+  content: '◇ ';
+}
+.alliance-tiers li.milestone.on {
+  color: var(--accent);
+}
+.nosim {
+  opacity: 0.65;
+}
+.nosim::after {
+  content: '（未再現）';
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+.garrison + .garrison {
+  margin-top: 4px;
+}
+.garrison {
+  white-space: pre-line;
+}
