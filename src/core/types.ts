@@ -144,7 +144,7 @@ export interface Modifier {
   /** 攻撃時に確率で追加の物理弾（銃騎の威光） */
   extraShotProb?: number;
   extraShotScale?: number;
-  /** 最初のスキル終了時に回復するSP（黄砂の羅針盤） */
+  /** 最初のスキル終了時に回復するSP（黄砂のコンパス） */
   firstSkillEndSp?: number;
 }
 
@@ -176,7 +176,7 @@ export type Direction = 'up' | 'right' | 'down' | 'left';
 export interface OwnedItem {
   uid: number;
   itemId: string;
-  /** 1 = 通常, 2 = 強化 */
+  /** 1 = 通常, 2 = 精鋭 */
   star: Star;
 }
 

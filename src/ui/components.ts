@@ -255,7 +255,7 @@ export function itemCard(
       'div',
       { class: 'card-top' },
       h('span', { class: 'card-name' }, st.name),
-      opts.price !== undefined ? h('span', { class: 'price' }, `${opts.price}`) : opts.star === 2 ? h('span', { class: 'promoted' }, '強化') : null,
+      opts.price !== undefined ? h('span', { class: 'price' }, `${opts.price}`) : opts.star === 2 ? h('span', { class: 'promoted' }, '精鋭') : null,
     ),
     h('div', { class: 'item-desc' }, st.description),
   );
@@ -385,7 +385,7 @@ export function unitDetail(o: OwnedUnit, mods: Modifier | undefined) {
         (o.items ?? []).length
           ? (o.items ?? []).map((i) => {
               const st = itemState(getItem(i.itemId), i.star);
-              return h('div', { class: 'small' }, h('b', null, st.name, i.star === 2 ? '（強化）' : ''), '：', st.description);
+              return h('div', { class: 'small' }, h('b', null, st.name, i.star === 2 ? '（精鋭）' : ''), '：', st.description);
             })
           : h('span', { class: 'muted' }, 'なし'),
       ),

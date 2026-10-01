@@ -72,9 +72,9 @@ export const ALLIANCES: Record<AllianceId, AllianceDef> = {
         count: 3,
         text: `装備を持つ【ヴィクトリア】の与ダメージが${pct(v('victoria', 'base_damage_scale') + v('victoria', 'damage_scale_per_stack') * s)}に上昇`,
       },
-      { count: 6, text: '【ヴィクトリア】は装備1つにつき攻撃力+50%（強化した装備は+80%）' },
+      { count: 6, text: '【ヴィクトリア】は装備1つにつき攻撃力+50%（精鋭の装備は+80%）' },
     ],
-    stackMilestones: (s) => [{ at: 25, text: '25層ごとにランダムなヴィクトリア式ハンマーを獲得', reached: s >= 25 }],
+    stackMilestones: (s) => [{ at: 25, text: '25層ごとにランダムなヴィクトリアの鉄鎚を獲得', reached: s >= 25 }],
   },
   kjerag: {
     id: 'kjerag',

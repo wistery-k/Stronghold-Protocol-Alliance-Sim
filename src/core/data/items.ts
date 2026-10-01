@@ -20,10 +20,10 @@ export interface ItemDef {
   /** "1_01" のような ID（等級_番号） */
   id: string;
   tier: Tier;
-  /** 対応する盟約（変形同構体で付与される） */
+  /** 対応する盟約（変形同位体で付与される） */
   giveBond: AllianceId | null;
   canGiveBond: boolean;
-  /** 強化に必要な枚数（2） */
+  /** 精鋭化に必要な枚数（2） */
   mergeCount: number;
   normal: ItemState;
   golden: ItemState;
@@ -70,7 +70,7 @@ export const itemKey = (chessId: string) => chessId.replace('chess_item_', '').r
 
 /** 特性などで得られる装備の候補 */
 export const ITEM_POOLS: Record<string, [string, number][]> = {
-  // ヴィクトリア式ハンマー（【ヴィクトリア】25層ごとの報酬、ロックロックの特製品）
+  // ヴィクトリアの鉄鎚（【ヴィクトリア】25層ごとの報酬、ロックロックの特製品）
   pool_equip_vict: [
     ['1_01', 1],
     ['2_03', 1],
@@ -85,7 +85,7 @@ export const ITEM_POOLS: Record<string, [string, number][]> = {
     ['3_10', 1],
     ['4_09', 1],
   ],
-  // ペペ：盟約のコインかサルゴンの濃茶、低確率で黄砂の羅針盤
+  // ペペ：盟約のコインかサルゴンの渋茶、低確率で黄砂のコンパス
   pool_equip_pepe: [
     ['1_03', 45],
     ['2_04', 45],

@@ -26,7 +26,7 @@ export function rollItemShop(state: GameState): void {
   });
 }
 
-/** 同じ装備が2つ揃ったら強化する（控えにあるものだけ） */
+/** 同じ装備が2つ揃ったら精鋭化する（控えにあるものだけ） */
 function mergeItems(state: GameState, itemId: string): void {
   const def = getItem(itemId);
   const same = storedItems(state).filter((i) => i.itemId === itemId && i.star === 1);
@@ -35,7 +35,7 @@ function mergeItems(state: GameState, itemId: string): void {
   const remove = new Set(rest.slice(0, def.mergeCount - 1).map((i) => i.uid));
   state.bench = state.bench.map((i) => (i && remove.has(i.uid) ? null : i));
   keep.star = 2;
-  state.log.push(`${def.normal.name} を強化！`);
+  state.log.push(`${def.normal.name} を精鋭化！`);
 }
 
 /** 装備を獲得して控えに入れる（上限を超えても破棄しない） */
@@ -194,7 +194,7 @@ export function itemRoundStart(state: GameState): void {
   }
 }
 
-/** 戦闘終了後：突然変異細胞で1つ上の等級のオペレーターに置き換わる */
+/** 戦闘終了後：変異細胞で1つ上の等級のオペレーターに置き換わる */
 export function itemBattleEnd(state: GameState): void {
   for (const o of [...state.board, ...benchUnits(state)]) {
     const cell = (o.items ?? []).find((i) => findBuff(itemState(getItem(i.itemId), i.star), 'char_chess_transformation_equip'));
@@ -207,13 +207,13 @@ export function itemBattleEnd(state: GameState): void {
     state.pool[o.defId] += o.star === 2 ? def.mergeCount : 1;
     state.pool[next.id]--;
     o.items = (o.items ?? []).filter((i) => i !== cell);
-    state.log.push(`突然変異細胞：${def.name} が ${next.name} に変化`);
+    state.log.push(`変異細胞：${def.name} が ${next.name} に変化`);
     o.defId = next.id;
     o.star = 1;
   }
 }
 
-/** オペレーター売却時：商業パッケージ案 */
+/** オペレーター売却時：プロデュース戦略 */
 export function itemOnSold(state: GameState): void {
   state.soldCount++;
   for (const o of allOwned(state)) {
@@ -224,7 +224,7 @@ export function itemOnSold(state: GameState): void {
   }
 }
 
-/** 天師の古鼎＋炎国の短刀（炎）：オペレーターを獲得するたびに資金（1ラウンド最大3回） */
+/** 天師の祭器＋炎国の短刀（炎）：オペレーターを獲得するたびに資金（1ラウンド最大3回） */
 export function itemOnGain(state: GameState): void {
   for (const o of allOwned(state)) {
     const cauldron = (o.items ?? []).find((i) => i.itemId === '6_03');
@@ -235,7 +235,7 @@ export function itemOnGain(state: GameState): void {
     state.round_.cauldron++;
     const gold = Number(b?.count ?? 2);
     state.gold += gold;
-    state.log.push(`天師の古鼎：資金+${gold}`);
+    state.log.push(`天師の祭器：資金+${gold}`);
   }
 }
 

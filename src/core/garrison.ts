@@ -48,7 +48,7 @@ export function stackRewards(state: GameState, active: Set<AllianceId>): void {
     }
   }
   if (active.has('victoria')) {
-    // 【ヴィクトリア】25層ごとにヴィクトリア式ハンマーを獲得
+    // 【ヴィクトリア】25層ごとにヴィクトリアの鉄鎚を獲得
     const quarters = Math.floor((state.stacks.victoria ?? 0) / 25);
     while (r.victoriaQuarters < quarters) {
       r.victoriaQuarters++;

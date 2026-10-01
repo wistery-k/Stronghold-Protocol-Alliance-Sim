@@ -25,7 +25,7 @@ export function unitAlliances(defId: string): AllianceId[] {
   return getUnit(defId).bonds;
 }
 
-/** 所持ユニットの盟約（変形同構体で追加された盟約を含む） */
+/** 所持ユニットの盟約（変形同位体で追加された盟約を含む） */
 export function ownedBonds(o: OwnedUnit): AllianceId[] {
   const bonds = [...getUnit(o.defId).bonds];
   const items = o.items ?? [];
@@ -106,13 +106,13 @@ export interface BattleGlobals {
   laterano?: { members: Set<number>; atkPerAmmo: number; maxAtk: number };
   /** カジミエーシュLv2：近接は2秒ごとに攻撃力120%の確定ダメージ */
   kazimierzPulse?: { members: Set<number>; scale: number; interval: number };
-  /** 黄砂の羅針盤＋サルゴンの濃茶：サルゴンのスキル発動で全サルゴンのSP回復 */
+  /** 黄砂のコンパス＋サルゴンの渋茶：サルゴンのスキル発動で全サルゴンのSP回復 */
   sargonSpOnSkill?: { members: Set<number>; sp: number };
 }
 
 export interface BattleOptions {
   banned?: AllianceId[];
-  /** このラウンドに獲得したオペレーター数（天師の古鼎） */
+  /** このラウンドに獲得したオペレーター数（天師の祭器） */
   roundGained?: number;
 }
 
