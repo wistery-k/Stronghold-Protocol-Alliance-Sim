@@ -13,7 +13,8 @@ import {
   type Action,
   type GameState,
 } from '../core/game';
-import { MAX_ROUND, REFRESH_COST, TIER_ODDS, deployCap } from '../core/rules';
+import { BENCH_SIZE, MAX_ROUND, REFRESH_COST, TIER_ODDS, deployCap } from '../core/rules';
+import { benchOverflow } from '../core/acquire';
 import { simulateDps } from '../core/sim';
 import type { AllianceId } from '../core/types';
 import { alliancePanel, boardGrid, emptySlot, enemyInfo, makeDropTarget, predictionLine, simSummary, unitCard, unitDetail } from './components';
@@ -60,7 +61,9 @@ function prepView(p: GameViewProps): HTMLElement {
   const lvCost = levelUpCost(state);
   // 非精鋭で所持しているオペレーター（ショップで光らせる）
   const ownedNormal = new Set(allOwned(state).filter((o) => o.star === 1).map((o) => o.defId));
-  const hasElite = state.eliteChoices.length > 0;
+  const hasChoice = state.choices.length > 0;
+  const overflow = benchOverflow(state);
+  const blockReason = hasChoice ? '無料獲得の候補を先に選んでください' : overflow > 0 ? `控えが上限を${overflow}名超えています` : null;
 
   // 詳細表示：マウスオーバー中のユニットを優先し、なければ選択中のユニット。
   // マウスオーバーでは全体を再描画せず（ドラッグが途切れるため）、詳細パネルだけを差し替える
@@ -117,7 +120,7 @@ function prepView(p: GameViewProps): HTMLElement {
   const benchSlots = state.bench.map((o, index) => {
     const slot = h(
       'div',
-      { class: 'slot' },
+      { class: `slot${index >= BENCH_SIZE ? ' over' : ''}` },
       o ? unitCard(o.defId, { star: o.star, dragUid: o.uid, ...cardFor(o.uid, 'bench') }) : emptySlot(),
     );
     return makeDropTarget(slot, (uid) => dispatch({ type: 'move', uid, to: { zone: 'bench', index } }));
@@ -130,25 +133,25 @@ function prepView(p: GameViewProps): HTMLElement {
     .map(([id, n]) => [id, n - (state.stacks[id] ?? 0)] as const)
     .filter(([, d]) => d > 0);
 
-  const eliteChoices = state.eliteChoices[0];
-  const elitePanel = eliteChoices
+  const choice = state.choices[0];
+  const choicePanel = choice
     ? h(
         'section',
         { class: 'panel elite' },
         h(
           'div',
           { class: 'panel-head' },
-          h('h2', null, `精鋭化の報酬：1名を無料で獲得${state.eliteChoices.length > 1 ? `（残り${state.eliteChoices.length}回）` : ''}`),
-          h('div', { class: 'row' }, h('button', { class: 'btn ghost small', onclick: () => dispatch({ type: 'skipElite' }) }, '見送る')),
+          h('h2', null, `${choice.title}：1名を無料で獲得${state.choices.length > 1 ? `（残り${state.choices.length}回）` : ''}`),
+          h('div', { class: 'row' }, h('button', { class: 'btn ghost small', onclick: () => dispatch({ type: 'skipChoice' }) }, '見送る')),
         ),
         h(
           'div',
           { class: 'cards' },
-          eliteChoices.map((id, index) =>
+          choice.options.map((id, index) =>
             unitCard(id, {
               owned: ownedNormal.has(id),
               highlight: new Set(unitAlliances(id).filter((a) => activeIds.has(a))),
-              onClick: () => dispatch({ type: 'chooseElite', index }),
+              onClick: () => dispatch({ type: 'choose', index }),
             }),
           ),
         ),
@@ -204,7 +207,8 @@ function prepView(p: GameViewProps): HTMLElement {
       h(
         'div',
         { class: 'actions' },
-        h('button', { class: 'btn primary big', onclick: () => { select(null); dispatch({ type: 'battle' }); }, disabled: hasElite, title: hasElite ? '精鋭化の報酬を先に選んでください' : undefined }, '戦闘開始'),
+        blockReason ? h('span', { class: 'ng small' }, blockReason) : null,
+        h('button', { class: 'btn primary big', onclick: () => { select(null); dispatch({ type: 'battle' }); }, disabled: !!blockReason, title: blockReason ?? undefined }, '戦闘開始'),
       ),
     ),
     h(
@@ -223,10 +227,16 @@ function prepView(p: GameViewProps): HTMLElement {
               dim: setup.excluded.has(o.uid),
             }),
             onDropCell: (pos, uid) => dispatch({ type: 'move', uid, to: { zone: 'board', pos } }),
+            onTurn: (uid, dir) => dispatch({ type: 'turn', uid, dir }),
           }),
         ),
-        h('section', { class: 'panel' }, h('h2', null, `控え（${bench.length}/${state.bench.length}）`), h('div', { class: 'cards bench' }, benchSlots)),
-        elitePanel,
+        h(
+          'section',
+          { class: `panel${overflow > 0 ? ' overflow' : ''}` },
+          h('h2', null, `控え（${bench.length}/${BENCH_SIZE}）`, overflow > 0 ? h('span', { class: 'ng' }, `　${overflow}名超過：配置か売却で上限内に戻してください`) : null),
+          h('div', { class: 'cards bench' }, benchSlots),
+        ),
+        choicePanel,
         shopPanel,
       ),
       h(

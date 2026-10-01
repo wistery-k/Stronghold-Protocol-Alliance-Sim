@@ -3645,7 +3645,7 @@
   {
    "id": "2_17",
    "charId": "char_4207_branch",
-   "name": "ヴェートチキ",
+   "name": "ヴェトチキ",
    "tier": 2,
    "profession": "defender",
    "subProfession": "unyield",
@@ -5405,7 +5405,7 @@
       "id": "garrison_70_a",
       "event": "SERVER_PREP_FIN",
       "effect": "SERVER_ADD_BOND_METHOD",
-      "description": "〈準備フェーズ終了時〉同じ行のオペレーター1名ごとに、有効化中の【堅守】の加算数+1",
+      "description": "〈準備フェーズ終了時〉左右一直線上のオペレーター1名ごとに、有効化中の【堅守】の加算数+1",
       "blackboard": {
        "add_method": "same_row",
        "bond": "steadShip",
@@ -5451,7 +5451,7 @@
       "id": "garrison_70_b",
       "event": "SERVER_PREP_FIN",
       "effect": "SERVER_ADD_BOND_METHOD",
-      "description": "〈準備フェーズ終了時〉同じ行のオペレーター1名ごとに、有効化中の【堅守】の加算数+2",
+      "description": "〈準備フェーズ終了時〉左右一直線上のオペレーター1名ごとに、有効化中の【堅守】の加算数+2",
       "blackboard": {
        "add_method": "same_row",
        "bond": "steadShip",
@@ -6978,7 +6978,7 @@
       "id": "garrison_39_a",
       "event": "SERVER_PREP_START",
       "effect": "SERVER_POOL_CHAR",
-      "description": "〈準備フェーズ開始時〉同じ行に3名いれば、スカジ・スペクター・アンダーフローのいずれかを1体獲得",
+      "description": "〈準備フェーズ開始時〉左右一直線上に3名いれば、スカジ・スペクター・アンダーフローのいずれかを1体獲得",
       "blackboard": {
        "pool": "pool_chess_glady",
        "count": 1.0,
@@ -7028,7 +7028,7 @@
       "id": "garrison_39_b",
       "event": "SERVER_PREP_START",
       "effect": "SERVER_POOL_CHAR",
-      "description": "〈準備フェーズ開始時〉同じ行に3名いれば、スカジ・スペクター・アンダーフローのいずれかを1体獲得（2回繰り返す）",
+      "description": "〈準備フェーズ開始時〉左右一直線上に3名いれば、スカジ・スペクター・アンダーフローのいずれかを1体獲得（2回繰り返す）",
       "blackboard": {
        "pool": "pool_chess_glady",
        "count": 2.0,
@@ -7704,7 +7704,7 @@
       "id": "garrison_148_a",
       "event": "IN_BATTLE",
       "effect": "ADD_BOND",
-      "description": "〈戦闘開始時〉同じ行の最も右のオペレーターに特性「〈配置時〉有効化中の【カジミエーシュ】【精密】の加算数+4（戦闘1回につき最大24）」を付与",
+      "description": "〈戦闘開始時〉左右一直線上で最も右のオペレーターに特性「〈配置時〉有効化中の【カジミエーシュ】【精密】の加算数+4（戦闘1回につき最大24）」を付与",
       "blackboard": {
        "give_garrison_id": "garrison_108_a"
       }
@@ -7746,7 +7746,7 @@
       "id": "garrison_148_b",
       "event": "IN_BATTLE",
       "effect": "ADD_BOND",
-      "description": "〈戦闘開始時〉同じ行の最も右のオペレーターに特性「〈配置時〉有効化中の【カジミエーシュ】【精密】の加算数+8（戦闘1回につき最大48）」を付与",
+      "description": "〈戦闘開始時〉左右一直線上で最も右のオペレーターに特性「〈配置時〉有効化中の【カジミエーシュ】【精密】の加算数+8（戦闘1回につき最大48）」を付与",
       "blackboard": {
        "give_garrison_id": "garrison_108_b"
       }
@@ -10574,7 +10574,7 @@
       "id": "garrison_24_a",
       "event": "IN_BATTLE",
       "effect": "ADD_BOND",
-      "description": "〈戦闘中〉自身が弾薬を10発消費するごとに、同じ行に3名いれば有効化中の【ラテラーノ】【精密】の加算数+2",
+      "description": "〈戦闘中〉自身が弾薬を10発消費するごとに、左右一直線上に3名いれば有効化中の【ラテラーノ】【精密】の加算数+2",
       "blackboard": {
        "at_root": 1.0,
        "key": "act1autochess_gar_event_consume_ammo",
@@ -10632,7 +10632,7 @@
       "id": "garrison_24_b",
       "event": "IN_BATTLE",
       "effect": "ADD_BOND",
-      "description": "〈戦闘中〉自身が弾薬を10発消費するごとに、同じ行に3名いれば有効化中の【ラテラーノ】【精密】の加算数+4",
+      "description": "〈戦闘中〉自身が弾薬を10発消費するごとに、左右一直線上に3名いれば有効化中の【ラテラーノ】【精密】の加算数+4",
       "blackboard": {
        "at_root": 1.0,
        "key": "act1autochess_gar_event_consume_ammo",
@@ -10812,7 +10812,7 @@
       "id": "garrison_37_a",
       "event": "SERVER_PREP_START",
       "effect": "SERVER_MOST_BOND",
-      "description": "〈準備フェーズ開始時〉同じ行に3名いれば、現在人数が最も多い盟約のオペレーターを1名ランダムに獲得",
+      "description": "〈準備フェーズ開始時〉左右一直線上に3名いれば、現在人数が最も多い盟約のオペレーターを1名ランダムに獲得",
       "blackboard": {
        "conditionkey": "character_same_row",
        "check_count": 3.0
@@ -11493,7 +11493,7 @@
       "id": "garrison_90_a",
       "event": "IN_BATTLE",
       "effect": "ADD_BOND",
-      "description": "〈戦闘中〉スキル発動時、同じ行のオペレーター1名ごとに、有効化中で加算数が最も多い盟約の加算数+1（戦闘1回につき最大10）",
+      "description": "〈戦闘中〉スキル発動時、左右一直線上のオペレーター1名ごとに、有効化中で加算数が最も多い盟約の加算数+1（戦闘1回につき最大10）",
       "blackboard": {
        "key": "act1autochess_gar_event_useskill",
        "bond_type": "bond_actived_maxstack",
@@ -11540,7 +11540,7 @@
       "id": "garrison_90_b",
       "event": "IN_BATTLE",
       "effect": "ADD_BOND",
-      "description": "〈戦闘中〉スキル発動時、同じ行のオペレーター1名ごとに、有効化中で加算数が最も多い盟約の加算数+2（戦闘1回につき最大20）",
+      "description": "〈戦闘中〉スキル発動時、左右一直線上のオペレーター1名ごとに、有効化中で加算数が最も多い盟約の加算数+2（戦闘1回につき最大20）",
       "blackboard": {
        "key": "act1autochess_gar_event_useskill",
        "bond_type": "bond_actived_maxstack",

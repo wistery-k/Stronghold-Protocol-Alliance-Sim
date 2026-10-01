@@ -1,9 +1,15 @@
 import { getUnit, unitState } from './data/units';
-import type { OwnedUnit } from './types';
+import type { Direction, OwnedUnit } from './types';
+
+export const DIRECTIONS: Direction[] = ['up', 'right', 'down', 'left'];
+export const DEFAULT_DIRECTION: Direction = 'right';
+const DIR_DELTA: Record<Direction, [number, number]> = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
+export const DIRECTION_NAME: Record<Direction, string> = { up: '上', right: '右', down: '下', left: '左' };
 
 // 配置エリア（4x4 グリッド）の位置関係。
-// 敵は右側から来る想定で、オペレーターは右を向いている：
-//   「前方1マス」= 右隣、「後方1マス」= 左隣、「同じ行」= 同じ y。
+// オペレーターは上下左右のいずれかを向いて配置される。
+//   「前方1マス」「後方1マス」はオペレーターの向きから見た相対位置、
+//   「左右一直線上」は向きに関係なく絶対方角の横一列（同じ y）。
 
 export const BOARD_COLS = 4;
 export const BOARD_ROWS = 4;
@@ -49,9 +55,17 @@ function offset(board: OwnedUnit[], o: OwnedUnit, dx: number, dy: number): Owned
   return inside(x, y) ? unitAt(board, cellPos(x, y)) : undefined;
 }
 
-export const frontOf = (board: OwnedUnit[], o: OwnedUnit) => offset(board, o, 1, 0);
-export const behindOf = (board: OwnedUnit[], o: OwnedUnit) => offset(board, o, -1, 0);
+export function frontOf(board: OwnedUnit[], o: OwnedUnit): OwnedUnit | undefined {
+  const [dx, dy] = DIR_DELTA[o.dir ?? DEFAULT_DIRECTION];
+  return offset(board, o, dx, dy);
+}
 
+export function behindOf(board: OwnedUnit[], o: OwnedUnit): OwnedUnit | undefined {
+  const [dx, dy] = DIR_DELTA[o.dir ?? DEFAULT_DIRECTION];
+  return offset(board, o, -dx, -dy);
+}
+
+/** 左右一直線上（絶対方角の横一列）のオペレーター（自身を含む） */
 export function sameRow(board: OwnedUnit[], o: OwnedUnit): OwnedUnit[] {
   if (o.pos === undefined) return [];
   const y = cellY(o.pos);

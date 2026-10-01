@@ -51,4 +51,4 @@ export function lifeLoss(remainingRatio: number, isBoss: boolean): number {
   return Math.min(isBoss ? base * 2 : base, MAX_LIFE_LOSS);
 }
 
-export const BUY_LOCK_MESSAGE = '精鋭化の報酬を先に選んでください';
+export const CHOICE_LOCK_MESSAGE = '無料獲得の候補を先に選んでください';

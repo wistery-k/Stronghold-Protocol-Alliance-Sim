@@ -1,10 +1,10 @@
 import { evaluateAlliances, activeAllianceIds, bondKey, effectiveGarrisons } from './alliance';
-import { gainRandom } from './acquire';
+import { gainRandom, rollChoices } from './acquire';
 import { behindOf, egirDevour, frontOf, sameRow } from './board';
 import { ALLIANCES, v } from './data/alliances';
 import { UNITS, getUnit, unitState } from './data/units';
 import type { GameState } from './game';
-import type { AllianceId, GarrisonData, OwnedUnit } from './types';
+import type { AllianceId, GarrisonData, OwnedUnit, Tier } from './types';
 
 // 堅守特性のうち、準備フェーズ側（獲得時・準備フェーズ開始/終了時・売却時・更新時）の処理
 
@@ -216,6 +216,16 @@ function runGarrison(
       if (!top) return true;
       const cands = UNITS.filter((u) => u.bonds.includes(top.id) && u.tier <= state.level).map((u) => ({ id: u.id, weight: 1 }));
       gainRandom(state, cands, name);
+      return true;
+    }
+    case 'SERVER_SELL_CHESS_GAIN_SPECIAL_GOODS': {
+      // 特別招集：指定等級から3名を提示し、1名を無料で獲得
+      const tier = Number(/shop_(\d)_reward/.exec(String(bb.max_pool ?? bb.pool1))?.[1] ?? 1);
+      const options = rollChoices(state, Math.min(Math.max(tier, 1), 6) as Tier);
+      if (options.length) {
+        state.choices.push({ title: `${name}の特別招集`, options });
+        state.log.push(`${name}：等級${tier}の特別招集`);
+      }
       return true;
     }
     case 'SERVER_POOL_CHAR': {

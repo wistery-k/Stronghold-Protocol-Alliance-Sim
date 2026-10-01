@@ -66,11 +66,11 @@ function playPrep(s: GameState): GameState {
   }
 
   // 精鋭化の報酬は一番強そうなものを選ぶ
-  while (s.eliteChoices.length) {
-    const choices = s.eliteChoices[0];
-    const best = choices.map((id, i) => ({ i, p: power({ uid: 0, defId: id, star: 1 }) })).sort((a, b) => b.p - a.p)[0];
-    const r = applyAction(s, { type: 'chooseElite', index: best.i });
-    s = r.error ? act(s, { type: 'skipElite' }) : r.state;
+  while (s.choices.length) {
+    const options = s.choices[0].options;
+    const best = options.map((id, i) => ({ i, p: power({ uid: 0, defId: id, star: 1 }) })).sort((a, b) => b.p - a.p)[0];
+    const r = applyAction(s, { type: 'choose', index: best.i });
+    s = r.error ? act(s, { type: 'skipChoice' }) : r.state;
   }
 
   const all = [...s.board, ...benchUnits(s)].sort((a, b) => power(b) - power(a));

@@ -12,11 +12,11 @@ import {
   triggerGarrisons,
 } from './garrison';
 import { miraProb } from './data/alliances';
-import { allOwned, canReceive, gainUnit, withRng } from './acquire';
+import { allOwned, benchOverflow, canReceive, compactBench, gainUnit, withRng } from './acquire';
 import { firstFreeCell, normalizePositions, unitAt } from './board';
 import {
   BENCH_SIZE,
-  BUY_LOCK_MESSAGE,
+  CHOICE_LOCK_MESSAGE,
   MAX_ROUND,
   POOL_COPIES,
   REFRESH_COST,
@@ -31,7 +31,7 @@ import {
   shopSlots,
 } from './rules';
 import { simulateDps, type SimResult } from './sim';
-import type { AllianceId, OwnedUnit } from './types';
+import type { AllianceId, Direction, OwnedUnit } from './types';
 
 export type Phase = 'prep' | 'result' | 'gameover' | 'clear';
 
@@ -47,7 +47,7 @@ export interface BattleReport {
 }
 
 export interface GameState {
-  version: 3;
+  version: 4;
   seed: number;
   rngState: number;
   round: number;
@@ -70,8 +70,8 @@ export interface GameState {
   /** このラウンドの集計（特性の計算に使う） */
   round_: { gained: number; spent: number; refreshes: number };
   rewards: { visiTens: number; miraHundreds: number; visiDiscount: boolean; allDiscount: boolean };
-  /** 精鋭化の報酬で選べる候補（先頭から順に選ぶ） */
-  eliteChoices: string[][];
+  /** 無料で1名を選べる候補（精鋭化の報酬・特別招集）。先頭から順に選ぶ */
+  choices: { title: string; options: string[] }[];
   nextUid: number;
   phase: Phase;
   lastBattle: BattleReport | null;
@@ -85,8 +85,9 @@ export type Action =
   | { type: 'deploy'; uid: number; pos?: number }
   | { type: 'undeploy'; uid: number }
   | { type: 'move'; uid: number; to: { zone: 'board'; pos: number } | { zone: 'bench'; index: number } }
-  | { type: 'chooseElite'; index: number }
-  | { type: 'skipElite' }
+  | { type: 'turn'; uid: number; dir: Direction }
+  | { type: 'choose'; index: number }
+  | { type: 'skipChoice' }
   | { type: 'refresh' }
   | { type: 'levelUp' }
   | { type: 'toggleFreeze' }
@@ -106,7 +107,7 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31)): GameStat
   const pool: Record<string, number> = {};
   for (const u of UNITS) pool[u.id] = POOL_COPIES[u.tier];
   const state: GameState = {
-    version: 3,
+    version: 4,
     seed,
     rngState: seed,
     round: 1,
@@ -125,7 +126,7 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31)): GameStat
     pendingGold: 0,
     round_: { gained: 0, spent: 0, refreshes: 0 },
     rewards: { visiTens: 0, miraHundreds: 0, visiDiscount: false, allDiscount: false },
-    eliteChoices: [],
+    choices: [],
     nextUid: 1,
     phase: 'prep',
     lastBattle: null,
@@ -196,6 +197,12 @@ function spend(state: GameState, amount: number) {
 // ------------------------------------------------------------
 
 export function applyAction(prev: GameState, action: Action): ActionResult {
+  const r = applyActionInner(prev, action);
+  if (!r.error) r.state.bench = compactBench(r.state.bench);
+  return r;
+}
+
+function applyActionInner(prev: GameState, action: Action): ActionResult {
   const state = structuredClone(prev);
   const fail = (error: string): ActionResult => ({ state: prev, error });
   const inPrep = state.phase === 'prep';
@@ -256,19 +263,25 @@ export function applyAction(prev: GameState, action: Action): ActionResult {
       if (state.board.length > deployCap(state.level)) return fail('配置上限に達しています');
       return { state };
     }
-    case 'chooseElite': {
-      const choices = state.eliteChoices[0];
-      const defId = choices?.[action.index];
+    case 'choose': {
+      const choice = state.choices[0];
+      const defId = choice?.options[action.index];
       if (!defId) return fail('選択肢がありません');
-      if (!canReceive(state, defId)) return fail('控えがいっぱいです。空きを作ってから選んでください');
-      state.eliteChoices.shift();
+      state.choices.shift();
       gainUnit(state, defId);
-      state.log.push(`精鋭化の報酬：${getUnit(defId).name} を獲得`);
+      state.log.push(`${choice.title}：${getUnit(defId).name} を獲得`);
+      state.bench = compactBench(state.bench);
       return { state };
     }
-    case 'skipElite': {
-      if (!state.eliteChoices.length) return fail('選択肢がありません');
-      state.eliteChoices.shift();
+    case 'skipChoice': {
+      if (!state.choices.length) return fail('選択肢がありません');
+      state.choices.shift();
+      return { state };
+    }
+    case 'turn': {
+      const f = findOwned(state, action.uid);
+      if (!f || f.where !== 'board') return fail('配置中のユニットを選んでください');
+      f.unit.dir = action.dir;
       return { state };
     }
     case 'refresh': {
@@ -314,7 +327,8 @@ export function applyAction(prev: GameState, action: Action): ActionResult {
       return { state };
     }
     case 'battle': {
-      if (state.eliteChoices.length) return fail(BUY_LOCK_MESSAGE);
+      if (state.choices.length) return fail(CHOICE_LOCK_MESSAGE);
+      if (benchOverflow(state) > 0) return fail(`控えが上限を${benchOverflow(state)}名超えています。配置するか売却してください`);
       normalizePositions(state.board);
       resolveBattle(state);
       return { state };

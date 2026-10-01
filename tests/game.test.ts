@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateAlliances } from '../src/core/alliance';
+import { behindOf, frontOf, sameRow } from '../src/core/board';
 import { applyAction, createGame, levelUpCost, priceOf, type GameState } from '../src/core/game';
 import { UNITS, getUnit } from '../src/core/data/units';
 import { BENCH_SIZE, DEPLOY_CAP, roundIncome } from '../src/core/rules';
@@ -181,16 +182,16 @@ describe('精鋭化の報酬', () => {
   it('精鋭化すると管理レベル+1の等級から3名が提示され、選ぶと無料で獲得', () => {
     let s = withShop(createGame(1), ['インサイダー', 'インサイダー', 'インサイダー']);
     for (const slot of [0, 1, 2]) s = applyAction(s, { type: 'buy', slot }).state;
-    expect(s.eliteChoices).toHaveLength(1);
-    expect(s.eliteChoices[0]).toHaveLength(3);
-    for (const c of s.eliteChoices[0]) expect(getUnit(c).tier).toBe(2);
+    expect(s.choices).toHaveLength(1);
+    expect(s.choices[0].options).toHaveLength(3);
+    for (const c of s.choices[0].options) expect(getUnit(c).tier).toBe(2);
     // 選ぶまで戦闘できない
     expect(applyAction(s, { type: 'battle' }).error).toBeDefined();
     const gold = s.gold;
-    const pick = s.eliteChoices[0][0];
-    s = applyAction(s, { type: 'chooseElite', index: 0 }).state;
+    const pick = s.choices[0].options[0];
+    s = applyAction(s, { type: 'choose', index: 0 }).state;
     expect(s.gold).toBe(gold);
-    expect(s.eliteChoices).toHaveLength(0);
+    expect(s.choices).toHaveLength(0);
     expect(owned(s).some((o) => o.defId === pick)).toBe(true);
   });
 });
@@ -226,5 +227,52 @@ describe('配置エリア', () => {
     };
     // ティッピがアルケットの前方（右）にいると、ティッピの盟約にも加算される
     expect(run(0, 1)).toBeGreaterThan(run(1, 0));
+  });
+});
+
+describe('向き・控えの超過・特別招集', () => {
+  it('前方は向いている方向から見た相対位置', () => {
+    const a = { ...ou(1, 'アルケット'), pos: 5, dir: 'up' as const };
+    const up = { ...ou(2, 'グム'), pos: 1 };
+    const right = { ...ou(3, 'ティッピ'), pos: 6 };
+    const board = [a, up, right];
+    expect(frontOf(board, a)?.uid).toBe(2);
+    expect(behindOf(board, a)).toBeUndefined();
+    a.dir = 'right' as never;
+    expect(frontOf(board, a)?.uid).toBe(3);
+    // 左右一直線上は向きに関係なく横一列
+    expect(sameRow(board, a).map((o) => o.uid).sort()).toEqual([1, 3]);
+  });
+
+  it('向きを変えるアクション', () => {
+    let s = withShop(createGame(1), ['グム']);
+    s = applyAction(s, { type: 'buy', slot: 0 }).state;
+    const uid = owned(s)[0].uid;
+    s = applyAction(s, { type: 'deploy', uid }).state;
+    s = applyAction(s, { type: 'turn', uid, dir: 'down' }).state;
+    expect(s.board[0].dir).toBe('down');
+  });
+
+  it('特性で控えの上限を超えても破棄せず、超過中は戦闘できない', () => {
+    let s = createGame(1);
+    s = {
+      ...withShop(s, ['フレイムテイル']),
+      bench: Array.from({ length: BENCH_SIZE - 1 }, (_, i) => ({ uid: 100 + i, defId: id('グム'), star: 1 as const })).concat([null as never]),
+    };
+    s = applyAction(s, { type: 'buy', slot: 0 }).state;
+    // フレイムテイル（最後の1枠）＋特性で獲得した1名 → 1名超過
+    expect(owned(s)).toHaveLength(BENCH_SIZE + 1);
+    expect(applyAction(s, { type: 'battle' }).error).toBeDefined();
+    s = applyAction(s, { type: 'sell', uid: 100 }).state;
+    expect(s.bench).toHaveLength(BENCH_SIZE);
+    expect(applyAction(s, { type: 'battle' }).error).toBeUndefined();
+  });
+
+  it('パインコーンを売却すると等級Iの特別招集（3択）', () => {
+    let s = withShop(createGame(1), ['パインコーン']);
+    s = applyAction(s, { type: 'buy', slot: 0 }).state;
+    s = applyAction(s, { type: 'sell', uid: owned(s)[0].uid }).state;
+    expect(s.choices).toHaveLength(1);
+    for (const c of s.choices[0].options) expect(getUnit(c).tier).toBe(1);
   });
 });

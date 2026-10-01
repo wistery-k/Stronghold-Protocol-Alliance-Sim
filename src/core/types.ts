@@ -155,10 +155,14 @@ export interface EnemyDef {
   description?: string;
 }
 
+export type Direction = 'up' | 'right' | 'down' | 'left';
+
 export interface OwnedUnit {
   uid: number;
   defId: string;
   star: Star;
   /** 配置エリアのマス（0〜15、左上から右へ）。控えにいる時は未設定 */
   pos?: number;
+  /** 向き（未設定なら右） */
+  dir?: Direction;
 }

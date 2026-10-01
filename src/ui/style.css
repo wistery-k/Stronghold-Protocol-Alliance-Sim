@@ -744,3 +744,93 @@ aside {
 .odds {
   margin-top: 8px;
 }
+
+/* ---------- オペレーターの向き ---------- */
+.cell {
+  position: relative;
+}
+.edge {
+  position: absolute;
+  z-index: 2;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.edge::after {
+  content: '';
+  position: absolute;
+  background: var(--line);
+  border-radius: 3px;
+  transition: background 0.1s;
+}
+.edge:hover::after {
+  background: var(--muted);
+}
+.edge.on::after {
+  background: var(--ng);
+}
+.edge-up,
+.edge-down {
+  left: 20%;
+  right: 20%;
+  height: 12px;
+}
+.edge-up {
+  top: -2px;
+}
+.edge-down {
+  bottom: -2px;
+}
+.edge-up::after,
+.edge-down::after {
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+.edge-up::after {
+  top: 2px;
+}
+.edge-down::after {
+  bottom: 2px;
+}
+.edge-left,
+.edge-right {
+  top: 22%;
+  bottom: 22%;
+  width: 12px;
+}
+.edge-left {
+  left: -2px;
+}
+.edge-right {
+  right: -2px;
+}
+.edge-left::after,
+.edge-right::after {
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+.edge-left::after {
+  left: 2px;
+}
+.edge-right::after {
+  right: 2px;
+}
+.edge.on.edge-up::after,
+.edge.on.edge-down::after {
+  height: 6px;
+}
+.edge.on.edge-left::after,
+.edge.on.edge-right::after {
+  width: 6px;
+}
+
+/* ---------- 控えの超過 ---------- */
+.slot.over > .card {
+  box-shadow: 0 0 0 2px var(--ng);
+}
+.panel.overflow {
+  border-color: var(--ng);
+}

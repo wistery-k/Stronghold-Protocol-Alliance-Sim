@@ -76,6 +76,7 @@ export function sandboxView(sb: SandboxState, update: (f: (s: SandboxState) => v
                     dim: excluded.has(o.uid),
                     onClick: () => update((s) => { s.selectedUid = s.selectedUid === o.uid ? null : o.uid; }),
                   }),
+                  onTurn: (uid, dir) => update((s) => { s.units.find((u) => u.uid === uid)!.dir = dir; }),
                   onDropCell: (pos, uid) =>
                     update((s) => {
                       const u = s.units.find((x) => x.uid === uid);

@@ -2,8 +2,8 @@ import { ALLIANCES } from '../core/data/alliances';
 import { DAMAGE_TYPE_NAME, PROFESSION_NAME, getUnit, unitState } from '../core/data/units';
 import { isGarrisonImplemented, type AllianceStatus } from '../core/alliance';
 import { attackInterval, baseAtk, type SimResult } from '../core/sim';
-import type { AllianceId, EnemyDef, Modifier, OwnedUnit, Star } from '../core/types';
-import { BOARD_CELLS } from '../core/board';
+import type { AllianceId, Direction, EnemyDef, Modifier, OwnedUnit, Star } from '../core/types';
+import { BOARD_CELLS, DEFAULT_DIRECTION, DIRECTIONS, DIRECTION_NAME } from '../core/board';
 import { fmt, h, pct, s } from './dom';
 
 export function starBadge(star: Star) {
@@ -96,15 +96,42 @@ export function makeDropTarget<T extends HTMLElement>(el: T, onDrop: (uid: numbe
 /** 4x4 の配置エリア。右が前方 */
 export function boardGrid(
   board: OwnedUnit[],
-  opts: { cardOptions: (o: OwnedUnit) => CardOptions; onDropCell: (pos: number, uid: number) => void },
+  opts: {
+    cardOptions: (o: OwnedUnit) => CardOptions;
+    onDropCell: (pos: number, uid: number) => void;
+    onTurn: (uid: number, dir: Direction) => void;
+  },
 ) {
   const cells: HTMLElement[] = [];
   for (let pos = 0; pos < BOARD_CELLS; pos++) {
     const o = board.find((b) => b.pos === pos);
-    const cell = h('div', { class: 'cell' }, o ? unitCard(o.defId, { star: o.star, dragUid: o.uid, ...opts.cardOptions(o) }) : null);
+    const cell = h('div', { class: 'cell' });
+    if (o) {
+      const dir = o.dir ?? DEFAULT_DIRECTION;
+      cell.append(
+        unitCard(o.defId, { star: o.star, dragUid: o.uid, ...opts.cardOptions(o) }),
+        // 長方形の上下左右の辺をクリックすると、その方向を向く
+        ...DIRECTIONS.map((d) =>
+          h('button', {
+            class: `edge edge-${d}${d === dir ? ' on' : ''}`,
+            title: `${DIRECTION_NAME[d]}を向く`,
+            'aria-label': `${DIRECTION_NAME[d]}を向く`,
+            onclick: (e: Event) => {
+              e.stopPropagation();
+              opts.onTurn(o.uid, d);
+            },
+          }),
+        ),
+      );
+    }
     cells.push(makeDropTarget(cell, (uid) => opts.onDropCell(pos, uid)));
   }
-  return h('div', { class: 'grid-wrap' }, h('div', { class: 'front-label' }, '敵の来る方向（前方） →'), h('div', { class: 'board-grid' }, cells));
+  return h(
+    'div',
+    { class: 'grid-wrap' },
+    h('div', { class: 'front-label' }, 'カードの辺をクリックで向きを変更（太線が向いている方向）'),
+    h('div', { class: 'board-grid' }, cells),
+  );
 }
 
 export function emptySlot(label = '') {

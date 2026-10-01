@@ -18,24 +18,33 @@ export function allOwned(state: GameState): OwnedUnit[] {
   return [...state.board, ...benchUnits(state)];
 }
 
-/** 控えに空きがあるか、入れた瞬間に精鋭化できるなら獲得できる */
+/** 控えの上限を超えているか（超えたままでは戦闘を開始できない） */
+export function benchOverflow(state: GameState): number {
+  return Math.max(0, state.bench.filter((b) => b !== null).length - BENCH_SIZE);
+}
+
+/** 購入できるか：控えに空きがあるか、入れた瞬間に精鋭化できる */
 export function canReceive(state: GameState, defId: string): boolean {
-  if (state.bench.includes(null)) return true;
+  if (state.bench.slice(0, BENCH_SIZE).includes(null) && benchOverflow(state) === 0) return true;
   const def = getUnit(defId);
   return allOwned(state).filter((o) => o.defId === defId && o.star === 1).length >= def.mergeCount - 1;
 }
 
-function compactBench(bench: (OwnedUnit | null)[]): (OwnedUnit | null)[] {
+/**
+ * 控えの並びを整える。上限を超えている間ははみ出したまま保持し（破棄しない）、
+ * 上限以内に収まったら枠数を元に戻す
+ */
+export function compactBench(bench: (OwnedUnit | null)[]): (OwnedUnit | null)[] {
   if (bench.length <= BENCH_SIZE) return bench;
   const units = bench.filter((b): b is OwnedUnit => b !== null);
+  if (units.length > BENCH_SIZE) return units;
   const out: (OwnedUnit | null)[] = bench.slice(0, BENCH_SIZE);
   for (const u of units) if (!out.includes(u)) out[out.indexOf(null)] = u;
   return out;
 }
 
-/** 精鋭化の報酬：管理レベル+1の等級から3名を提示 */
-export function rollEliteChoices(state: GameState): string[] {
-  const tier = Math.min(state.level + 1, 6) as Tier;
+/** 指定等級から3名を提示する（精鋭化の報酬・特別招集） */
+export function rollChoices(state: GameState, tier: Tier): string[] {
   return withRng(state, (rng) => {
     const picked: string[] = [];
     for (let i = 0; i < 3; i++) {
@@ -64,22 +73,23 @@ function mergeUnits(state: GameState, defId: string): void {
   state.bench = state.bench.map((b) => (b && toRemove.has(b.uid) ? null : b));
   keep.star = 2 as Star;
   state.log.push(`${def.name} を精鋭化！`);
-  const choices = rollEliteChoices(state);
-  if (choices.length) state.eliteChoices.push(choices);
+  const tier = Math.min(state.level + 1, 6) as Tier;
+  const options = rollChoices(state, tier);
+  if (options.length) state.choices.push({ title: `${def.name}の精鋭化報酬`, options });
 }
 
 /**
  * オペレーターを獲得して控えに入れる。獲得時の特性を発動し、揃えば精鋭化する。
- * 控えがいっぱいで精鋭化もできないなら false
+ * 控えがいっぱいでも破棄せず、はみ出させて保持する（はみ出している間は戦闘不可）
  */
 export function gainUnit(state: GameState, defId: string): boolean {
-  if (!canReceive(state, defId) || state.pool[defId] <= 0) return false;
+  if (state.pool[defId] <= 0) return false;
   state.pool[defId]--;
   state.round_.gained++;
   const unit: OwnedUnit = { uid: state.nextUid++, defId, star: 1 };
-  const emptyIdx = state.bench.indexOf(null);
-  if (emptyIdx >= 0) state.bench[emptyIdx] = unit;
-  else state.bench.push(unit); // 一時的にはみ出させ、直後の精鋭化で解消する
+  const emptyIdx = state.bench.slice(0, BENCH_SIZE).indexOf(null);
+  if (emptyIdx >= 0 && benchOverflow(state) === 0) state.bench[emptyIdx] = unit;
+  else state.bench.push(unit);
   triggerGarrisons(state, 'SERVER_GAIN', [{ unit, where: 'bench' }], gainTriggerTimes(state, currentActive(state)));
   mergeUnits(state, defId);
   state.bench = compactBench(state.bench);
@@ -93,5 +103,4 @@ export function gainRandom(state: GameState, candidates: { id: string; weight: n
   if (idx < 0) return;
   const id = avail[idx].id;
   if (gainUnit(state, id)) state.log.push(`${source}：${getUnit(id).name} を獲得`);
-  else state.log.push(`${source}：控えがいっぱいで獲得できませんでした`);
 }
