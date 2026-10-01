@@ -8,6 +8,10 @@
 
 ## 遊び方
 
+公開ページ： https://wistery-k.github.io/Stronghold-Protocol-Alliance-Sim/ （main への push で自動デプロイ）
+
+ローカルで動かす場合：
+
 ```bash
 npm install
 npm run dev      # 開発サーバー起動
