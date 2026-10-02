@@ -93,7 +93,7 @@ function battleDialog(state: GameState, dispatch: (a: Action) => void, select: (
       'div',
       { class: 'modal panel', role: 'dialog', 'aria-modal': 'true' },
       h('h2', null, '本当に戦闘を開始しますか？'),
-      h('p', null, `資金が ${state.gold} 残っています。`),
+      h('p', null, `資金が ${state.gold} 残っています。残った資金は次のラウンドに繰り越されません。`),
       h(
         'div',
         { class: 'row' },

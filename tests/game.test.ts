@@ -278,6 +278,15 @@ describe('向き・控えの超過・特別招集', () => {
   });
 });
 
+describe('資金', () => {
+  it('使い切れなかった資金は次のラウンドに繰り越さない', () => {
+    let s = { ...createGame(1), gold: 30 };
+    s = applyAction(s, { type: 'battle' }).state;
+    s = applyAction(s, { type: 'next' }).state;
+    expect(s.gold).toBe(roundIncome(2) + (s.lastBattle?.nextIncome?.extra ?? 0));
+  });
+});
+
 describe('装備', () => {
   it('精鋭化すると、合成したオペレーター全員の装備が控えに戻る', () => {
     let s = createGame(1);

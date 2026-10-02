@@ -599,6 +599,9 @@ function prepFinish(state: GameState): void {
 }
 
 function resolveBattle(state: GameState): void {
+  // 使い切れなかった資金は繰り越さない（戦闘後に得た資金は次のラウンドで使える）
+  if (state.gold > 0) state.log.push(`残った資金${state.gold}は失われた`);
+  state.gold = 0;
   const before = { ...state.stacks };
   prepFinish(state);
 
