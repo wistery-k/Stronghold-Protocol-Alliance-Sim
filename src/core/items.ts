@@ -1,6 +1,6 @@
 import { allOwned, compactBench, gainRandom, gainUnit, putOnBench, rollChoices, withRng } from './acquire';
 import { ownedBonds } from './alliance';
-import { ITEMS, ITEM_POOLS, findBuff, getItem, isConsumable, itemState } from './data/items';
+import { ITEMS, ITEM_POOLS, NOT_IN_SHOP, findBuff, getItem, isConsumable, itemState } from './data/items';
 import { UNITS, getUnit } from './data/units';
 import { addStacks, benchUnits, currentActive } from './garrison';
 import { TIER_ODDS } from './rules';
@@ -21,7 +21,7 @@ export function storedItems(state: GameState): OwnedItem[] {
 export function rollItemShop(state: GameState): void {
   withRng(state, (rng) => {
     const tier = rng.weighted(TIER_ODDS[state.level - 1]) + 1;
-    const cands = ITEMS.filter((i) => i.tier === tier);
+    const cands = ITEMS.filter((i) => i.tier === tier && !NOT_IN_SHOP.has(i.id));
     state.itemShop = cands.length ? cands[rng.int(cands.length)].id : null;
   });
 }
@@ -57,7 +57,7 @@ export function gainItemFromPool(state: GameState, pool: string, source: string,
 /** 管理レベル以下の等級からランダムな装備 */
 export function gainRandomItem(state: GameState, source: string, count = 1): void {
   for (let i = 0; i < count; i++) {
-    const cands = ITEMS.filter((it) => it.tier <= state.level);
+    const cands = ITEMS.filter((it) => it.tier <= state.level && !NOT_IN_SHOP.has(it.id));
     const idx = withRng(state, (rng) => rng.int(cands.length));
     gainItem(state, cands[idx].id, source);
   }

@@ -1161,3 +1161,15 @@ aside {
   min-width: 56px;
   text-align: right;
 }
+
+/* 詳細パネル：マウスオーバーで中身が変わっても高さを変えない（収まらない分はスクロール） */
+.panel.detail-panel {
+  height: 460px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (max-width: 900px) {
+  .panel.detail-panel {
+    height: 360px;
+  }
+}

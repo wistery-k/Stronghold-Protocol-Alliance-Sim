@@ -1,7 +1,7 @@
 import { UNITS, getUnit } from './data/units';
 import { benchUnits, currentActive, gainTriggerTimes, triggerGarrisons } from './garrison';
 import { Rng } from './rng';
-import { itemOnGain, unitAvailable } from './items';
+import { itemOnGain, returnItems, unitAvailable } from './items';
 import { BENCH_SIZE } from './rules';
 import type { GameState } from './game';
 import type { BenchEntry, OwnedUnit, Star, Tier } from './types';
@@ -79,6 +79,8 @@ function mergeUnits(state: GameState, defId: string): void {
   );
   state.board = state.board.filter((o) => !toRemove.has(o.uid));
   state.bench = state.bench.map((b) => (b && toRemove.has(b.uid) ? null : b));
+  // 合成したオペレーター全員の装備は控えに戻す
+  for (const o of [keep, ...others.filter((o) => toRemove.has(o.uid))]) returnItems(state, o);
   keep.star = 2 as Star;
   state.log.push(`${def.name} を精鋭化！`);
   const tier = Math.min(state.level + 1, 6) as Tier;

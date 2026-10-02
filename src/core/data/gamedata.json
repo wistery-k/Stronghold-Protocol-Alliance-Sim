@@ -8876,7 +8876,7 @@
       "id": "garrison_127_a",
       "event": "SERVER_PREP_START",
       "effect": "SERVER_GAIN_RANDOM_EQUIP_CHESS_IN_POOL",
-      "description": "〈準備フェーズ開始時〉奇数ラウンドなら、ランダムな装備を1個獲得",
+      "description": "〈準備フェーズ開始時〉奇数ラウンドなら、ランダムなヴィクトリアの鉄鎚を1個獲得",
       "blackboard": {
        "pool": "pool_equip_normal",
        "round_list": "1,3,5,7,9,11,13,15",
@@ -8923,7 +8923,7 @@
       "id": "garrison_127_b",
       "event": "SERVER_PREP_START",
       "effect": "SERVER_GAIN_RANDOM_EQUIP_CHESS_IN_POOL",
-      "description": "〈準備フェーズ開始時〉奇数ラウンドなら、ランダムな装備を2個獲得",
+      "description": "〈準備フェーズ開始時〉奇数ラウンドなら、ランダムなヴィクトリアの鉄鎚を2個獲得",
       "blackboard": {
        "pool": "pool_equip_normal",
        "round_list": "1,3,5,7,9,11,13,15",

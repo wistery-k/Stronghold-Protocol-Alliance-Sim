@@ -279,6 +279,26 @@ describe('向き・控えの超過・特別招集', () => {
 });
 
 describe('装備', () => {
+  it('精鋭化すると、合成したオペレーター全員の装備が控えに戻る', () => {
+    let s = createGame(1);
+    const a: OwnedUnit = { ...ou(1, 'グム'), items: [{ uid: 101, itemId: '1_01', star: 1 }] };
+    const b: OwnedUnit = { ...ou(2, 'グム'), pos: 28, items: [{ uid: 102, itemId: '1_03', star: 1 }] };
+    s = { ...s, nextUid: 200, bench: [a, ...Array(BENCH_SIZE - 1).fill(null)], board: [b] };
+    s = applyAction(withShop(s, ['グム']), { type: 'buy', slot: 0 }).state;
+    const elite = owned(s).find((o) => o.star === 2)!;
+    expect(elite?.star).toBe(2);
+    expect(elite.items ?? []).toEqual([]);
+    expect(benchItems(s).map((i) => i.itemId).sort()).toEqual(['1_01', '1_03']);
+  });
+
+  it('ヴィクトリアの鉄鎚・〇〇はショップに並ばない', () => {
+    let s = createGame(3);
+    for (let i = 0; i < 300; i++) {
+      s = applyAction({ ...s, gold: 99, level: 1 + (i % 6) }, { type: 'refresh' }).state;
+      expect(['2_03', '3_09', '3_10', '4_09']).not.toContain(s.itemShop);
+    }
+  });
+
   const withItemShop = (s: GameState, itemId: string, gold = 100): GameState => ({ ...s, itemShop: itemId, gold });
 
   it('購入して2つ揃うと強化される', () => {

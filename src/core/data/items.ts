@@ -68,10 +68,21 @@ export function isConsumable(def: ItemDef): boolean {
 /** 本家データの "chess_item_3_05_e_a" のような ID をこのプロジェクトの ID に変換 */
 export const itemKey = (chessId: string) => chessId.replace('chess_item_', '').replace(/_e(_[ab])?$/, '');
 
+/** ショップに並ばない装備（ヴィクトリアの鉄鎚・〇〇は特性や盟約でのみ手に入る） */
+export const NOT_IN_SHOP = new Set(['2_03', '3_09', '3_10', '4_09']);
+
 /** 特性などで得られる装備の候補 */
 export const ITEM_POOLS: Record<string, [string, number][]> = {
   // ヴィクトリアの鉄鎚（【ヴィクトリア】25層ごとの報酬、ロックロックの特製品）
   pool_equip_vict: [
+    ['1_01', 1],
+    ['2_03', 1],
+    ['3_09', 1],
+    ['3_10', 1],
+    ['4_09', 1],
+  ],
+  // キャサリン：奇数ラウンドにヴィクトリアの鉄鎚
+  pool_equip_normal: [
     ['1_01', 1],
     ['2_03', 1],
     ['3_09', 1],

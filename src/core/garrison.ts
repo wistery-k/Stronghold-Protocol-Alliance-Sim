@@ -1,6 +1,7 @@
 import { evaluateAlliances, activeAllianceIds, bondKey, effectiveGarrisons } from './alliance';
 import { gainRandom, rollChoices } from './acquire';
 import { gainItem, gainItemFromPool, gainRandomItem } from './items';
+import { ITEM_POOLS } from './data/items';
 import { itemKey } from './data/items';
 import { behindOf, egirDevour, frontOf, sameRow } from './board';
 import { ALLIANCES, v } from './data/alliances';
@@ -245,7 +246,11 @@ function runGarrison(
       gainItemFromPool(state, String(bb.pool), name, n('count'));
       return true;
     case 'SERVER_GAIN_RANDOM_EQUIP_CHESS_IN_POOL':
-      if (String(bb.round_list ?? '').split(',').map(Number).includes(state.round)) gainRandomItem(state, name, n('count'));
+      if (String(bb.round_list ?? '').split(',').map(Number).includes(state.round)) {
+        // 候補が決まっている（キャサリン：ヴィクトリアの鉄鎚）ならその中から
+        if (ITEM_POOLS[String(bb.pool)]) gainItemFromPool(state, String(bb.pool), name, n('count'));
+        else gainRandomItem(state, name, n('count'));
+      }
       return true;
     case 'SERVER_POOL_CHAR': {
       const pool = POOL_CHARS[String(bb.pool)] ?? [];
