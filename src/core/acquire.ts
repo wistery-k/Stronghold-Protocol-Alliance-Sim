@@ -67,10 +67,10 @@ export function rollChoices(state: GameState, tier: Tier): string[] {
 }
 
 /** 同じオペレーターが必要枚数揃ったら精鋭化する。盤面にいる個体を優先して残す */
-function mergeUnits(state: GameState, defId: string): void {
+function mergeUnits(state: GameState, defId: string): OwnedUnit | null {
   const def = getUnit(defId);
   const same = allOwned(state).filter((o) => o.defId === defId && o.star === 1);
-  if (same.length < def.mergeCount) return;
+  if (same.length < def.mergeCount) return null;
   const keep = same.find((o) => state.board.includes(o)) ?? same[0];
   const others = same.filter((o) => o !== keep);
   const toRemove = new Set(
@@ -87,6 +87,7 @@ function mergeUnits(state: GameState, defId: string): void {
   const tier = Math.min(state.level + 1, 6) as Tier;
   const options = rollChoices(state, tier);
   if (options.length) state.choices.push({ title: `${def.name}の精鋭化報酬`, options });
+  return keep;
 }
 
 /**
@@ -99,9 +100,16 @@ export function gainUnit(state: GameState, defId: string): boolean {
   state.round_.gained++;
   const unit: OwnedUnit = { uid: state.nextUid++, defId, star: 1 };
   putOnBench(state, unit);
-  triggerGarrisons(state, 'SERVER_GAIN', [{ unit, where: 'bench' }], gainTriggerTimes(state, currentActive(state)));
+  // 獲得で精鋭化する時は、通常の獲得時効果は発動せず、精鋭の獲得時効果が1回発動する
+  const def = getUnit(defId);
+  const willMerge = allOwned(state).filter((o) => o.defId === defId && o.star === 1).length >= def.mergeCount;
+  if (!willMerge) triggerGarrisons(state, 'SERVER_GAIN', [{ unit, where: 'bench' }], gainTriggerTimes(state, currentActive(state)));
   itemOnGain(state);
-  mergeUnits(state, defId);
+  const elite = mergeUnits(state, defId);
+  if (elite) {
+    const where = state.board.includes(elite) ? 'board' : 'bench';
+    triggerGarrisons(state, 'SERVER_GAIN', [{ unit: elite, where }], gainTriggerTimes(state, currentActive(state)));
+  }
   state.bench = compactBench(state.bench);
   return true;
 }

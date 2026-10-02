@@ -501,3 +501,16 @@ describe('戦術の細部', () => {
     expect((s.stacks.kjerag ?? 0) - before).toBeGreaterThan(4);
   });
 });
+
+describe('獲得時の効果と精鋭化', () => {
+  it('3体目の獲得で精鋭化する時は、通常の獲得時効果は発動せず、精鋭の獲得時効果が1回発動する', () => {
+    let s = withShop(createGame(1, { mapId: 'legacy' }), ['マッターホルン', 'マッターホルン', 'マッターホルン']);
+    s = applyAction(s, { type: 'buy', slot: 0 }).state;
+    s = applyAction(s, { type: 'buy', slot: 1 }).state;
+    const before = s.stacks.kjerag ?? 0;
+    expect(before).toBe(4); // 通常 +2 ×2
+    s = applyAction(s, { type: 'buy', slot: 2 }).state;
+    expect(owned(s).filter((o) => o.star === 2).length).toBe(1);
+    expect((s.stacks.kjerag ?? 0) - before).toBe(4); // 精鋭 +4 が1回だけ
+  });
+});
