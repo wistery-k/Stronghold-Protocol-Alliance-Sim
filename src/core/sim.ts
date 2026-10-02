@@ -40,8 +40,11 @@ export interface SimUnitResult {
   taken: number;
   /** 回復した量（医療） */
   healed: number;
-  /** 倒れた時刻（倒れなければ null） */
+  /** 最初に倒れた時刻（倒れなければ null） */
   downAt: number | null;
+  /** 撤退（倒れた・コスト不足）回数と再配置回数 */
+  retreats: number;
+  redeploys: number;
 }
 
 export interface SimResult {
@@ -72,9 +75,12 @@ export interface ReplayFrame {
   t: number;
   e: [number, number, number, number][];
   s: number[];
+  /** 所持コスト */
+  c?: number;
   /**
    * オペレーターの状態 [uid, 残りHP%（倒れていれば -1）, ゲージ%, 状態, 値]。
-   * 状態 0: SP溜め中（ゲージ=SP%）、1: スキル中（ゲージ=残り時間%、値=残り秒×10）、2: 弾薬スキル中（値=残り弾数）、3: スキルなし・常時
+   * 状態 0: SP溜め中（ゲージ=SP%）、1: スキル中（ゲージ=残り時間%、値=残り秒×10）、2: 弾薬スキル中（値=残り弾数）、3: スキルなし・常時、
+   * 4: 再配置待ち（ゲージ=経過%、値=残り秒×10。0ならコスト待ち）
    */
   u?: [number, number, number, number, number][];
 }
@@ -136,6 +142,10 @@ export interface SkillModel {
   regenPct: number;
   /** blackboard の生の値（スキルごとの特殊な処理用） */
   bb: Record<string, number>;
+  /** コストの獲得：発動時・スキル中の合計（徐々に）・攻撃ごと */
+  costOnCast: number;
+  costOverTime: number;
+  costPerAttack: number;
 }
 
 export function parseSkill(s: SkillData): SkillModel {
@@ -174,6 +184,9 @@ export function parseSkill(s: SkillData): SkillModel {
     // 負の値は敵への効果（回復量低下など）なので使わない
     regenPct: Math.max(0, get('hp_recovery_per_sec_by_max_hp_ratio') ?? 0),
     bb: Object.fromEntries(Object.entries(bb).filter(([, v]) => typeof v === 'number')) as Record<string, number>,
+    costOnCast: Number(/(?<!たびに)所持コスト\+(\d+)/.exec(s.description)?.[1] ?? 0),
+    costOverTime: Number(/所持コストが徐々に増加（合計(\d+)）/.exec(s.description)?.[1] ?? 0),
+    costPerAttack: /攻撃するたびに所持コスト\+1/.test(s.description) ? 1 : 0,
   };
 }
 
@@ -326,6 +339,19 @@ const SUPPORT_SKILL: Record<string, 'nextHeal' | 'areaHeal' | 'attackHeal' | 'zo
 /** 周囲の味方を治療する範囲（マス） */
 const SUPPORT_HEAL_RADIUS = 1.5;
 
+/** コスト：初期値・上限・1増えるまでの秒数（本家のステージ設定） */
+const INITIAL_COST = 10;
+const MAX_COST = 99;
+const COST_INTERVAL = 1;
+/** 行商人：配置中に一定間隔でコストを消費する */
+const MERCHANT_INTERVAL = 3;
+const MERCHANT_COST = 3;
+
+/** 琳琅スワイヤーの素質（通常・精鋭） */
+const SWIRE: Record<string, { maxCoins: [number, number]; maxStacks: [number, number]; atkPerStack: number; saveHp: [number, number] }> = {
+  char_1033_swire2: { maxCoins: [3, 4], maxStacks: [8, 9], atkPerStack: 0.04, saveHp: [0.7, 0.8] },
+};
+
 /** 遠距離の敵が攻撃する時に足を止める秒数 */
 const RANGED_ATTACK_STALL = 0.5;
 
@@ -414,6 +440,16 @@ interface Runtime {
   reflectReadyAt: number;
   /** スキルを発動した時刻 */
   castAt: number;
+  /** 再配置できる時刻（撤退中のみ）と再配置時間 */
+  redeployAt: number | null;
+  respawn: number;
+  /** 行商人：コスト消費までの時間 */
+  merchantTimer: number;
+  /** 琳琅スワイヤー：コイン・攻撃力の層数・致命傷を耐える時のコスト */
+  coins: number;
+  swireStacks: number;
+  swireSaveCost: number;
+  bombTimer: number;
   /** シラクーザの恐怖の発生の累積（期待値） */
   fearAcc: number;
   firstEndDone: boolean;
@@ -475,9 +511,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       order: 0,
       reflectReadyAt: 0,
       castAt: -1,
+      redeployAt: null,
+      respawn: Math.max(1, st.stats.respawn * Math.max(0.1, 1 + (input.mods.respawnPct ?? 0))),
+      merchantTimer: 0,
+      // 琳琅スワイヤー（大買家）：スキル（常時）開始時にコイン1枚
+      coins: SWIRE[input.def.charId] ? 1 : 0,
+      swireStacks: 0,
+      swireSaveCost: 5,
+      bombTimer: 0,
       firstEndDone: false,
       events: garrisonEvents(input),
-      result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0, kills: 0, taken: 0, healed: 0, downAt: null },
+      result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0, kills: 0, taken: 0, healed: 0, downAt: null, retreats: 0, redeploys: 0 },
       melee: input.def.position === 'melee',
       blocker,
       block: blocker ? st.stats.block : 0,
@@ -601,6 +645,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
     }
     by.result.kills++;
+    // 突撃兵：敵を倒すとコスト+1
+    if (field && by.input.def.subProfession === 'charger') cost = Math.min(MAX_COST, cost + 1);
     for (const ev of by.events) if (ev.kind === 'kill' && by.result.kills % ev.every === 0) gainStacks(ev);
   };
 
@@ -746,6 +792,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const support = field ? SUPPORT_SKILL[def.charId] : undefined;
     const skillAtk = () => baseAtk(def, star, mods, outerAtkPct + s.atkPct);
     u.castAt = t;
+    if (field && s.costOnCast) cost = Math.min(MAX_COST, cost + s.costOnCast);
     if (support === 'nextHeal') {
       const target = injuredNear(u)[0];
       if (target) healUnit(u, target, skillAtk() * (s.bb.heal_scale ?? 1));
@@ -815,8 +862,29 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return dmg * Math.max(0, 1 - (u.input.mods.damageReduce ?? 0));
   };
 
+  /** 戦場から外れる（倒れた・コスト不足で撤退）。再配置タイマーが動き出す */
+  const leaveField = (u: Runtime) => {
+    u.alive = false;
+    u.hp = 0;
+    if (u.result.downAt === null) u.result.downAt = Math.round(t * 100) / 100;
+    u.result.retreats++;
+    for (const e of u.blocked) e.blockedBy = null;
+    u.blocked = [];
+    u.skillLeft = 0;
+    u.ammoLeft = 0;
+    if (field && u.input.pos !== undefined) u.redeployAt = t + u.respawn;
+  };
+
   const unitDown = (u: Runtime) => {
     const ground = u.melee;
+    // 琳琅スワイヤー（破財消災）：コストを払ってHPを回復（払うたびに倍）
+    const save = SWIRE[u.input.def.charId];
+    if (save && cost >= u.swireSaveCost) {
+      cost -= u.swireSaveCost;
+      u.swireSaveCost *= 2;
+      u.hp = u.maxHp * save.saveHp[u.input.star - 1];
+      return;
+    }
     // 不屈Lv2：地上オペレーターが倒れると全員のSP回復
     if (ground && g.indom?.sp) for (const o of rt) if (o.alive && o !== u) o.sp += g.indom.sp;
     // エーギルLv2：最初に倒れたエーギル数名は即座に復活
@@ -834,13 +902,58 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         return;
       }
     }
-    u.alive = false;
-    u.hp = 0;
-    u.result.downAt = Math.round(t * 100) / 100;
-    for (const e of u.blocked) e.blockedBy = null;
-    u.blocked = [];
+    leaveField(u);
+  };
+
+  // ---- コスト・再配置 ----
+  let cost = INITIAL_COST;
+  let orderCounter = rt.length;
+  /** 再配置に必要なコスト（初回の再配置は1.5倍、2回目以降は2倍） */
+  const redeployCost = (u: Runtime) => Math.round(unitState(u.input.def, u.input.star).stats.cost * (u.result.retreats <= 1 ? 1.5 : 2));
+  const redeploy = (u: Runtime) => {
+    const s = u.skill;
+    u.alive = true;
+    u.maxHp = u.baseMaxHp * (s.passive ? 1 + s.hpPct : 1) + (s.passive ? s.hpFlat : 0);
+    u.hp = u.maxHp;
+    u.sp = s.initSp + (u.input.mods.startSp ?? 0);
     u.skillLeft = 0;
     u.ammoLeft = 0;
+    u.atkTimer = 0;
+    u.castAt = -1;
+    u.merchantTimer = 0;
+    u.redeployAt = null;
+    if (SWIRE[u.input.def.charId]) u.coins = Math.max(u.coins, 1);
+    // 後から配置されたので、遠距離の敵に一番狙われやすくなる
+    u.order = ++orderCounter;
+    u.result.redeploys++;
+  };
+  const tickCost = () => {
+    cost = Math.min(MAX_COST, cost + dt / COST_INTERVAL);
+    // 再配置：タイマーが0になり、コストが足りていれば配置する（待っている順に）
+    for (const u of [...rt].filter((x) => x.redeployAt !== null && t >= x.redeployAt).sort((a, b) => a.redeployAt! - b.redeployAt!)) {
+      const need = redeployCost(u);
+      if (cost < need) continue;
+      cost -= need;
+      redeploy(u);
+    }
+    // 行商人：配置中は3秒ごとにコストを3消費し、足りなければ撤退
+    for (const u of rt) {
+      if (!u.alive || u.input.def.subProfession !== 'merchant') continue;
+      u.merchantTimer += dt;
+      if (u.merchantTimer < MERCHANT_INTERVAL) continue;
+      u.merchantTimer -= MERCHANT_INTERVAL;
+      if (cost < MERCHANT_COST) {
+        leaveField(u);
+        continue;
+      }
+      cost -= MERCHANT_COST;
+      // 琳琅スワイヤー（大買家）：コインを得て、攻撃力が上がる
+      const sw = SWIRE[u.input.def.charId];
+      if (sw) {
+        u.coins = Math.min(sw.maxCoins[u.input.star - 1], u.coins + 1);
+        u.swireStacks = Math.min(sw.maxStacks[u.input.star - 1], u.swireStacks + 1);
+      }
+    }
   };
 
   const takeDamage = (u: Runtime, amount: number) => {
@@ -1032,6 +1145,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       .map((u) => {
         const hp = u.alive ? Math.round((u.hp / u.maxHp) * 100) : -1;
         const s = u.skill;
+        if (!u.alive && u.redeployAt !== null) {
+          const left = Math.max(0, u.redeployAt - t);
+          return [u.input.uid, -1, Math.round((1 - left / u.respawn) * 100), 4, Math.round(left * 10)];
+        }
         if (s.passive || s.spCost <= 0) return [u.input.uid, hp, 0, 3, 0];
         if (u.ammoLeft > 0) return [u.input.uid, hp, 100, 2, u.ammoLeft];
         if (u.skillLeft > 0) return [u.input.uid, hp, Math.round((u.skillLeft / Math.max(0.01, s.duration)) * 100), 1, Math.round(u.skillLeft * 10)];
@@ -1048,6 +1165,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     moveEnemies();
     if (enemies.every((e) => e.spawned && !e.alive)) break;
     if (field) {
+      tickCost();
       enemyAttacks();
       tickZones();
     }
@@ -1061,6 +1179,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         const on = u.skill.passive || u.skillLeft > 0 || u.ammoLeft > 0;
         u.def = u.baseDef * (1 + (on ? u.skill.defPct : 0));
         if (on && u.skill.regenPct) healUnit(u, u, u.maxHp * u.skill.regenPct * dt);
+        if (field && u.skillLeft > 0 && u.skill.costOverTime) cost = Math.min(MAX_COST, cost + (u.skill.costOverTime / Math.max(1, u.skill.duration)) * dt);
         const support = field ? SUPPORT_SKILL[def.charId] : undefined;
         if (on && support === 'auraHeal') {
           const ratio = u.skill.bb['attack@atk_to_hp_recovery_ratio'] ?? 0;
@@ -1083,7 +1202,20 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const sargonCount = u.sargonBuffs.filter((until) => until > t).length;
       const lateranoAtk = g.laterano?.members.has(uid) ? Math.min(lateranoAmmo * g.laterano.atkPerAmmo, g.laterano.maxAtk) : 0;
       const castAtk = Math.min(u.result.skillCasts, mods.atkPerCastMax ?? 0) * (mods.atkPerCast ?? 0);
-      const outerAtkPct = (g.sargon ? sargonCount * g.sargon.atkPct : 0) + lateranoAtk + castAtk;
+      const swire = SWIRE[def.charId];
+      const outerAtkPct = (g.sargon ? sargonCount * g.sargon.atkPct : 0) + lateranoAtk + castAtk + (swire ? u.swireStacks * swire.atkPerStack : 0);
+      // 琳琅スワイヤー：コインを使って「シャンパン爆弾」（範囲内の敵に物理ダメージ）
+      if (swire && field) {
+        u.bombTimer -= dt;
+        if (u.coins > 0 && u.bombTimer <= 0) {
+          const target = targetsInRange(u, false)[0];
+          if (target) {
+            u.coins--;
+            u.bombTimer = 1;
+            strike(u, target, baseAtk(def, star, mods, outerAtkPct), u.skill.bb.atk_scale ?? 1.7);
+          }
+        }
+      }
       const heal = def.damageType === 'heal';
 
       // スキル発動判定（攻撃役は攻撃範囲に敵がいる時だけ発動する）
@@ -1141,6 +1273,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           if (ally) healUnit(u, ally, atk * (s.bb.heal_scale ?? 0));
         }
         u.result.hits += hits;
+        if (field && activeNow && s.costPerAttack) cost = Math.min(MAX_COST, cost + s.costPerAttack);
         u.attacks++;
         if (mods.extraShotProb) {
           const e = targets[0][0];
@@ -1196,6 +1329,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e: enemies.filter((e) => e.alive).map((e) => [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)]),
         s: rt.filter((u) => u.alive && (u.skillLeft > 0 || u.ammoLeft > 0)).map((u) => u.input.uid),
         u: unitFrame(),
+        c: Math.floor(cost),
       });
     }
     if (enemies.every((e) => e.spawned && !e.alive)) {
@@ -1211,6 +1345,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       e: enemies.filter((e) => e.alive).map((e) => [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)]),
       s: [],
       u: unitFrame(),
+      c: Math.floor(cost),
     });
   }
   return { t, enemies, units: rt, timeline, phaseLog, stackGains, frames, killTime };

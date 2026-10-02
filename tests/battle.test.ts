@@ -212,3 +212,26 @@ describe('敵の攻撃と回復', () => {
     expect(r.perUnit.find((u) => u.uid === 2)!.healed).toBeGreaterThan(0);
   });
 });
+
+describe('コストと再配置', () => {
+  it('倒れたオペレーターは再配置時間が過ぎ、コストが足りれば再配置される', () => {
+    const spec = oneEnemy('test_slowkiller', false, { speed: 0.01, attack: { kind: 'melee', atk: 99999, interval: 1, range: 0, arts: false } });
+    const tank = UNITS.find((u) => u.profession === 'defender')!;
+    const r = run([{ uid: 1, defId: tank.id, star: 1, pos: 34, dir: 'right' }], spec);
+    const u = r.perUnit[0];
+    expect(u.retreats).toBeGreaterThan(1);
+    expect(u.redeploys).toBeGreaterThan(0);
+    // 再配置待ちの状態がリプレイに記録される
+    expect(r.frames!.some((f) => f.u?.some((x) => x[3] === 4))).toBe(true);
+  });
+
+  it('行商人は配置中にコストを消費する（琳琅スワイヤーはコインで追加攻撃）', () => {
+    const spec = oneEnemy('test_target', false, { speed: 0.01 });
+    const swire = UNITS.find((u) => u.name === '琳琅スワイヤー')!;
+    const r = run([{ uid: 1, defId: swire.id, star: 2, pos: 34, dir: 'right' }], spec);
+    // コストは1秒に1増え、3秒ごとに3減るので、初期値付近から増えない
+    const costs = r.frames!.map((f) => f.c ?? 0);
+    expect(Math.max(...costs)).toBeGreaterThan(9);
+    expect(15).toBeGreaterThan(Math.max(...costs));
+  });
+});

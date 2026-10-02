@@ -173,7 +173,7 @@ export function roundInfo(spec: RoundSpec, timeLimit: number, group?: RoundGroup
 /** 予測結果の1行サマリー */
 export function predictionLine(r: BattleResult) {
   const down = downCount(r);
-  const downText = down ? `・戦闘不能${down}人` : '';
+  const downText = down ? `・撤退${down}人` : '';
   if (r.cleared) return h('div', { class: 'predict ok' }, `全滅見込み（${r.elapsed}秒${downText}）`);
   return h(
     'div',
@@ -245,7 +245,9 @@ function damageBars(r: BattleResult) {
           { class: 'bar-sub muted' },
           `撃破 ${u.kills}・DPS ${fmt(u.damage / Math.max(1, r.elapsed))}・スキル${u.skillCasts}回・被ダメ ${fmt(u.taken ?? 0)}`,
           u.healed ? `・回復 ${fmt(u.healed)}` : '',
-          u.downAt !== null && u.downAt !== undefined ? h('span', { class: 'ng' }, `・${u.downAt.toFixed(0)}秒で戦闘不能`) : '',
+          u.downAt !== null && u.downAt !== undefined ? h('span', { class: 'ng' }, `・${u.downAt.toFixed(0)}秒で撤退`) : '',
+          u.retreats > 1 ? h('span', { class: 'ng' }, `（計${u.retreats}回）`) : '',
+          u.redeploys ? `・再配置${u.redeploys}回` : '',
         ),
       ),
     ),
@@ -269,7 +271,7 @@ export function battleSummary(r: BattleResult, units: ReplayUnit[]) {
       h('div', null, h('span', { class: 'muted small' }, '撃破'), h('b', null, `${r.killed}/${r.total}`)),
       h('div', null, h('span', { class: 'muted small' }, '総ダメージ'), h('b', null, fmt(r.totalDamage))),
       h('div', null, h('span', { class: 'muted small' }, '平均DPS'), h('b', null, fmt(r.totalDamage / Math.max(1, r.elapsed)))),
-      h('div', null, h('span', { class: 'muted small' }, '戦闘不能'), h('b', { class: downCount(r) ? 'ng' : '' }, `${downCount(r)}人`)),
+      h('div', null, h('span', { class: 'muted small' }, '撤退'), h('b', { class: downCount(r) ? 'ng' : '' }, `${downCount(r)}人`)),
       r.bossRemaining > 0 ? h('div', null, h('span', { class: 'muted small' }, 'ボス残りHP'), h('b', { class: 'ng' }, pct(r.bossRemaining))) : null,
     ),
     r.frames ? replayPlayer(r, units) : h('p', { class: 'muted small' }, 'リプレイは戦闘直後のみ表示できます'),
@@ -378,6 +380,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   };
 
   const timeLabel = h('span', { class: 'rp-time' }, '0.0秒');
+  const costLabel = h('span', { class: 'rp-cost' }, '');
   const slider = h('input', { type: 'range', min: 0, max: Math.round(r.elapsed * 10), value: 0, class: 'rp-slider', 'aria-label': '再生位置' }) as HTMLInputElement;
   let t = 0;
   let speed = 2;
@@ -426,11 +429,15 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       const sp = unitSp.get(uid);
       if (!sp || !st) continue;
       const [, , gauge, mode, val] = st;
-      sp.bar.setAttribute('width', String(mode === 3 || v < 0 ? 0 : ((S - 28) * gauge) / 100));
+      sp.bar.setAttribute('width', String(mode === 3 || (v < 0 && mode !== 4) ? 0 : ((S - 28) * gauge) / 100));
       sp.bar.classList.toggle('active', mode === 1 || mode === 2);
-      sp.label.textContent = v < 0 ? '' : mode === 1 ? `${(val / 10).toFixed(0)}秒` : mode === 2 ? `弾${val}` : '';
+      sp.bar.classList.toggle('waiting', mode === 4);
+      sp.label.textContent =
+        mode === 4 ? (val > 0 ? `再配置${Math.ceil(val / 10)}` : 'コスト待ち') : v < 0 ? '' : mode === 1 ? `${(val / 10).toFixed(0)}秒` : mode === 2 ? `弾${val}` : '';
+      sp.label.classList.toggle('waiting', mode === 4);
     }
     timeLabel.textContent = `${t.toFixed(1)}秒`;
+    costLabel.textContent = a.c !== undefined ? `コスト ${a.c}` : '';
     slider.value = String(Math.round(t * 10));
   };
 
@@ -479,7 +486,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     'div',
     { class: 'replay-wrap' },
     svg,
-    h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは戦闘不能'),
+    h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）'),
   );
 }

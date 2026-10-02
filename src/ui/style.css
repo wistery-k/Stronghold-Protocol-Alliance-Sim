@@ -1178,7 +1178,9 @@ aside {
 .rp-unit-hp {
   fill: var(--ok);
 }
-.rp-unit.down {
+.rp-unit.down .rp-unit-box,
+.rp-unit.down .rp-unit-name,
+.rp-unit.down .rp-unit-dir {
   opacity: 0.25;
 }
 
@@ -1279,4 +1281,18 @@ body.dragging * {
   margin: 2px 0 0;
   padding-left: 18px;
   font-size: 13px;
+}
+
+.rp-unit-sp.waiting {
+  fill: var(--muted);
+}
+.rp-unit-skill.waiting {
+  fill: var(--text);
+  font-size: 13px;
+}
+.rp-cost {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  min-width: 72px;
+  text-align: right;
 }

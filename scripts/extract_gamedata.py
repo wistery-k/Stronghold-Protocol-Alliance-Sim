@@ -284,6 +284,7 @@ def build_stats(char: dict, status: dict, equip_table: dict, equip_id) -> dict:
         'aspd': a['attackSpeed'] + bonus.get('attack_speed', 0),
         'block': a['blockCnt'],
         'cost': a['cost'],
+        'respawn': a['respawnTime'],
     }
 
 

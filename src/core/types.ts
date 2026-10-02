@@ -55,6 +55,8 @@ export interface UnitStats {
   aspd: number;
   block: number;
   cost: number;
+  /** 再配置時間（秒） */
+  respawn: number;
 }
 
 export interface SkillData {
@@ -164,6 +166,8 @@ export interface Modifier {
   lifeOnHit?: number;
   /** 毎秒最大HPのこの割合を回復（ペガサスの兜＋槍） */
   regenPct?: number;
+  /** 再配置時間（割合、加算。-0.3 で30%短縮） */
+  respawnPct?: number;
 }
 
 export interface EnemyPhase {

@@ -208,7 +208,7 @@ export function garrisonBattleModifier(g: GarrisonData, stacks: Partial<Record<A
   if (key === 'act1autochess_gar_eff_respawnTimeByBond') {
     // 説明文では再配置時間短縮に加えて攻撃速度が上がる（-1.5%ごとに+0.5）
     const times = Math.floor(bondStacks() / n('divide_num'));
-    return { aspd: (times * -n('respawn_time')) / 0.03 };
+    return { aspd: (times * -n('respawn_time')) / 0.03, respawnPct: times * n('respawn_time') };
   }
   return null;
 }
@@ -417,7 +417,7 @@ export function battleSetup(
       cooldown: v('stead', 'cd_duration'),
     };
   }
-  if (lv('deput') >= 1) apply(all, { defPct: v('deput', 'base_def') + v('deput', 'def_per_stack') * sk('deput') });
+  if (lv('deput') >= 1) apply(all, { defPct: v('deput', 'base_def') + v('deput', 'def_per_stack') * sk('deput'), respawnPct: v('deput', 'respawn_time') });
   if (lv('egir') >= 1) apply(members('egir'), { hpPct: v('egir', 'base_max_hp') + v('egir', 'max_hp_per_stack') * sk('egir') });
   if (lv('egir') >= 2) globals.egirRevive = { members: members('egir'), count: v('egir', 'max_free_respawn_cnt') };
   if (lv('empty') >= 1) apply(all, { damageReduce: v('empty', 'damage_resistance') });
@@ -439,7 +439,7 @@ export function battleSetup(
             apply([o.uid], { atkPct: n('atk'), aspd: n('attack_speed'), hpPct: n('max_hp'), defPct: n('def'), resFlat: n('magic_resistance') });
             break;
           case 'act1autochess_equip_acarm056_global_buff':
-            apply([o.uid], { hpPct: n('max_hp') });
+            apply([o.uid], { hpPct: n('max_hp'), respawnPct: n('respawn_time') });
             break;
           case 'act1autochess_equip_acarm049_global_buff':
             // ゴリアテの兜：前方1マスに味方がいなければさらに上昇

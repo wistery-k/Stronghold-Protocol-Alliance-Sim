@@ -2565,7 +2565,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 15
+     "cost": 15,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_inside_2",
@@ -2611,7 +2612,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 15
+     "cost": 15,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_inside_2",
@@ -2672,7 +2674,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_yak_2",
@@ -2715,7 +2718,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_yak_2",
@@ -2772,7 +2776,8 @@
      "interval": 2.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 32
+     "cost": 32,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_leizi_2",
@@ -2815,7 +2820,8 @@
      "interval": 2.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 32
+     "cost": 32,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_leizi_2",
@@ -2872,7 +2878,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 22
+     "cost": 22,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_udflow_2",
@@ -2919,7 +2926,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 24
+     "cost": 24,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_udflow_2",
@@ -2981,7 +2989,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_vendla_2",
@@ -3026,7 +3035,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_vendla_2",
@@ -3085,7 +3095,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_prove_1",
@@ -3127,7 +3138,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_prove_1",
@@ -3184,7 +3196,8 @@
      "interval": 1.05,
      "aspd": 100.0,
      "block": 2,
-     "cost": 13
+     "cost": 13,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_texas_2",
@@ -3227,7 +3240,8 @@
      "interval": 1.05,
      "aspd": 100.0,
      "block": 2,
-     "cost": 13
+     "cost": 13,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_texas_2",
@@ -3284,7 +3298,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_caper_2",
@@ -3328,7 +3343,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_caper_2",
@@ -3386,7 +3402,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 18
+     "cost": 18,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_sunbr_1",
@@ -3429,7 +3446,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 20
+     "cost": 20,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_sunbr_1",
@@ -3486,7 +3504,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 2,
-     "cost": 20
+     "cost": 20,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_estell_2",
@@ -3528,7 +3547,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_estell_2",
@@ -3584,7 +3604,8 @@
      "interval": 1.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_podego_2",
@@ -3626,7 +3647,8 @@
      "interval": 1.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_podego_2",
@@ -3682,7 +3704,8 @@
      "interval": 2.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 32
+     "cost": 32,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_greyy_2",
@@ -3724,7 +3747,8 @@
      "interval": 2.9,
      "aspd": 103.0,
      "block": 1,
-     "cost": 32
+     "cost": 32,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_greyy_2",
@@ -3781,7 +3805,8 @@
      "interval": 3.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 23
+     "cost": 23,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_indigo_2",
@@ -3825,7 +3850,8 @@
      "interval": 3.0,
      "aspd": 103.0,
      "block": 1,
-     "cost": 23
+     "cost": 23,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_indigo_2",
@@ -3883,7 +3909,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 1,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_utage_2",
@@ -3927,7 +3954,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 1,
-     "cost": 24
+     "cost": 24,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_utage_2",
@@ -3986,7 +4014,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 14
+     "cost": 14,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_wildmn_2",
@@ -4028,7 +4057,8 @@
      "interval": 1.0,
      "aspd": 103.0,
      "block": 1,
-     "cost": 14
+     "cost": 14,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_wildmn_2",
@@ -4084,7 +4114,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 20
+     "cost": 20,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_liskam_2",
@@ -4132,7 +4163,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_liskam_2",
@@ -4195,7 +4227,8 @@
      "interval": 2.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 31
+     "cost": 31,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_excu_2",
@@ -4243,7 +4276,8 @@
      "interval": 2.3,
      "aspd": 103.0,
      "block": 1,
-     "cost": 31
+     "cost": 31,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_excu_2",
@@ -4305,7 +4339,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_silent_2",
@@ -4347,7 +4382,8 @@
      "interval": 2.85,
      "aspd": 104.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_silent_2",
@@ -4404,7 +4440,8 @@
      "interval": 1.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 15
+     "cost": 15,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_grabds_2",
@@ -4450,7 +4487,8 @@
      "interval": 1.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 15
+     "cost": 15,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_grabds_2",
@@ -4511,7 +4549,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_harold_2",
@@ -4567,7 +4606,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_harold_2",
@@ -4637,7 +4677,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 20
+     "cost": 20,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_papyrs_1",
@@ -4685,7 +4726,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 20
+     "cost": 20,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_papyrs_1",
@@ -4747,7 +4789,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 2,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_ghost_2",
@@ -4793,7 +4836,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 23
+     "cost": 23,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_ghost_2",
@@ -4854,7 +4898,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_bubble_2",
@@ -4900,7 +4945,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_bubble_2",
@@ -4960,7 +5006,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_humus_2",
@@ -5010,7 +5057,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_humus_2",
@@ -5075,7 +5123,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_rockr_2",
@@ -5120,7 +5169,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_rockr_2",
@@ -5179,7 +5229,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 2,
-     "cost": 15
+     "cost": 15,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_kazema_2",
@@ -5219,7 +5270,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 2,
-     "cost": 15
+     "cost": 15,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_kazema_2",
@@ -5274,7 +5326,8 @@
      "interval": 0.93,
      "aspd": 100.0,
      "block": 1,
-     "cost": 8
+     "cost": 8,
+     "respawn": 18
     },
     "skill": {
      "id": "skchr_gravel_2",
@@ -5333,7 +5386,8 @@
      "interval": 0.93,
      "aspd": 100.0,
      "block": 1,
-     "cost": 8
+     "cost": 8,
+     "respawn": 18
     },
     "skill": {
      "id": "skchr_gravel_2",
@@ -5407,7 +5461,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 2,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_tippi_2",
@@ -5450,7 +5505,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 2,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_tippi_2",
@@ -5508,7 +5564,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_flower_2",
@@ -5550,7 +5607,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_flower_2",
@@ -5606,7 +5664,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_whitew_2",
@@ -5649,7 +5708,8 @@
      "interval": 1.3,
      "aspd": 104.0,
      "block": 2,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_whitew_2",
@@ -5707,7 +5767,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 3,
-     "cost": 33
+     "cost": 33,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_branch_2",
@@ -5752,7 +5813,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 3,
-     "cost": 35
+     "cost": 35,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_branch_2",
@@ -5812,7 +5874,8 @@
      "interval": 2.8,
      "aspd": 100.0,
      "block": 3,
-     "cost": 25
+     "cost": 25,
+     "respawn": 70
     },
     "skill": {
      "id": "skcom_atk_up[3]",
@@ -5853,7 +5916,8 @@
      "interval": 2.8,
      "aspd": 100.0,
      "block": 3,
-     "cost": 27
+     "cost": 27,
+     "respawn": 70
     },
     "skill": {
      "id": "skcom_atk_up[3]",
@@ -5909,7 +5973,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 1,
-     "cost": 15
+     "cost": 15,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_tinman_2",
@@ -5967,7 +6032,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_tinman_2",
@@ -6040,7 +6106,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_angel_3",
@@ -6083,7 +6150,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_angel_3",
@@ -6140,7 +6208,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_ayer_2",
@@ -6184,7 +6253,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_ayer_2",
@@ -6243,7 +6313,8 @@
      "interval": 1.05,
      "aspd": 100.0,
      "block": 2,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_swire_2",
@@ -6286,7 +6357,8 @@
      "interval": 1.05,
      "aspd": 100.0,
      "block": 2,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_swire_2",
@@ -6344,7 +6416,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 9
+     "cost": 9,
+     "respawn": 25
     },
     "skill": {
      "id": "skchr_swire2_2",
@@ -6389,7 +6462,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 9
+     "cost": 9,
+     "respawn": 25
     },
     "skill": {
      "id": "skchr_swire2_2",
@@ -6450,7 +6524,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_skadi_3",
@@ -6498,7 +6573,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_skadi_3",
@@ -6560,7 +6636,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 3,
-     "cost": 25
+     "cost": 25,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_philae_2",
@@ -6609,7 +6686,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 3,
-     "cost": 25
+     "cost": 25,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_philae_2",
@@ -6672,7 +6750,8 @@
      "interval": 2.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 25
+     "cost": 25,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_mint_2",
@@ -6718,7 +6797,8 @@
      "interval": 2.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 25
+     "cost": 25,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_mint_2",
@@ -6779,7 +6859,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 12
+     "cost": 12,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_haini_2",
@@ -6831,7 +6912,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 12
+     "cost": 12,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_haini_2",
@@ -6898,7 +6980,8 @@
      "interval": 2.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 30
+     "cost": 30,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_pinecn_2",
@@ -6948,7 +7031,8 @@
      "interval": 2.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 30
+     "cost": 30,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_pinecn_2",
@@ -7013,7 +7097,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_snhunt_2",
@@ -7056,7 +7141,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_snhunt_2",
@@ -7114,7 +7200,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_blemsh_3",
@@ -7163,7 +7250,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_blemsh_3",
@@ -7227,7 +7315,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 23
+     "cost": 23,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_malist_2",
@@ -7269,7 +7358,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 23
+     "cost": 23,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_malist_2",
@@ -7326,7 +7416,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 12
+     "cost": 12,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_slbell_2",
@@ -7374,7 +7465,8 @@
      "interval": 1.6,
      "aspd": 104.0,
      "block": 1,
-     "cost": 12
+     "cost": 12,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_slbell_2",
@@ -7437,7 +7529,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_snakek_2",
@@ -7483,7 +7576,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_snakek_2",
@@ -7544,7 +7638,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 12
+     "cost": 12,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_shotst_2",
@@ -7597,7 +7692,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 12
+     "cost": 12,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_shotst_2",
@@ -7665,7 +7761,8 @@
      "interval": 1.05,
      "aspd": 100.0,
      "block": 2,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_vulpis_3",
@@ -7709,7 +7806,8 @@
      "interval": 1.05,
      "aspd": 100.0,
      "block": 2,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_vulpis_3",
@@ -7768,7 +7866,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_vigil_3",
@@ -7844,7 +7943,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_vigil_3",
@@ -7935,7 +8035,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 23
+     "cost": 23,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_kjera_2",
@@ -7980,7 +8081,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 23
+     "cost": 23,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_kjera_2",
@@ -8040,7 +8142,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_archet_3",
@@ -8086,7 +8189,8 @@
      "interval": 1.0,
      "aspd": 102.0,
      "block": 1,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_archet_3",
@@ -8147,7 +8251,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 25
+     "cost": 25,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_rmixer_3",
@@ -8197,7 +8302,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 25
+     "cost": 25,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_rmixer_3",
@@ -8262,7 +8368,8 @@
      "interval": 2.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 34
+     "cost": 34,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_mostma_3",
@@ -8313,7 +8420,8 @@
      "interval": 2.9,
      "aspd": 105.0,
      "block": 1,
-     "cost": 34
+     "cost": 34,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_mostma_3",
@@ -8379,7 +8487,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 11
+     "cost": 11,
+     "respawn": 35
     },
     "skill": {
      "id": "skchr_ines_2",
@@ -8424,7 +8533,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 11
+     "cost": 11,
+     "respawn": 35
     },
     "skill": {
      "id": "skchr_ines_2",
@@ -8483,7 +8593,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 15
+     "cost": 15,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_kroos2_2",
@@ -8525,7 +8636,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 15
+     "cost": 15,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_kroos2_2",
@@ -8583,7 +8695,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 13
+     "cost": 13,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_bpipe_2",
@@ -8632,7 +8745,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 13
+     "cost": 13,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_bpipe_2",
@@ -8696,7 +8810,8 @@
      "interval": 3.5,
      "aspd": 100.0,
      "block": 0,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_mizuki_2",
@@ -8743,7 +8858,8 @@
      "interval": 3.5,
      "aspd": 100.0,
      "block": 0,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_mizuki_2",
@@ -8805,7 +8921,8 @@
      "interval": 2.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 33
+     "cost": 33,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_aroma_2",
@@ -8851,7 +8968,8 @@
      "interval": 2.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 33
+     "cost": 33,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_aroma_2",
@@ -8912,7 +9030,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 2,
-     "cost": 20
+     "cost": 20,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_cathy_2",
@@ -8959,7 +9078,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 2,
-     "cost": 20
+     "cost": 20,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_cathy_2",
@@ -9020,7 +9140,8 @@
      "interval": 1.8,
      "aspd": 100.0,
      "block": 2,
-     "cost": 16
+     "cost": 16,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_glady_3",
@@ -9070,7 +9191,8 @@
      "interval": 1.8,
      "aspd": 100.0,
      "block": 2,
-     "cost": 16
+     "cost": 16,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_glady_3",
@@ -9135,7 +9257,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 13
+     "cost": 13,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_gnosis_2",
@@ -9177,7 +9300,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 13
+     "cost": 13,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_gnosis_2",
@@ -9234,7 +9358,8 @@
      "interval": 2.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 33
+     "cost": 33,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_lionhd_2",
@@ -9280,7 +9405,8 @@
      "interval": 2.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 33
+     "cost": 33,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_lionhd_2",
@@ -9341,7 +9467,8 @@
      "interval": 0.93,
      "aspd": 100.0,
      "block": 1,
-     "cost": 10
+     "cost": 10,
+     "respawn": 18
     },
     "skill": {
      "id": "skchr_texas2_3",
@@ -9388,7 +9515,8 @@
      "interval": 0.93,
      "aspd": 100.0,
      "block": 1,
-     "cost": 10
+     "cost": 10,
+     "respawn": 18
     },
     "skill": {
      "id": "skchr_texas2_3",
@@ -9449,7 +9577,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 23
+     "cost": 23,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_hsguma_2",
@@ -9491,7 +9620,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 23
+     "cost": 23,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_hsguma_2",
@@ -9547,7 +9677,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 3,
-     "cost": 36
+     "cost": 36,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_mudrok_2",
@@ -9591,7 +9722,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 3,
-     "cost": 36
+     "cost": 36,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_mudrok_2",
@@ -9649,7 +9781,8 @@
      "interval": 1.05,
      "aspd": 100.0,
      "block": 2,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_flamtl_3",
@@ -9696,7 +9829,8 @@
      "interval": 1.05,
      "aspd": 100.0,
      "block": 2,
-     "cost": 14
+     "cost": 14,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_flamtl_3",
@@ -9758,7 +9892,8 @@
      "interval": 2.7,
      "aspd": 100.0,
      "block": 1,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_fartth_3",
@@ -9800,7 +9935,8 @@
      "interval": 2.7,
      "aspd": 105.0,
      "block": 1,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_fartth_3",
@@ -9857,7 +9993,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_plosis_2",
@@ -9896,7 +10033,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_plosis_2",
@@ -9949,7 +10087,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 20
+     "cost": 20,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_svrash_3",
@@ -9998,7 +10137,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 20
+     "cost": 20,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_svrash_3",
@@ -10061,7 +10201,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 24
+     "cost": 24,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_gvial2_3",
@@ -10112,7 +10253,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 24
+     "cost": 24,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_gvial2_3",
@@ -10178,7 +10320,8 @@
      "interval": 2.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 24
+     "cost": 24,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_billro_2",
@@ -10223,7 +10366,8 @@
      "interval": 2.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 24
+     "cost": 24,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_billro_2",
@@ -10282,7 +10426,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 10
+     "cost": 10,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_cetsyr_3",
@@ -10328,7 +10473,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 10
+     "cost": 10,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_cetsyr_3",
@@ -10388,7 +10534,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_bldsk_1",
@@ -10430,7 +10577,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_bldsk_1",
@@ -10487,7 +10635,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 23
+     "cost": 23,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_excu2_2",
@@ -10560,7 +10709,8 @@
      "interval": 1.3,
      "aspd": 105.0,
      "block": 2,
-     "cost": 23
+     "cost": 23,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_excu2_2",
@@ -10648,7 +10798,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_titi_3",
@@ -10702,7 +10853,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_titi_3",
@@ -10771,7 +10923,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_blaze2_3",
@@ -10819,7 +10972,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_blaze2_3",
@@ -10881,7 +11035,8 @@
      "interval": 2.5,
      "aspd": 100.0,
      "block": 2,
-     "cost": 24
+     "cost": 24,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_ulpia_3",
@@ -10929,7 +11084,8 @@
      "interval": 2.5,
      "aspd": 100.0,
      "block": 2,
-     "cost": 24
+     "cost": 24,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_ulpia_3",
@@ -10992,7 +11148,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 23
+     "cost": 23,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_etlchi_3",
@@ -11042,7 +11199,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 23
+     "cost": 23,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_etlchi_3",
@@ -11107,7 +11265,8 @@
      "interval": 1.25,
      "aspd": 100.0,
      "block": 1,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_surtr_3",
@@ -11160,7 +11319,8 @@
      "interval": 1.25,
      "aspd": 100.0,
      "block": 1,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_surtr_3",
@@ -11227,7 +11387,8 @@
      "interval": 2.8,
      "aspd": 100.0,
      "block": 3,
-     "cost": 28
+     "cost": 28,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_horn_3",
@@ -11274,7 +11435,8 @@
      "interval": 2.8,
      "aspd": 100.0,
      "block": 3,
-     "cost": 28
+     "cost": 28,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_horn_3",
@@ -11336,7 +11498,8 @@
      "interval": 1.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_lisa_3",
@@ -11380,7 +11543,8 @@
      "interval": 1.9,
      "aspd": 104.0,
      "block": 1,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_lisa_3",
@@ -11439,7 +11603,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_demkni_2",
@@ -11478,7 +11643,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_demkni_2",
@@ -11532,7 +11698,8 @@
      "interval": 2.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 34
+     "cost": 34,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_dusk_1",
@@ -11577,7 +11744,8 @@
      "interval": 2.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 34
+     "cost": 34,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_dusk_1",
@@ -11637,7 +11805,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 2,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_ghost2_2",
@@ -11683,7 +11852,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 2,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_ghost2_2",
@@ -11745,7 +11915,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 2,
-     "cost": 13
+     "cost": 13,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_svash2_2",
@@ -11795,7 +11966,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 2,
-     "cost": 13
+     "cost": 13,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_svash2_2",
@@ -11860,7 +12032,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 1,
-     "cost": 18
+     "cost": 18,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_thorn2_2",
@@ -11912,7 +12085,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 1,
-     "cost": 18
+     "cost": 18,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_thorn2_2",
@@ -11978,7 +12152,8 @@
      "interval": 0.78,
      "aspd": 100.0,
      "block": 1,
-     "cost": 11
+     "cost": 11,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_f12yin_2",
@@ -12025,7 +12200,8 @@
      "interval": 0.78,
      "aspd": 100.0,
      "block": 1,
-     "cost": 11
+     "cost": 11,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_f12yin_2",
@@ -12086,7 +12262,8 @@
      "interval": 1.2,
      "aspd": 100.0,
      "block": 3,
-     "cost": 12
+     "cost": 12,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_mlynar_3",
@@ -12136,7 +12313,8 @@
      "interval": 1.2,
      "aspd": 105.0,
      "block": 3,
-     "cost": 12
+     "cost": 12,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_mlynar_3",
@@ -12201,7 +12379,8 @@
      "interval": 1.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_aglina_3",
@@ -12246,7 +12425,8 @@
      "interval": 1.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_aglina_3",
@@ -12305,7 +12485,8 @@
      "interval": 2.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 33
+     "cost": 33,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_sntlla_2",
@@ -12361,7 +12542,8 @@
      "interval": 2.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 33
+     "cost": 33,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_sntlla_2",
@@ -12431,7 +12613,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_nymph_2",
@@ -12480,7 +12663,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_nymph_2",
@@ -12544,7 +12728,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_reckpr_2",
@@ -12588,7 +12773,8 @@
      "interval": 2.85,
      "aspd": 104.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_reckpr_2",
@@ -12647,7 +12833,8 @@
      "interval": 2.7,
      "aspd": 100.0,
      "block": 1,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_lemuen_3",
@@ -12705,7 +12892,8 @@
      "interval": 2.7,
      "aspd": 100.0,
      "block": 1,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_lemuen_3",
@@ -12778,7 +12966,8 @@
      "interval": 2.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 24
+     "cost": 24,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_sbell2_3",
@@ -12827,7 +13016,8 @@
      "interval": 2.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 24
+     "cost": 24,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_sbell2_3",
@@ -12891,7 +13081,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 3,
-     "cost": 26
+     "cost": 26,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_yu_3",
@@ -12937,7 +13128,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 3,
-     "cost": 26
+     "cost": 26,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_yu_3",
@@ -12996,7 +13188,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 8
+     "cost": 8,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_skadi2_3",
@@ -13043,7 +13236,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 8
+     "cost": 8,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_skadi2_3",
@@ -13106,7 +13300,8 @@
      "interval": 2.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 33
+     "cost": 33,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_pasngr_3",
@@ -13156,7 +13351,8 @@
      "interval": 2.3,
      "aspd": 105.0,
      "block": 1,
-     "cost": 33
+     "cost": 33,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_pasngr_3",
@@ -13221,7 +13417,8 @@
      "interval": 1.8,
      "aspd": 100.0,
      "block": 2,
-     "cost": 20
+     "cost": 20,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_pepe_3",
@@ -13270,7 +13467,8 @@
      "interval": 1.8,
      "aspd": 100.0,
      "block": 2,
-     "cost": 20
+     "cost": 20,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_pepe_3",
@@ -13334,7 +13532,8 @@
      "interval": 1.25,
      "aspd": 100.0,
      "block": 1,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_siege2_3",
@@ -13392,7 +13591,8 @@
      "interval": 1.25,
      "aspd": 100.0,
      "block": 1,
-     "cost": 21
+     "cost": 21,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_siege2_3",
@@ -13465,7 +13665,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_reed2_3",
@@ -13516,7 +13717,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 17
+     "cost": 17,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_reed2_3",
@@ -13581,7 +13783,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_cello_1",
@@ -13628,7 +13831,8 @@
      "interval": 1.6,
      "aspd": 100.0,
      "block": 1,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_cello_1",
@@ -13689,7 +13893,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 15
+     "cost": 15,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_mlyss_3",
@@ -13734,7 +13939,8 @@
      "interval": 1.0,
      "aspd": 100.0,
      "block": 1,
-     "cost": 15
+     "cost": 15,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_mlyss_3",
@@ -13795,7 +14001,8 @@
      "interval": 2.1,
      "aspd": 100.0,
      "block": 1,
-     "cost": 25
+     "cost": 25,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_rosmon_2",
@@ -13854,7 +14061,8 @@
      "interval": 2.1,
      "aspd": 100.0,
      "block": 1,
-     "cost": 25
+     "cost": 25,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_rosmon_2",
@@ -13927,7 +14135,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 13
+     "cost": 13,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_angel2_2",
@@ -13977,7 +14186,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 13
+     "cost": 13,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_angel2_2",
@@ -14041,7 +14251,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 23
+     "cost": 23,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_lumen_3",
@@ -14086,7 +14297,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 23
+     "cost": 23,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_lumen_3",
@@ -14146,7 +14358,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 20
+     "cost": 20,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_qiubai_3",
@@ -14194,7 +14407,8 @@
      "interval": 1.3,
      "aspd": 107.0,
      "block": 2,
-     "cost": 20
+     "cost": 20,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_qiubai_3",
@@ -14257,7 +14471,8 @@
      "interval": 1.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 18
+     "cost": 18,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_halo2_3",
@@ -14304,7 +14519,8 @@
      "interval": 1.9,
      "aspd": 100.0,
      "block": 1,
-     "cost": 18
+     "cost": 18,
+     "respawn": 80
     },
     "skill": {
      "id": "skchr_halo2_3",
@@ -14366,7 +14582,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_nearl2_3",
@@ -14443,7 +14660,8 @@
      "interval": 1.5,
      "aspd": 100.0,
      "block": 1,
-     "cost": 19
+     "cost": 19,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_nearl2_3",
@@ -14534,7 +14752,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_whitw2_3",
@@ -14590,7 +14809,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 1,
-     "cost": 22
+     "cost": 22,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_whitw2_3",
@@ -14656,7 +14876,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 23
+     "cost": 23,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_blkkgt_3",
@@ -14718,7 +14939,8 @@
      "interval": 1.3,
      "aspd": 100.0,
      "block": 2,
-     "cost": 23
+     "cost": 23,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_blkkgt_3",
@@ -14794,7 +15016,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_agoat2_3",
@@ -14839,7 +15062,8 @@
      "interval": 2.85,
      "aspd": 100.0,
      "block": 1,
-     "cost": 16
+     "cost": 16,
+     "respawn": 70
     },
     "skill": {
      "id": "skchr_agoat2_3",
