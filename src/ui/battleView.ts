@@ -120,6 +120,10 @@ function enemyBadges(e: EnemySpec) {
   if (e.hitShield) b('盾', `最初の${e.hitShield}回の攻撃を無効にする`, 'sp');
   if (e.defReduce) b('防御低下', `攻撃を受けるたびに防御${e.defReduce.def}・術耐性${e.defReduce.res}（最大${e.defReduce.max}回）`, 'sp');
   if (e.revive) b('復活', `倒れると攻撃${e.revive.hits}回で倒せる状態になり、${e.revive.interval}秒以内に倒さないと復活する`, 'sp');
+  if (e.deathPollution) {
+    const p = e.deathPollution;
+    b('汚染', `倒れると半径${p.radius}マスに汚染秽蝕を${p.duration}秒残す（範囲内の味方は毎秒HPを失う：HP50%超で${p.high}、以下で${p.low}）`, 'sp');
+  }
   if (e.deadSpawn) {
     const c = ENEMIES[e.deadSpawn.enemy];
     b('分裂', `倒れると${c?.name ?? '敵'}×${e.deadSpawn.count}が現れる${c?.hitsToKill ? `（攻撃${c.hp}回で倒れる・ブロック不可）` : ''}`, 'sp');
@@ -324,8 +328,8 @@ const DMG_CLASS = ['phys', 'arts', 'true'];
  */
 function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
   const fx = r.fx ?? [];
-  const zones = fx.filter((e) => e[1] === 5);
-  const events = fx.filter((e) => e[1] !== 5);
+  const zones = fx.filter((e) => e[1] === 5 || e[1] === 6);
+  const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6);
   const byUid = new Map(units.map((u) => [u.uid, u]));
   const center = (pos: number) => ({ x: cellX(pos) * S + S / 2, y: cellY(pos) * S + S / 2 });
   const rangeCache = new Map<string, number[]>();
@@ -364,7 +368,7 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
     for (const z of zones) {
       const t0 = z[0] / 100;
       if (t < t0 || t > t0 + z[6] / 10) continue;
-      nodes.push(s('circle', { cx: (z[3] / 100) * S + S / 2, cy: (z[4] / 100) * S + S / 2, r: (z[5] / 100) * S, class: 'fx-zone' }));
+      nodes.push(s('circle', { cx: (z[3] / 100) * S + S / 2, cy: (z[4] / 100) * S + S / 2, r: (z[5] / 100) * S, class: z[1] === 6 ? 'fx-pollution' : 'fx-zone' }));
     }
     for (let i = firstAfter(t - maxLife); i < events.length && events[i][0] / 100 <= t; i++) {
       const ev = events[i];
@@ -615,6 +619,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円'),
   );
 }

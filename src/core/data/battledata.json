@@ -3812,6 +3812,12 @@
     "interval": 2.5,
     "range": 0,
     "arts": false
+   },
+   "deathPollution": {
+    "high": 25.0,
+    "low": 50.0,
+    "duration": 8.0,
+    "radius": 2.0
    }
   },
   "enemy_1267_nhpbr_2": {
@@ -3831,6 +3837,12 @@
     "interval": 2.5,
     "range": 0,
     "arts": false
+   },
+   "deathPollution": {
+    "high": 25.0,
+    "low": 50.0,
+    "duration": 8.0,
+    "radius": 2.0
    }
   },
   "enemy_1270_nhstlk": {

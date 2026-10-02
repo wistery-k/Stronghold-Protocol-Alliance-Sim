@@ -1445,3 +1445,9 @@ body.dragging * {
   stroke: rgba(76, 195, 138, 0.8);
   stroke-width: 3;
 }
+.fx-pollution {
+  fill: rgba(170, 60, 120, 0.18);
+  stroke: rgba(170, 60, 120, 0.6);
+  stroke-width: 2;
+  stroke-dasharray: 3 5;
+}

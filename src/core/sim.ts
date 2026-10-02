@@ -95,6 +95,7 @@ export interface ReplayFrame {
  * - 3 敵の遠距離攻撃：[敵id, uid, 術なら1]
  * - 4 治療：[uid, 対象uid]
  * - 5 設置した範囲（ブリキなど）：[uid, x×100, y×100, 半径×100, 秒数×10]
+ * - 6 敵の汚染秽蝕：[敵id, x×100, y×100, 半径×100, 秒数×10]
  */
 export type FxEvent = number[];
 
@@ -186,6 +187,8 @@ export interface SkillModel {
   costOnCast: number;
   costOverTime: number;
   costPerAttack: number;
+  /** 連鎖術師：スキル中は跳躍の減衰なし（レイズ） */
+  noChainDecay: boolean;
 }
 
 export function parseSkill(s: SkillData): SkillModel {
@@ -242,6 +245,7 @@ export function parseSkill(s: SkillData): SkillModel {
     costOnCast: Number(/(?<!たびに)所持コスト\+(\d+)/.exec(s.description)?.[1] ?? 0),
     costOverTime: Number(/所持コストが徐々に増加（合計(\d+)）/.exec(s.description)?.[1] ?? 0),
     costPerAttack: /攻撃するたびに所持コスト\+1/.test(s.description) ? 1 : 0,
+    noChainDecay: s.description.includes('跳躍時のダメージ減衰が発生しなくなる'),
   };
 }
 
@@ -311,6 +315,10 @@ function peakPerformance(bb: Record<string, number>): [number, number][] {
   }
   return out.sort((a, b) => b[0] - a[0]);
 }
+/** 連鎖術師：跳躍できる距離（マス） */
+const CHAIN_JUMP_RADIUS = 1.5;
+/** シヴィライト・エテルナ：S3の鼓舞とHPの再配分、素質「微塵」で特性の効果1.5倍 */
+const ETERNA = 'char_4134_cetsyr';
 /** スキル中、近接攻撃を確率で回避して弾薬を補充する（聖約イグゼキュター） */
 const EVADE_REFILL = new Set(['char_1032_excu2']);
 /**
@@ -426,7 +434,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -647,6 +655,11 @@ interface Runtime {
   huntAmmo: number;
   /** 回避の確率の累積（期待値） */
   evadeAcc: number;
+  /** 鼓舞（攻撃力の固定値加算）とその期限 */
+  inspireAtk: number;
+  inspireUntil: number;
+  /** HP再配分までの時間（エテルナ） */
+  redistTimer: number;
   /** 戦術【食腐の蝶】：味方が倒れるたびに得た攻撃力の層 */
   qalaisaStacks: number;
   /** 戦術【薬枚実験】：護盾（被弾1回を無効化）と確率の累積 */
@@ -751,6 +764,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
       evadeAcc: 0,
+      inspireAtk: 0,
+      inspireUntil: -1,
+      redistTimer: 0,
       mberryShield: 0,
       mberryAcc: 0,
       lastAttackAt: -99,
@@ -987,6 +1003,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     e.alive = false;
     e.reviveAt = null;
+    // 枯朽サルカズ戦士：倒れると汚染秽蝕を残す
+    const dp = e.input.spec.deathPollution;
+    if (dp && field && !neutral(e)) {
+      pollutions.push({ x: e.x, y: e.y, until: t + dp.duration, ...dp });
+      emit([6, e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round(dp.radius * 100), Math.round(dp.duration * 10)]);
+    }
     // 倒れると別の敵が生まれる
     const c = e.input.child;
     if (c && e.input.path && !neutral(e)) {
@@ -1125,7 +1147,21 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (sub === 'centurion' && u.blocked.length) return u.blocked.map((e) => [e, 1]);
     // 鎌：攻撃範囲内の敵全員を攻撃（群体ダメージ）
     if (sub === 'reaper') return cands.map((e) => [e, 1]);
-    if (sub === 'chain') return cands.slice(0, Math.max(n, 4)).map((e, i) => [e, Math.pow(0.85, i)]);
+    if (sub === 'chain') {
+      // 連鎖術師：最初の対象から近くの敵へ跳躍（跳躍ごとに15%減衰。レイズのスキル中は減衰なし）
+      const maxT = Math.max(n, unitState(u.input.def, u.input.star).evolvePhase >= 2 ? 4 : 3);
+      const noDecay = skillActive && u.skill.noChainDecay;
+      const chain: Enemy[] = [cands[0]];
+      while (chain.length < maxT) {
+        const last = chain[chain.length - 1];
+        const next = enemies
+          .filter((e) => e.alive && e.spawned && !chain.includes(e) && !isStealthed(e) && Math.hypot(e.x - last.x, e.y - last.y) <= CHAIN_JUMP_RADIUS)
+          .sort((a, b) => Math.hypot(a.x - last.x, a.y - last.y) - Math.hypot(b.x - last.x, b.y - last.y))[0];
+        if (!next) break;
+        chain.push(next);
+      }
+      return chain.map((e, i) => [e, noDecay ? 1 : Math.pow(0.85, i)]);
+    }
     const main = cands.slice(0, n).map((e) => [e, 1] as [Enemy, number]);
     if (field && SPLASH_SUB.has(sub)) {
       const p = main[0][0];
@@ -1718,6 +1754,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return alliesNear(p.x, p.y, r).filter((o) => o.hp < o.maxHp - 1e-6 && (o === u || !SELF_HEAL_SUB[o.input.def.subProfession]));
   };
   /** 錬金ユニットの効果範囲 */
+  /** 敵の汚染秽蝕：範囲内の味方は毎秒HPを失う（防御・術耐性無視） */
+  const pollutions: { x: number; y: number; radius: number; high: number; low: number; until: number; duration: number }[] = [];
+  const tickPollution = () => {
+    for (const z of pollutions) {
+      if (t >= z.until) continue;
+      for (const o of alliesNear(z.x, z.y, z.radius)) takeDamage(o, (o.hp / o.maxHp > 0.5 ? z.high : z.low) * dt);
+    }
+  };
   const zones: { owner: Runtime; x: number; y: number; r: number; until: number; atk: number; heal: number; dot: number; groundOnly: boolean }[] = [];
   const tickZones = () => {
     for (const z of zones) {
@@ -1859,6 +1903,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       tickElements();
       enemyAttacks();
       tickZones();
+      tickPollution();
       for (const u of rt) if (u.barrier > 0) u.barrier = Math.max(0, u.barrier - u.barrierDecay * dt);
     }
 
@@ -1931,7 +1976,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const activeNow = s.passive || skillActive();
       // ヒューマス：スキル中、HP割合に応じた「勇猛」
       const peak = activeNow && !s.passive ? (peakPerformance(s.bb).find(([ratio]) => u.hp / u.maxHp >= ratio)?.[1] ?? 0) : 0;
-      const atk = baseAtk(def, star, mods, outerAtkPct + peak + (activeNow && (!PHILAE[def.charId] || u.philaeBoost) ? s.atkPct : 0));
+      const atk =
+        baseAtk(def, star, mods, outerAtkPct + peak + (activeNow && (!PHILAE[def.charId] || u.philaeBoost) ? s.atkPct : 0)) +
+        (t < u.inspireUntil ? u.inspireAtk : 0);
       const aspd =
         stats.aspd +
         (mods.aspd ?? 0) +
@@ -1950,7 +1997,28 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // 医療：治療行動（吟遊者は範囲内の全員を毎秒攻撃力の10%回復）
       if (heal && field) {
         if (def.subProfession === 'bard') {
-          for (const o of alliesInRange(u, activeNow)) healUnit(u, o, atk * 0.1 * dt);
+          // スキル中は特性の回復割合が上がるものがある（エテルナS3）
+          const ratio = activeNow && !s.passive ? (s.bb['attack@atk_to_hp_recovery_ratio'] ?? 0.1) : 0.1;
+          const eterna = def.charId === ETERNA && activeNow && !s.passive;
+          const allies = alliesInRange(u, activeNow);
+          // 「微塵」が消えなくなるので、自身以外は特性の効果1.5倍
+          for (const o of allies) healUnit(u, o, atk * ratio * (eterna && o !== u ? 1.5 : 1) * dt);
+          if (eterna) {
+            // 自身以外に最大HP×割合の鼓舞（攻撃力加算）
+            for (const o of allies) {
+              if (o === u || o.input.def.subProfession === 'bard') continue;
+              o.inspireAtk = Math.max(t < o.inspireUntil ? o.inspireAtk : 0, u.maxHp * (s.bb.max_hp ?? 0));
+              o.inspireUntil = t + dt * 1.5;
+            }
+            // 2秒ごとに範囲内の味方全員のHP割合をならす
+            u.redistTimer -= dt;
+            if (u.redistTimer <= 0) {
+              u.redistTimer += s.bb['attack@cetsyr_s_3[cal_hp_ratio].interval'] ?? 2;
+              const alive = allies.filter((o) => o.alive);
+              const ratioAll = alive.reduce((a, o) => a + o.hp, 0) / Math.max(1, alive.reduce((a, o) => a + o.maxHp, 0));
+              for (const o of alive) o.hp = Math.max(1, o.maxHp * ratioAll);
+            }
+          }
         } else {
           while (u.atkTimer <= 1e-9) {
             if (!healAction(u, atk, scale, activeNow)) {

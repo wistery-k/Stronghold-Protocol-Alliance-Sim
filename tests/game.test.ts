@@ -483,3 +483,21 @@ describe('戦術と懸賞', () => {
     expect(s.stacks.kjerag ?? 0).toBeGreaterThan(1);
   });
 });
+
+describe('戦術の細部', () => {
+  it('スズラン：ラウンド開始時、獲得時の特性を持つ一番右のオペレーターの特性を発動', () => {
+    let s = createGame(1, { band: 'lisa' });
+    // 一番右は獲得時の特性を持たないので、その左のノーシスが対象
+    s = {
+      ...s,
+      board: [
+        { ...ou(1, 'ノーシス'), pos: 22, dir: 'down' },
+        { ...ou(2, 'テキサス'), pos: 25, dir: 'down' },
+      ],
+    };
+    const before = s.stacks.kjerag ?? 0;
+    s = applyAction(s, { type: 'battle' }).state;
+    s = applyAction(s, { type: 'next' }).state;
+    expect((s.stacks.kjerag ?? 0) - before).toBeGreaterThan(4);
+  });
+});

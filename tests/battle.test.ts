@@ -336,4 +336,39 @@ describe('寒冷・凍結とスキルの細部', () => {
     const r = run([{ uid: 1, defId: reaper.id, star: 1, pos: 31, dir: 'right' }], spec);
     expect(r.perUnit[0].healed).toBeGreaterThan(0);
   });
+  it('枯朽サルカズ戦士は倒れると汚染秽蝕を残し、周囲の味方がHPを失う', () => {
+    const spec = oneEnemy('test_pollute', false, { hp: 10, def: 0, res: 0, speed: 0.3, deathPollution: { high: 50, low: 25, duration: 8, radius: 2 } });
+    // 戦闘が続くように、後から倒れない敵を出す
+    ENEMIES.test_late = { ...ENEMIES.test_pollute, hp: 1e9, deathPollution: undefined, speed: 0.01 };
+    spec.spawns.push({ enemy: 'test_late', count: 1, interval: 0, delay: 1, spawn: 0 });
+    const r = run([{ uid: 1, defId: UNITS.find((u) => u.profession === 'defender')!.id, star: 1, pos: 34, dir: 'right' }], spec);
+    expect(r.perUnit[0].taken).toBeGreaterThan(200);
+  });
+
+  it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
+    const chain = UNITS.find((u) => u.name === 'レイズ')!;
+    // 1回の攻撃（同じ時刻）で何体に命中したか
+    const maxPerAttack = (r: ReturnType<typeof run>) => {
+      const per = new Map<number, Set<number>>();
+      for (const e of r.fx ?? []) if (e[1] === 0) per.set(e[0], (per.get(e[0]) ?? new Set()).add(e[3]));
+      return Math.max(0, ...[...per.values()].map((x) => x.size));
+    };
+    const near: RoundSpec = { round: 1, levelId: 'test', timeLimit: 20, moveMultiplier: 0.5, spawns: [{ enemy: 'test_chain', count: 4, interval: 0.3, delay: 0, spawn: 1 }] };
+    ENEMIES.test_chain = { name: 'c', hp: 1e9, def: 0, res: 0, speed: 1, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    const far: RoundSpec = { ...near, spawns: [{ enemy: 'test_chain', count: 4, interval: 6, delay: 0, spawn: 1 }] };
+    const board: OwnedUnit[] = [{ uid: 1, defId: chain.id, star: 2, pos: 23, dir: 'down' }];
+    const a = run(board, near);
+    const b = run(board, far);
+    expect(maxPerAttack(a)).toBeGreaterThan(1);
+    expect(maxPerAttack(b)).toBe(1);
+  });
+
+  it('エテルナのS3は自身も大きく回復する', () => {
+    const eterna = UNITS.find((u) => u.charId === 'char_4134_cetsyr')!;
+    const spec = oneEnemy('test_eterna', false, { speed: 0.01, attack: { kind: 'ranged', atk: 120, interval: 2, range: 99, arts: true } });
+    const r = run([{ uid: 1, defId: eterna.id, star: 2, pos: 22, dir: 'down' }], spec);
+    expect(r.perUnit[0].skillCasts).toBeGreaterThan(0);
+    // 特性（攻撃力の10%/秒）のままなら2.5万程度。S3で75%/秒になる
+    expect(r.perUnit[0].healed).toBeGreaterThan(40000);
+  });
 });

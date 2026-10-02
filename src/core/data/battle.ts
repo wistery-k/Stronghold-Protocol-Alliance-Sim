@@ -34,6 +34,8 @@ export interface EnemySpec {
   deadSpawn?: { enemy: string; count: number };
   /** 倒れると「hits 回の攻撃で倒せる」状態になり、interval 秒後に復活する（1回だけ） */
   revive?: { hits: number; interval: number };
+  /** 倒れると周囲に汚染秽蝕を残す（範囲内の味方は毎秒HPを失う。HP50%超で high、以下で low） */
+  deathPollution?: { high: number; low: number; duration: number; radius: number };
   /** 攻撃時に攻撃力×ratio の元素損傷を与える */
   element?: { type: ElementType; ratio: number };
   /** 攻撃。近接はブロックしている相手を、遠距離は範囲内の相手を攻撃する。無ければ攻撃しない */

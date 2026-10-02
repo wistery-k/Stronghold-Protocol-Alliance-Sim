@@ -2,7 +2,7 @@ import { compactBench, gainRandom, gainUnit, putOnBench, withRng } from './acqui
 import { cellX, cellY } from './board';
 import { notify } from './log';
 import { getBand, type BandId } from './data/bands';
-import { UNITS, getUnit } from './data/units';
+import { UNITS, getUnit, unitState } from './data/units';
 import { addStacks, currentActive, triggerGarrisons } from './garrison';
 import { gainItem, gainRandomItem, returnItems, unitAvailable } from './items';
 import { ownedBonds } from './alliance';
@@ -279,8 +279,9 @@ export function bandRoundStart(state: GameState): void {
       }
       break;
     case 'lisa': {
-      // 一番右、同じ列なら一番下のオペレーター
-      const target = [...state.board].sort((a, b) => cellX(b.pos ?? 0) - cellX(a.pos ?? 0) || cellY(b.pos ?? 0) - cellY(a.pos ?? 0))[0];
+      // 獲得時の特性を持つオペレーターのうち、一番右（同じ列なら一番下）
+      const hasGain = (o: OwnedUnit) => unitState(getUnit(o.defId), o.star).garrisons.some((g) => g.event === 'SERVER_GAIN');
+      const target = state.board.filter(hasGain).sort((a, b) => cellX(b.pos ?? 0) - cellX(a.pos ?? 0) || cellY(b.pos ?? 0) - cellY(a.pos ?? 0))[0];
       if (target) {
         notify(state, `${label(state)}${getUnit(target.defId).name} の獲得時の特性を発動`);
         triggerGarrisons(state, 'SERVER_GAIN', [{ unit: target, where: 'board' }]);

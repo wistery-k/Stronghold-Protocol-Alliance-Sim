@@ -223,6 +223,14 @@ def main():
         if 'def_reduce.max_stack_cnt' in bb:
             n = bb['def_reduce.max_stack_cnt']['value']
             e['defReduce'] = {'max': int(n), 'def': bb['def_reduce.def']['value'] / n, 'res': bb.get('def_reduce.magic_resistance', {'value': 0})['value'] / n}
+        # 倒れると周囲に「汚染秽蝕」（範囲内の味方が継続的にHPを失う）
+        if 'polluteddie.projectile_range' in bb:
+            e['deathPollution'] = {
+                'high': bb['polluteddie.polluted_damage_high']['value'],
+                'low': bb['polluteddie.polluted_damage_low']['value'],
+                'duration': bb['polluteddie.projectile_life_time']['value'],
+                'radius': bb['polluteddie.projectile_range']['value'],
+            }
         # 倒れると別の敵を生む
         if 'deadspawn.enemy_key' in bb:
             child = bb['deadspawn.enemy_key']['valueStr']
