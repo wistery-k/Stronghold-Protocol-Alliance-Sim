@@ -258,7 +258,8 @@ describe('寒冷・凍結とスキルの細部', () => {
     const r = run([{ uid: 1, defId: unit('ウタゲ').id, star: 1, pos: 34, dir: 'right' }], spec);
     expect(r.perUnit[0].skillCasts).toBe(1);
     const first = r.frames![0].u![0];
-    expect(first[1]).toBe(50); // HP50%
+    // HP50%（開始直後の攻撃で武者の特性によりわずかに回復しうる）
+    expect(first[1] >= 50 && first[1] <= 55).toBe(true);
     expect(first[3]).toBe(1); // スキル中
   });
 
@@ -310,5 +311,25 @@ describe('寒冷・凍結とスキルの細部', () => {
     spec.spawns[0].bounty = 3;
     const r = run([{ uid: 1, defId: byProf('sniper').id, star: 2, pos: 22, dir: 'down' }], spec);
     expect(r.bountyGold).toBe(3);
+  });
+  it('武者は攻撃で自身を回復し、医療からは治療されない', () => {
+    const spec = oneEnemy('test_musha', false, { def: 0, res: 0, attack: { kind: 'melee', atk: 400, interval: 1, range: 0, arts: false } });
+    const medic = UNITS.find((u) => u.damageType === 'heal' && u.subProfession === 'physician')!;
+    const r = run(
+      [
+        { uid: 1, defId: unit('ウタゲ').id, star: 1, pos: 31, dir: 'right' },
+        { uid: 2, defId: medic.id, star: 2, pos: 22, dir: 'down' },
+      ],
+      spec,
+    );
+    expect(r.perUnit[0].healed).toBeGreaterThan(0);
+    expect(r.perUnit[1].healed).toBe(0);
+  });
+
+  it('鎌は範囲内の敵全員を攻撃し、命中数（ブロック数まで）に応じて回復する', () => {
+    const reaper = UNITS.find((u) => u.subProfession === 'reaper')!;
+    const spec = oneEnemy('test_reap', false, { def: 0, res: 0, attack: { kind: 'melee', atk: 300, interval: 1, range: 0, arts: false } });
+    const r = run([{ uid: 1, defId: reaper.id, star: 1, pos: 31, dir: 'right' }], spec);
+    expect(r.perUnit[0].healed).toBeGreaterThan(0);
   });
 });

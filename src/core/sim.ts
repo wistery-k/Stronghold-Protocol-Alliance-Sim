@@ -300,6 +300,25 @@ function flagFactor(mods: Modifier, t: number): number {
 const SPLASH_SUB = new Set(['splashcaster', 'bombarder', 'blastcaster', 'fortress']);
 /** 攻撃範囲内の敵すべてを攻撃 */
 const ALL_IN_RANGE_SUB = new Set(['stalker']);
+/** スキル中、HP割合に応じて攻撃力が上がる「勇猛」（ヒューマス）：[必要HP割合, 攻撃力] を高い順に */
+function peakPerformance(bb: Record<string, number>): [number, number][] {
+  const out: [number, number][] = [];
+  for (const [k, v] of Object.entries(bb)) {
+    const m = k.match(/^(.*)\.peak_performance\.atk$/);
+    if (m) out.push([bb[`${m[1]}.peak_performance.hp_ratio`] ?? 0, v]);
+  }
+  return out.sort((a, b) => b[0] - a[0]);
+}
+/** スキル中、近接攻撃を確率で回避して弾薬を補充する（聖約イグゼキュター） */
+const EVADE_REFILL = new Set(['char_1032_excu2']);
+/**
+ * 武者・鎌：他の味方から治療されず、攻撃で自身を回復する（昇進2の値）。
+ * 武者は攻撃1回ごと、鎌は命中した敵1体ごと（最大でブロック数まで）
+ */
+const SELF_HEAL_SUB: Record<string, { hp: number; perTarget: boolean }> = {
+  musha: { hp: 70, perTarget: false },
+  reaper: { hp: 50, perTarget: true },
+};
 
 // ------------------------------------------------------------
 // 戦闘中の加算数獲得
@@ -602,6 +621,8 @@ interface Runtime {
   counterReadyAt: number;
   /** 狩人：弾数とリロード */
   huntAmmo: number;
+  /** 回避の確率の累積（期待値） */
+  evadeAcc: number;
   /** 戦術【食腐の蝶】：味方が倒れるたびに得た攻撃力の層 */
   qalaisaStacks: number;
   /** 戦術【薬枚実験】：護盾（被弾1回を無効化）と確率の累積 */
@@ -698,6 +719,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       counterReadyAt: 0,
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
+      evadeAcc: 0,
       mberryShield: 0,
       mberryAcc: 0,
       lastAttackAt: -99,
@@ -1067,7 +1089,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const n = skillActive && u.skill.maxTarget > 1 ? u.skill.maxTarget : 1;
     if (ALL_IN_RANGE_SUB.has(sub) || (sub === 'phalanx' && skillActive)) return cands.map((e) => [e, 1]);
     if (sub === 'centurion' && u.blocked.length) return u.blocked.map((e) => [e, 1]);
-    if (sub === 'reaper') return cands.slice(0, Math.max(n, u.block || 1)).map((e) => [e, 1]);
+    // 鎌：攻撃範囲内の敵全員を攻撃（群体ダメージ）
+    if (sub === 'reaper') return cands.map((e) => [e, 1]);
     if (sub === 'chain') return cands.slice(0, Math.max(n, 4)).map((e, i) => [e, Math.pow(0.85, i)]);
     const main = cands.slice(0, n).map((e) => [e, 1] as [Enemy, number]);
     if (field && SPLASH_SUB.has(sub)) {
@@ -1398,6 +1421,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const hurt = (u: Runtime, raw: number, arts: boolean, src: Enemy) => {
     philaeCounter(u);
+    // 聖約イグゼキュター：スキル中は近接攻撃を確率で回避し、弾薬を補充（期待値）
+    if (EVADE_REFILL.has(u.input.def.charId) && u.ammoLeft > 0 && src.input.spec.attack?.kind === 'melee') {
+      u.evadeAcc += u.skill.bb.prob ?? 0;
+      if (u.evadeAcc >= 1) {
+        u.evadeAcc -= 1;
+        u.ammoLeft += u.skill.bb.recover_cnt ?? 1;
+        return;
+      }
+    }
     // 戦術【薬枚実験】：護盾で被弾1回を無効化
     if (u.mberryShield > 0) {
       u.mberryShield--;
@@ -1421,6 +1453,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const healUnit = (healer: Runtime, target: Runtime, amount: number) => {
     if (!target.alive || amount <= 0) return;
+    // 武者・鎌は他の味方から治療されない
+    if (healer !== target && SELF_HEAL_SUB[target.input.def.subProfession]) return;
     const applied = Math.min(amount, target.maxHp - target.hp);
     if (applied <= 0) return;
     target.hp += applied;
@@ -1438,6 +1472,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // 行医：元素損傷を受けた味方も治療する（元素損傷の多い順を優先）
     const wander = u.input.def.subProfession === 'wandermedic';
     return alliesInRange(u, skillActive)
+      .filter((o) => !SELF_HEAL_SUB[o.input.def.subProfession])
       .filter((o) => o.hp < o.maxHp - 1e-6 || (wander && elemTotal(o) > 0))
       .sort((a, b) => (wander ? elemTotal(b) - elemTotal(a) : 0) || a.hp / a.maxHp - b.hp / b.maxHp);
   };
@@ -1643,7 +1678,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
   const injuredNear = (u: Runtime, r = SUPPORT_HEAL_RADIUS) => {
     const p = posOf(u);
-    return alliesNear(p.x, p.y, r).filter((o) => o.hp < o.maxHp - 1e-6);
+    return alliesNear(p.x, p.y, r).filter((o) => o.hp < o.maxHp - 1e-6 && (o === u || !SELF_HEAL_SUB[o.input.def.subProfession]));
   };
   /** 錬金ユニットの効果範囲 */
   const zones: { owner: Runtime; x: number; y: number; r: number; until: number; atk: number; heal: number; dot: number; groundOnly: boolean }[] = [];
@@ -1857,7 +1892,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
 
       const activeNow = s.passive || skillActive();
-      const atk = baseAtk(def, star, mods, outerAtkPct + (activeNow && (!PHILAE[def.charId] || u.philaeBoost) ? s.atkPct : 0));
+      // ヒューマス：スキル中、HP割合に応じた「勇猛」
+      const peak = activeNow && !s.passive ? (peakPerformance(s.bb).find(([ratio]) => u.hp / u.maxHp >= ratio)?.[1] ?? 0) : 0;
+      const atk = baseAtk(def, star, mods, outerAtkPct + peak + (activeNow && (!PHILAE[def.charId] || u.philaeBoost) ? s.atkPct : 0));
       const aspd =
         stats.aspd +
         (mods.aspd ?? 0) +
@@ -1929,6 +1966,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           if (targets.length >= 3 || (inSkill && targets.length >= 2)) emit([2, uid, inSkill ? 1 : 0], `area${uid}`, 0.3);
         }
         for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1));
+        // 武者・鎌の職分特性：攻撃で自身を回復
+        const selfHeal = SELF_HEAL_SUB[def.subProfession];
+        if (selfHeal) healUnit(u, u, selfHeal.hp * (selfHeal.perTarget ? Math.min(targets.length, Math.max(1, u.block)) : 1));
         // ブレミシャイン：スキル中は攻撃のたびに周囲の自分以外の味方1人を治療
         if (field && activeNow && SUPPORT_SKILL[def.charId] === 'attackHeal') {
           const ally = injuredNear(u).find((o) => o !== u);
