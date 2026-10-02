@@ -1,5 +1,5 @@
 import { ALLIANCES } from '../core/data/alliances';
-import { enemyForRound } from '../core/data/enemies';
+import { roundEnemySummary, roundSpec } from '../core/data/battle';
 import { activeAllianceIds, evaluateAlliances, unitAlliances } from '../core/alliance';
 import { benchUnits } from '../core/garrison';
 import {
@@ -18,21 +18,19 @@ import { BENCH_SIZE, MAX_ROUND, REFRESH_COST, TIER_ODDS } from '../core/rules';
 import { getItem } from '../core/data/items';
 import { isItemEntry } from '../core/types';
 import { benchOverflow } from '../core/acquire';
-import { simulateDps } from '../core/sim';
+import { battleTimeLimit, simulateBattle, type BattleResult, type SimOptions, type SimUnitInput } from '../core/sim';
+import type { RoundSpec } from '../core/data/battle';
 import type { AllianceId } from '../core/types';
 import {
   allianceSummary,
   alliancePanel,
-  boardGrid,
   emptySlot,
-  enemyInfo,
   itemCard,
   makeDropTarget,
-  predictionLine,
-  simSummary,
   unitCard,
   unitDetail,
 } from './components';
+import { battleSummary, mapGrid, predictionLine, roundInfo } from './battleView';
 import { h } from './dom';
 
 export interface GameViewProps {
@@ -60,19 +58,35 @@ function topBar(state: GameState, extra: HTMLElement | null = null) {
   );
 }
 
+// 予測は数十ミリ秒かかるので、編成が変わらない限り使い回す
+let predictionCache: { key: string; result: BattleResult } | null = null;
+function cachedPrediction(inputs: SimUnitInput[], spec: RoundSpec, opts: SimOptions): BattleResult {
+  let key: string | null = null;
+  try {
+    key = JSON.stringify([spec.round, inputs, opts.globals, [...(opts.activeAlliances ?? [])], opts.stacks], (_k, v) => (v instanceof Set ? [...v] : v instanceof Map ? [...v.entries()] : v));
+  } catch {
+    key = null;
+  }
+  if (key && predictionCache?.key === key) return predictionCache.result;
+  const result = simulateBattle(inputs, spec, opts);
+  if (key) predictionCache = { key, result };
+  return result;
+}
+
 const lastClick: { uid: number | null; at: number } = { uid: null, at: 0 };
 
 function prepView(p: GameViewProps): HTMLElement {
   const { state, dispatch, select, selectedUid } = p;
   const cap = deployCapOf(state);
-  const enemy = enemyForRound(state.round);
+  const spec = roundSpec(state.round);
   const bench = benchUnits(state);
   const statuses = evaluateAlliances(state.board, bench, state.banned);
   const activeIds = activeAllianceIds(statuses);
   // 戦闘開始時（準備フェーズ終了時の特性・配置時の特性の後）の加算数で予測する
   const battleStacks = previewBattleStacks(state);
   const setup = buildSimInputs(state.board, bench, battleStacks, { banned: state.banned, roundGained: state.round_.gained });
-  const prediction = simulateDps(setup.inputs, enemy, { globals: setup.globals, activeAlliances: activeAllianceIds(setup.statuses), stacks: battleStacks });
+  const predictOpts = { globals: setup.globals, activeAlliances: activeAllianceIds(setup.statuses), stacks: battleStacks };
+  const prediction = cachedPrediction(setup.inputs, spec, predictOpts);
   const lvCost = levelUpCost(state);
   // 非精鋭で所持しているオペレーター（ショップで光らせる）
   const ownedNormal = new Set(allOwned(state).filter((o) => o.star === 1).map((o) => o.defId));
@@ -256,7 +270,7 @@ function prepView(p: GameViewProps): HTMLElement {
           { class: 'panel' },
           h('h2', null, `配置（${state.board.length}/${cap}）`),
           allianceSummary(statuses, state.stacks, state.banned),
-          boardGrid(state.board, {
+          mapGrid(state.board, {
             cardOptions: (o) => ({
               ...cardFor(o.uid, 'board'),
               dim: setup.excluded.has(o.uid),
@@ -287,8 +301,8 @@ function prepView(p: GameViewProps): HTMLElement {
         h(
           'section',
           { class: 'panel' },
-          h('h2', null, '次の敵'),
-          enemyInfo(enemy),
+          h('h2', null, `次の敵（ラウンド${state.round}）`),
+          roundInfo(spec, battleTimeLimit(spec)),
           predictionLine(prediction),
           gainedStacks.length
             ? h('p', { class: 'small muted' }, '戦闘開始時に得る加算数：', gainedStacks.map(([id, d]) => `${ALLIANCES[id].name}+${d}`).join('、'))
@@ -313,7 +327,7 @@ function resultView(p: GameViewProps): HTMLElement {
     h(
       'div',
       { class: 'layout' },
-      h('main', null, h('section', { class: 'panel' }, h('h2', null, `ラウンド${b.round}　vs ${b.sim.enemy.name}`), simSummary(b.sim))),
+      h('main', null, h('section', { class: 'panel' }, h('h2', null, `ラウンド${b.round}　戦闘結果`), battleSummary(b.sim, b.units ?? []))),
       h(
         'aside',
         null,
@@ -378,12 +392,12 @@ function endView(p: GameViewProps): HTMLElement {
       'section',
       { class: 'panel center' },
       h('h1', { class: clear ? 'ok' : 'ng' }, clear ? '防衛成功！' : '防衛失敗…'),
-      h('p', null, `到達ラウンド ${state.round}　撃破 ${kills}/${state.history.length}　残り耐久値 ${state.life}`),
+      h('p', null, `到達ラウンド ${state.round}　全滅 ${kills}/${state.history.length}　残り耐久値 ${state.life}`),
       h(
         'ol',
         { class: 'history' },
         state.history.map((x) =>
-          h('li', { class: x.killed ? 'ok' : 'ng' }, `R${x.round} ${enemyForRound(x.round).name}：${x.killed ? '撃破' : `耐久値-${x.lifeLost}`}`),
+          h('li', { class: x.killed ? 'ok' : 'ng' }, `R${x.round}${roundEnemySummary(roundSpec(x.round)).some((e) => e.enemy.boss) ? '（ボス）' : ''}：${x.killed ? '全滅' : x.lifeLost ? `耐久値-${x.lifeLost}` : '損害なし'}`),
         ),
       ),
       h('p', { class: 'muted small' }, `シード ${state.seed}`),

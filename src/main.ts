@@ -3,7 +3,7 @@ import { h } from './ui/dom';
 import { gameView } from './ui/gameView';
 import { createSandbox, sandboxView, type SandboxState } from './ui/sandboxView';
 
-const SAVE_KEY = 'sp-sim:game:v6';
+const SAVE_KEY = 'sp-sim:game:v7';
 
 type Mode = 'game' | 'sandbox';
 
@@ -22,7 +22,7 @@ function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
-    return s.version === 6 ? s : null;
+    return s.version === 7 ? s : null;
   } catch {
     return null;
   }
@@ -30,7 +30,7 @@ function loadGame(): GameState | null {
 
 function saveGame() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(app.game));
+    localStorage.setItem(SAVE_KEY, JSON.stringify(app.game, (k, v) => (k === 'frames' ? undefined : v)));
   } catch {
     // 保存できなくても遊べるようにする
   }
@@ -88,7 +88,7 @@ function render() {
       'nav',
       { class: 'tabs' },
       h('button', { class: `tab ${app.mode === 'game' ? 'on' : ''}`, onclick: () => { app.mode = 'game'; render(); } }, 'プレイ'),
-      h('button', { class: `tab ${app.mode === 'sandbox' ? 'on' : ''}`, onclick: () => { app.mode = 'sandbox'; render(); } }, 'DPSサンドボックス'),
+      h('button', { class: `tab ${app.mode === 'sandbox' ? 'on' : ''}`, onclick: () => { app.mode = 'sandbox'; render(); } }, 'サンドボックス'),
     ),
     app.mode === 'game'
       ? h('button', { class: 'btn ghost', onclick: () => { if (confirm('現在のゲームを破棄して新しく始めますか？')) newGame(); } }, '新しいゲーム')

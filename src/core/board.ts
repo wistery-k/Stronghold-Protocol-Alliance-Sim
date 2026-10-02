@@ -1,18 +1,36 @@
+import { rangeGrid, unitRangeIds } from './data/battle';
 import { getUnit, unitState } from './data/units';
-import type { Direction, OwnedUnit } from './types';
+import type { Direction, OwnedUnit, Star } from './types';
 
 export const DIRECTIONS: Direction[] = ['up', 'right', 'down', 'left'];
 export const DEFAULT_DIRECTION: Direction = 'right';
 const DIR_DELTA: Record<Direction, [number, number]> = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
 export const DIRECTION_NAME: Record<Direction, string> = { up: '上', right: '右', down: '下', left: '左' };
 
-// 配置エリア（4x4 グリッド）の位置関係。
+// 配置エリア（マップ）の位置関係。
 // オペレーターは上下左右のいずれかを向いて配置される。
 //   「前方1マス」「後方1マス」はオペレーターの向きから見た相対位置、
 //   「左右一直線上」は向きに関係なく絶対方角の横一列（同じ y）。
 
-export const BOARD_COLS = 4;
-export const BOARD_ROWS = 4;
+/**
+ * マップ。1: 地上（全員配置可・敵が通る）2: 敵の出現地点 3: 地上（全員配置可・敵は通らない）
+ * 4: 壁 5: 高台（遠距離のみ配置可）6: 防衛地点（敵の目的地。到達されると耐久値が減る）
+ */
+export const MAP_LAYOUT = ['444555112', '445553134', '455533134', '611111112'];
+
+export type TileType = 'ground' | 'spawn' | 'safe' | 'wall' | 'high' | 'goal';
+const TILE_CODE: Record<string, TileType> = { '1': 'ground', '2': 'spawn', '3': 'safe', '4': 'wall', '5': 'high', '6': 'goal' };
+export const TILE_NAME: Record<TileType, string> = {
+  ground: '地上マス',
+  spawn: '敵の出現地点',
+  safe: '地上マス（敵は通らない）',
+  wall: '壁',
+  high: '高台マス（遠距離のみ）',
+  goal: '防衛地点',
+};
+
+export const BOARD_COLS = MAP_LAYOUT[0].length;
+export const BOARD_ROWS = MAP_LAYOUT.length;
 export const BOARD_CELLS = BOARD_COLS * BOARD_ROWS;
 
 export const cellX = (pos: number) => pos % BOARD_COLS;
@@ -20,30 +38,164 @@ export const cellY = (pos: number) => Math.floor(pos / BOARD_COLS);
 export const cellPos = (x: number, y: number) => y * BOARD_COLS + x;
 const inside = (x: number, y: number) => x >= 0 && x < BOARD_COLS && y >= 0 && y < BOARD_ROWS;
 
+export function tileAt(pos: number): TileType {
+  return TILE_CODE[MAP_LAYOUT[cellY(pos)][cellX(pos)]];
+}
+
+/** 敵が通れるマス */
+export const enemyPassable = (pos: number) => ['ground', 'spawn', 'goal'].includes(tileAt(pos));
+
+/** 近距離職（地上マスにしか置けない職分ではなく、高台に置けない職分） */
+export function isMelee(defId: string): boolean {
+  return ['vanguard', 'guard', 'defender', 'specialist'].includes(getUnit(defId).profession);
+}
+
+/** そのオペレーターを置けるマスか */
+export function canPlace(pos: number, defId: string): boolean {
+  if (pos < 0 || pos >= BOARD_CELLS) return false;
+  const t = tileAt(pos);
+  if (t === 'ground' || t === 'safe') return true;
+  if (t === 'high') return !isMelee(defId);
+  return false;
+}
+
+/** そのマスに置いたオペレーターが敵をブロックできるか（敵が通る地上マス） */
+export const canBlockAt = (pos: number) => tileAt(pos) === 'ground';
+
+export const SPAWNS: number[] = [];
+export let GOAL = 0;
+for (let p = 0; p < BOARD_CELLS; p++) {
+  if (tileAt(p) === 'spawn') SPAWNS.push(p);
+  if (tileAt(p) === 'goal') GOAL = p;
+}
+
+/** 出現地点から防衛地点までの経路（マスの並び） */
+function findPath(from: number): number[] {
+  const prev = new Map<number, number>([[from, -1]]);
+  const queue = [from];
+  while (queue.length) {
+    const p = queue.shift()!;
+    if (p === GOAL) break;
+    for (const [dx, dy] of [[-1, 0], [0, 1], [0, -1], [1, 0]]) {
+      const x = cellX(p) + dx;
+      const y = cellY(p) + dy;
+      if (!inside(x, y)) continue;
+      const q = cellPos(x, y);
+      if (prev.has(q) || !enemyPassable(q)) continue;
+      prev.set(q, p);
+      queue.push(q);
+    }
+  }
+  const path: number[] = [];
+  for (let p = GOAL; p !== -1 && p !== undefined; p = prev.get(p)!) path.unshift(p);
+  return path;
+}
+
+export const ENEMY_PATHS: number[][] = SPAWNS.map(findPath);
+export const PATH_TILES = new Set(ENEMY_PATHS.flat());
+
+/** 攻撃範囲のオフセット（右向き基準の [前方, 横]）を向きに合わせてマス座標に変換 */
+export function rotateOffset(dir: Direction, col: number, row: number): [number, number] {
+  switch (dir) {
+    case 'right':
+      return [col, row];
+    case 'left':
+      return [-col, -row];
+    case 'up':
+      return [row, -col];
+    case 'down':
+      return [-row, col];
+  }
+}
+
+/** pos から dir を向いた時に攻撃範囲に入るマス */
+export function rangeCells(pos: number, dir: Direction, grid: [number, number][]): number[] {
+  const out: number[] = [];
+  for (const [col, row] of grid) {
+    const [dx, dy] = rotateOffset(dir, col, row);
+    const x = cellX(pos) + dx;
+    const y = cellY(pos) + dy;
+    if (inside(x, y)) out.push(cellPos(x, y));
+  }
+  return out;
+}
+
+export function unitRangeCells(o: OwnedUnit, skill = false): number[] {
+  if (o.pos === undefined) return [];
+  const ids = unitRangeIds(o.defId, o.star);
+  return rangeCells(o.pos, o.dir ?? DEFAULT_DIRECTION, rangeGrid(skill && ids.skillRange ? ids.skillRange : ids.range));
+}
+
+/** 経路マスの評価：通る経路の数（合流後のマスは2）。同点なら出現地点寄り（早く攻撃できる）を優先 */
+const PATH_WEIGHT = new Map<number, number>();
+/** 防衛地点への近さ（0〜1） */
+const GOAL_NEAR = new Map<number, number>();
+for (const path of ENEMY_PATHS) {
+  path.forEach((p, i) => {
+    if (p === GOAL) return;
+    PATH_WEIGHT.set(p, (PATH_WEIGHT.get(p) ?? 0) + 1);
+    GOAL_NEAR.set(p, Math.max(GOAL_NEAR.get(p) ?? 0, i / path.length));
+  });
+}
+
+function coverage(pos: number, dir: Direction, grid: [number, number][]): number {
+  return rangeCells(pos, dir, grid).reduce((sum, p) => sum + (PATH_WEIGHT.get(p) ?? 0) - 0.05 * (GOAL_NEAR.get(p) ?? 0), 0);
+}
+
+/** 経路を最も多く攻撃範囲に収める向き */
+export function bestDirection(pos: number, defId: string, star: Star = 1): Direction {
+  const grid = rangeGrid(unitRangeIds(defId, star).range);
+  let best: Direction = DEFAULT_DIRECTION;
+  let bestScore = -1;
+  for (const d of ['right', 'left', 'up', 'down'] as Direction[]) {
+    const sc = coverage(pos, d, grid);
+    if (sc > bestScore + 1e-9) {
+      best = d;
+      bestScore = sc;
+    }
+  }
+  return best;
+}
+
+/** 空いているマスのうち、そのオペレーターに一番向いているマスと向き */
+export function autoCell(board: OwnedUnit[], defId: string, star: Star = 1): { pos: number; dir: Direction } | null {
+  const def = getUnit(defId);
+  const grid = rangeGrid(unitRangeIds(defId, star).range);
+  const blocker = isMelee(defId) && unitState(def, star).stats.block > 0 && def.damageType !== 'heal';
+  let best: { pos: number; dir: Direction } | null = null;
+  let bestScore = -Infinity;
+  for (let p = 0; p < BOARD_CELLS; p++) {
+    if (!canPlace(p, defId) || unitAt(board, p)) continue;
+    const dir = bestDirection(p, defId, star);
+    let sc = coverage(p, dir, grid);
+    // 近距離のブロック役は経路上（防衛地点寄り）に、それ以外は経路をふさがない場所に置く
+    if (canBlockAt(p)) sc += blocker ? 5 + (PATH_WEIGHT.get(p) ?? 0) * 2 + (GOAL_NEAR.get(p) ?? 0) * 3 : -8;
+    if (sc > bestScore) {
+      bestScore = sc;
+      best = { pos: p, dir };
+    }
+  }
+  return best;
+}
+
 export function unitAt(board: OwnedUnit[], pos: number): OwnedUnit | undefined {
   return board.find((o) => o.pos === pos);
 }
 
-export function firstFreeCell(board: OwnedUnit[]): number | null {
-  for (let p = 0; p < BOARD_CELLS; p++) if (!unitAt(board, p)) return p;
-  return null;
-}
-
-/** pos が未設定・重複しているユニットに空きマスを割り当てる（古いセーブデータ対策） */
+/** pos が未設定・重複・置けないマスのユニットを置き直す（古いセーブデータ対策） */
 export function normalizePositions(board: OwnedUnit[]): void {
   const used = new Set<number>();
   for (const o of board) {
-    if (o.pos === undefined || used.has(o.pos) || o.pos < 0 || o.pos >= BOARD_CELLS) o.pos = undefined;
+    if (o.pos === undefined || used.has(o.pos) || !canPlace(o.pos, o.defId)) o.pos = undefined;
     else used.add(o.pos);
   }
   for (const o of board) {
     if (o.pos !== undefined) continue;
-    for (let p = 0; p < BOARD_CELLS; p++) {
-      if (!used.has(p)) {
-        o.pos = p;
-        used.add(p);
-        break;
-      }
+    const placed = board.filter((b) => b.pos !== undefined);
+    const c = autoCell(placed, o.defId, o.star);
+    if (c) {
+      o.pos = c.pos;
+      o.dir = c.dir;
     }
   }
 }

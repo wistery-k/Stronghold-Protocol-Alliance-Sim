@@ -121,7 +121,7 @@ describe('simulateDps', () => {
 describe('位置による効果', () => {
   it('器用は周囲4マスのオペレーターにも攻撃速度を与える', () => {
     const u = (uid: number, name: string, pos: number) => ({ uid, defId: byName(name).id, star: 1 as const, pos });
-    const board = [u(1, 'ティッピ', 0), u(2, 'アルケット', 8), u(3, 'スカジ', 1), u(4, 'スペクター', 15)];
+    const board = [u(1, 'ティッピ', 28), u(2, 'アルケット', 11), u(3, 'スカジ', 29), u(4, 'スペクター', 34)];
     const setup = battleSetup(board, [], {});
     expect(setup.mods.get(3)?.aspd ?? 0).toBeGreaterThan(0); // ティッピの右隣
     expect(setup.mods.get(4)?.aspd ?? 0).toBe(0); // 離れている

@@ -1,22 +1,19 @@
 // 簡易ボットで多数回プレイして、ラウンドごとの撃破率を出すバランス確認用スクリプト。
 // 使い方: npm run balance -- [試行回数]
 
-import { activeAllianceIds } from '../src/core/alliance';
-import { enemyForRound } from '../src/core/data/enemies';
+import { isMelee } from '../src/core/board';
 import { getUnit, unitState } from '../src/core/data/units';
 import { benchUnits } from '../src/core/garrison';
 import {
   applyAction,
-  buildSimInputs,
   createGame,
+  deployCapOf,
   levelUpCost,
-  previewBattleStacks,
   priceOf,
   type Action,
   type GameState,
 } from '../src/core/game';
-import { deployCap, MAX_ROUND } from '../src/core/rules';
-import { simulateDps } from '../src/core/sim';
+import { MAX_ROUND } from '../src/core/rules';
 import type { OwnedUnit } from '../src/core/types';
 
 /** ざっくりした強さの目安（毎秒の攻撃力） */
@@ -73,41 +70,42 @@ function playPrep(s: GameState): GameState {
     s = r.error ? act(s, { type: 'skipChoice' }) : r.state;
   }
 
+  // 編成：ブロック役（近距離）は最大3人、残りは遠距離から強い順
   const all = [...s.board, ...benchUnits(s)].sort((a, b) => power(b) - power(a));
-  const want = new Set(all.slice(0, deployCap(s.level)).map((o) => o.uid));
+  const melee = all.filter((o) => isMelee(o.defId)).slice(0, 3);
+  const ranged = all.filter((o) => !isMelee(o.defId) && getUnit(o.defId).damageType !== 'heal');
+  const picked = [...melee, ...ranged].slice(0, deployCapOf(s));
+  const want = new Set(picked.map((o) => o.uid));
   for (const o of [...s.board]) if (!want.has(o.uid)) s = act(s, { type: 'undeploy', uid: o.uid });
-  for (const uid of want) s = act(s, { type: 'deploy', uid });
+  // ブロック役から先に置く（自動配置で経路上の良い位置に入る）
+  for (const o of picked) if (!s.board.some((b) => b.uid === o.uid)) s = act(s, { type: 'deploy', uid: o.uid });
 
   const bench = benchUnits(s).sort((a, b) => power(a) - power(b));
   if (bench.length >= 8) for (const o of bench.slice(0, 3)) s = act(s, { type: 'sell', uid: o.uid });
   return s;
 }
 
-const median = (a: number[]) => (a.length ? [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)] : 0);
-
-const trials = Number(process.argv[2] ?? 200);
-const killsByRound = Array(MAX_ROUND + 1).fill(0);
-const reachByRound = Array(MAX_ROUND + 1).fill(0);
-const ratioByRound: number[][] = Array.from({ length: MAX_ROUND + 1 }, () => []);
-const dpsByRound: number[][] = Array.from({ length: MAX_ROUND + 1 }, () => []);
+const trials = Number(process.argv[2] ?? 100);
+const reach = Array(MAX_ROUND + 1).fill(0);
+const clearsBy = Array(MAX_ROUND + 1).fill(0);
+const lossBy: number[][] = Array.from({ length: MAX_ROUND + 1 }, () => []);
+const leakBy: number[][] = Array.from({ length: MAX_ROUND + 1 }, () => []);
+const lifeAfter: number[][] = Array.from({ length: MAX_ROUND + 1 }, () => []);
 let clears = 0;
+const median = (a: number[]) => (a.length ? [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)] : 0);
 
 for (let t = 0; t < trials; t++) {
   let s = createGame(1000 + t);
   while (s.phase !== 'gameover' && s.phase !== 'clear') {
     if (s.phase === 'prep') {
       s = playPrep(s);
-      // HP無限の木人（同じ防御・術耐性）に対する潜在DPS
-      const stacks = previewBattleStacks(s);
-      const setup = buildSimInputs(s.board, benchUnits(s), stacks);
       s = act(s, { type: 'battle' });
       const b = s.lastBattle!;
-      reachByRound[b.round]++;
-      if (b.sim.killed) killsByRound[b.round]++;
-      ratioByRound[b.round].push(b.sim.totalDamage / b.sim.enemy.hp);
-      const dummy = { ...b.sim.enemy, hp: 1e12, phases: [] };
-      const sim = simulateDps(setup.inputs, dummy, { globals: setup.globals, activeAlliances: activeAllianceIds(setup.statuses), stacks });
-      dpsByRound[b.round].push(sim.totalDamage / dummy.duration);
+      reach[b.round]++;
+      if (b.sim.cleared) clearsBy[b.round]++;
+      lossBy[b.round].push(b.lifeLost);
+      leakBy[b.round].push(b.sim.leaked);
+      lifeAfter[b.round].push(s.life);
     }
     s = act(s, { type: 'next' });
   }
@@ -115,11 +113,10 @@ for (let t = 0; t < trials; t++) {
 }
 
 console.log(`試行 ${trials} 回 / クリア率 ${((clears / trials) * 100).toFixed(1)}%`);
-console.log('R   到達  撃破率  与ダメ/HP(中央値)  潜在DPS(中央値)  必要DPS');
+console.log('R   到達  全滅率  突破数(中央値)  耐久減少(中央値)  残り耐久(中央値)');
 for (let r = 1; r <= MAX_ROUND; r++) {
-  const rate = reachByRound[r] ? (killsByRound[r] / reachByRound[r]) * 100 : 0;
-  const e = enemyForRound(r);
+  const rate = reach[r] ? (clearsBy[r] / reach[r]) * 100 : 0;
   console.log(
-    `${String(r).padStart(2)}  ${String(reachByRound[r]).padStart(4)}  ${rate.toFixed(0).padStart(5)}%  ${median(ratioByRound[r]).toFixed(2)}  ${median(dpsByRound[r]).toFixed(0).padStart(8)}  ${(e.hp / e.duration).toFixed(0).padStart(8)}`,
+    `${String(r).padStart(2)}  ${String(reach[r]).padStart(4)}  ${rate.toFixed(0).padStart(5)}%  ${String(median(leakBy[r])).padStart(8)}  ${String(median(lossBy[r])).padStart(8)}  ${String(median(lifeAfter[r])).padStart(8)}`,
   );
 }

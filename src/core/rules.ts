@@ -44,11 +44,13 @@ export const TIER_ODDS: number[][] = [
 /** 各オペレーターの共有プール枚数（等級ごと。独自設定） */
 export const POOL_COPIES: Record<Tier, number> = { 1: 12, 2: 10, 3: 9, 4: 8, 5: 7, 6: 6 };
 
-/** 撃破失敗時の耐久値減少。残りHP割合に応じる */
-export function lifeLoss(remainingRatio: number, isBoss: boolean): number {
-  if (remainingRatio <= 0) return 0;
-  const base = 1 + Math.ceil(remainingRatio * 4);
-  return Math.min(isBoss ? base * 2 : base, MAX_LIFE_LOSS);
-}
+/**
+ * 敵の調整（移動速度・HPの倍率）。ボスには掛けない。
+ * 敵の出現は本家のステージどおりだが、本家にある素質や細かい効果の多くを再現していないので、
+ * 通常の敵のHPは半分にしている（scripts/autoplay.ts で確認しながら調整）
+ */
+const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+export const ENEMY_SPEED_SCALE = Number(env.SP_SPEED ?? 1);
+export const ENEMY_HP_SCALE = Number(env.SP_HP ?? 0.5);
 
 export const CHOICE_LOCK_MESSAGE = '無料獲得の候補を先に選んでください';

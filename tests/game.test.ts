@@ -202,12 +202,12 @@ describe('配置エリア', () => {
     let s = withShop(createGame(1), ['インサイダー', 'グム']);
     for (const slot of [0, 1]) s = applyAction(s, { type: 'buy', slot }).state;
     const [a, b] = owned(s);
-    s = applyAction(s, { type: 'move', uid: a.uid, to: { zone: 'board', pos: 5 } }).state;
-    s = applyAction(s, { type: 'move', uid: b.uid, to: { zone: 'board', pos: 6 } }).state;
-    expect(s.board.find((o) => o.uid === a.uid)!.pos).toBe(5);
-    s = applyAction(s, { type: 'move', uid: a.uid, to: { zone: 'board', pos: 6 } }).state;
-    expect(s.board.find((o) => o.uid === a.uid)!.pos).toBe(6);
-    expect(s.board.find((o) => o.uid === b.uid)!.pos).toBe(5);
+    s = applyAction(s, { type: 'move', uid: a.uid, to: { zone: 'board', pos: 28 } }).state;
+    s = applyAction(s, { type: 'move', uid: b.uid, to: { zone: 'board', pos: 29 } }).state;
+    expect(s.board.find((o) => o.uid === a.uid)!.pos).toBe(28);
+    s = applyAction(s, { type: 'move', uid: a.uid, to: { zone: 'board', pos: 29 } }).state;
+    expect(s.board.find((o) => o.uid === a.uid)!.pos).toBe(29);
+    expect(s.board.find((o) => o.uid === b.uid)!.pos).toBe(28);
     // 盤面→控えの埋まった枠へ：入れ替え
     s = applyAction(s, { type: 'move', uid: a.uid, to: { zone: 'bench', index: 0 } }).state;
     expect(s.board.map((o) => o.uid)).toEqual([b.uid]);
@@ -227,15 +227,15 @@ describe('配置エリア', () => {
       return s.stacks.skillful ?? 0;
     };
     // ティッピがアルケットの前方（右）にいると、ティッピの盟約にも加算される
-    expect(run(0, 1)).toBeGreaterThan(run(1, 0));
+    expect(run(28, 29)).toBeGreaterThan(run(29, 28));
   });
 });
 
 describe('向き・控えの超過・特別招集', () => {
   it('前方は向いている方向から見た相対位置', () => {
-    const a = { ...ou(1, 'アルケット'), pos: 5, dir: 'up' as const };
-    const up = { ...ou(2, 'グム'), pos: 1 };
-    const right = { ...ou(3, 'ティッピ'), pos: 6 };
+    const a = { ...ou(1, 'アルケット'), pos: 14, dir: 'up' as const };
+    const up = { ...ou(2, 'グム'), pos: 5 };
+    const right = { ...ou(3, 'ティッピ'), pos: 15 };
     const board = [a, up, right];
     expect(frontOf(board, a)?.uid).toBe(2);
     expect(behindOf(board, a)).toBeUndefined();

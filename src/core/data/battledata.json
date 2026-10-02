@@ -1,0 +1,4517 @@
+{
+ "ranges": {
+  "0-1": [
+   [
+    0,
+    0
+   ]
+  ],
+  "1-1": [
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ]
+  ],
+  "1-2": [
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    0,
+    -1
+   ]
+  ],
+  "1-3": [
+   [
+    1,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    1,
+    -1
+   ]
+  ],
+  "2-1": [
+   [
+    0,
+    2
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    0,
+    -2
+   ]
+  ],
+  "2-2": [
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ]
+  ],
+  "2-5": [
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ]
+  ],
+  "3-1": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ]
+  ],
+  "3-12": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ]
+  ],
+  "3-13": [
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ]
+  ],
+  "3-14": [
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    3,
+    -1
+   ]
+  ],
+  "3-15": [
+   [
+    0,
+    2
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    2,
+    2
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    3,
+    -1
+   ],
+   [
+    0,
+    -2
+   ],
+   [
+    1,
+    -2
+   ],
+   [
+    2,
+    -2
+   ]
+  ],
+  "3-17": [
+   [
+    1,
+    2
+   ],
+   [
+    2,
+    2
+   ],
+   [
+    3,
+    2
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    3,
+    -1
+   ],
+   [
+    1,
+    -2
+   ],
+   [
+    2,
+    -2
+   ],
+   [
+    3,
+    -2
+   ]
+  ],
+  "3-18": [
+   [
+    0,
+    2
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    0,
+    -2
+   ],
+   [
+    1,
+    -2
+   ]
+  ],
+  "3-2": [
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ]
+  ],
+  "3-3": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    3,
+    -1
+   ]
+  ],
+  "3-4": [
+   [
+    0,
+    2
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    2,
+    2
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    3,
+    -1
+   ],
+   [
+    0,
+    -2
+   ],
+   [
+    1,
+    -2
+   ],
+   [
+    2,
+    -2
+   ]
+  ],
+  "3-5": [
+   [
+    0,
+    2
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    0,
+    -2
+   ],
+   [
+    1,
+    -2
+   ]
+  ],
+  "3-6": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ]
+  ],
+  "3-7": [
+   [
+    0,
+    3
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    0,
+    -2
+   ],
+   [
+    1,
+    -2
+   ],
+   [
+    0,
+    -3
+   ]
+  ],
+  "3-9": [
+   [
+    0,
+    2
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    2,
+    2
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    4,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    3,
+    -1
+   ],
+   [
+    0,
+    -2
+   ],
+   [
+    1,
+    -2
+   ],
+   [
+    2,
+    -2
+   ]
+  ],
+  "4-11": [
+   [
+    2,
+    2
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    4,
+    0
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    3,
+    -1
+   ],
+   [
+    2,
+    -2
+   ]
+  ],
+  "4-5": [
+   [
+    3,
+    1
+   ],
+   [
+    4,
+    1
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    4,
+    0
+   ],
+   [
+    3,
+    -1
+   ],
+   [
+    4,
+    -1
+   ]
+  ],
+  "4-6": [
+   [
+    3,
+    1
+   ],
+   [
+    4,
+    1
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    4,
+    0
+   ],
+   [
+    5,
+    0
+   ],
+   [
+    3,
+    -1
+   ],
+   [
+    4,
+    -1
+   ]
+  ],
+  "4-9": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    4,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ]
+  ],
+  "5-1": [
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    4,
+    0
+   ],
+   [
+    5,
+    0
+   ]
+  ],
+  "6-1": [
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    4,
+    0
+   ],
+   [
+    5,
+    0
+   ],
+   [
+    6,
+    0
+   ]
+  ],
+  "x-1": [
+   [
+    0,
+    2
+   ],
+   [
+    -1,
+    1
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    -2,
+    0
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    -1,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    0,
+    -2
+   ]
+  ],
+  "x-2": [
+   [
+    -1,
+    2
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    -2,
+    1
+   ],
+   [
+    -1,
+    1
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    -2,
+    0
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    -2,
+    -1
+   ],
+   [
+    -1,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    -1,
+    -2
+   ],
+   [
+    0,
+    -2
+   ],
+   [
+    1,
+    -2
+   ]
+  ],
+  "x-3": [
+   [
+    0,
+    3
+   ],
+   [
+    -1,
+    2
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    -2,
+    1
+   ],
+   [
+    -1,
+    1
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    -3,
+    0
+   ],
+   [
+    -2,
+    0
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    -2,
+    -1
+   ],
+   [
+    -1,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    -1,
+    -2
+   ],
+   [
+    0,
+    -2
+   ],
+   [
+    1,
+    -2
+   ],
+   [
+    0,
+    -3
+   ]
+  ],
+  "x-4": [
+   [
+    -1,
+    1
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    -1,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ]
+  ],
+  "y-1": [
+   [
+    -1,
+    1
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    -1,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ]
+  ],
+  "y-2": [
+   [
+    -1,
+    1
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    -1,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ]
+  ],
+  "y-4": [
+   [
+    -1,
+    2
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    -1,
+    1
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    -1,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    -1,
+    -2
+   ],
+   [
+    0,
+    -2
+   ],
+   [
+    1,
+    -2
+   ]
+  ],
+  "y-6": [
+   [
+    0,
+    2
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    -1,
+    1
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    -1,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    0,
+    -2
+   ],
+   [
+    1,
+    -2
+   ]
+  ],
+  "y-7": [
+   [
+    -1,
+    1
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    -1,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    3,
+    -1
+   ]
+  ],
+  "y-8": [
+   [
+    -1,
+    2
+   ],
+   [
+    0,
+    2
+   ],
+   [
+    1,
+    2
+   ],
+   [
+    2,
+    2
+   ],
+   [
+    -1,
+    1
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    1
+   ],
+   [
+    2,
+    1
+   ],
+   [
+    3,
+    1
+   ],
+   [
+    -1,
+    0
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    1,
+    0
+   ],
+   [
+    2,
+    0
+   ],
+   [
+    3,
+    0
+   ],
+   [
+    -1,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    1,
+    -1
+   ],
+   [
+    2,
+    -1
+   ],
+   [
+    3,
+    -1
+   ],
+   [
+    -1,
+    -2
+   ],
+   [
+    0,
+    -2
+   ],
+   [
+    1,
+    -2
+   ],
+   [
+    2,
+    -2
+   ]
+  ]
+ },
+ "unitRanges": {
+  "1_01": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "1_02": {
+   "normal": {
+    "range": "0-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "0-1",
+    "skillRange": null
+   }
+  },
+  "1_03": {
+   "normal": {
+    "range": "3-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-1",
+    "skillRange": null
+   }
+  },
+  "1_04": {
+   "normal": {
+    "range": "2-2",
+    "skillRange": "3-2"
+   },
+   "golden": {
+    "range": "2-2",
+    "skillRange": "3-2"
+   }
+  },
+  "1_06": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "1_07": {
+   "normal": {
+    "range": "3-6",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-6",
+    "skillRange": null
+   }
+  },
+  "1_08": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "x-1"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "x-1"
+   }
+  },
+  "1_09": {
+   "normal": {
+    "range": "y-7",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "y-7",
+    "skillRange": null
+   }
+  },
+  "1_10": {
+   "normal": {
+    "range": "0-1",
+    "skillRange": "x-4"
+   },
+   "golden": {
+    "range": "0-1",
+    "skillRange": "x-4"
+   }
+  },
+  "1_12": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "1_13": {
+   "normal": {
+    "range": "y-2",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "y-2",
+    "skillRange": null
+   }
+  },
+  "1_14": {
+   "normal": {
+    "range": "3-6",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-6",
+    "skillRange": null
+   }
+  },
+  "1_17": {
+   "normal": {
+    "range": "3-14",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-14",
+    "skillRange": null
+   }
+  },
+  "1_18": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "1_19": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "2-2"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "2-2"
+   }
+  },
+  "1_20": {
+   "normal": {
+    "range": "2-2",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "2-2",
+    "skillRange": null
+   }
+  },
+  "2_01": {
+   "normal": {
+    "range": "2-5",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "2-5",
+    "skillRange": null
+   }
+  },
+  "2_02": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "2_04": {
+   "normal": {
+    "range": "y-2",
+    "skillRange": "y-2"
+   },
+   "golden": {
+    "range": "y-2",
+    "skillRange": "y-2"
+   }
+  },
+  "2_05": {
+   "normal": {
+    "range": "3-17",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-17",
+    "skillRange": null
+   }
+  },
+  "2_06": {
+   "normal": {
+    "range": "y-2",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "y-2",
+    "skillRange": null
+   }
+  },
+  "2_07": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "2_08": {
+   "normal": {
+    "range": "0-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "0-1",
+    "skillRange": null
+   }
+  },
+  "2_09": {
+   "normal": {
+    "range": "1-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-3",
+    "skillRange": null
+   }
+  },
+  "2_10": {
+   "normal": {
+    "range": "3-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-1",
+    "skillRange": null
+   }
+  },
+  "2_11": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "2_12": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "2_13": {
+   "normal": {
+    "range": "2-2",
+    "skillRange": "y-1"
+   },
+   "golden": {
+    "range": "2-2",
+    "skillRange": "y-1"
+   }
+  },
+  "2_14": {
+   "normal": {
+    "range": "y-2",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "y-2",
+    "skillRange": null
+   }
+  },
+  "2_16": {
+   "normal": {
+    "range": "3-12",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-12",
+    "skillRange": null
+   }
+  },
+  "2_17": {
+   "normal": {
+    "range": "0-1",
+    "skillRange": "x-4"
+   },
+   "golden": {
+    "range": "0-1",
+    "skillRange": "x-4"
+   }
+  },
+  "2_18": {
+   "normal": {
+    "range": "4-5",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "4-6",
+    "skillRange": null
+   }
+  },
+  "2_19": {
+   "normal": {
+    "range": "2-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-5",
+    "skillRange": null
+   }
+  },
+  "3_01": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "3_02": {
+   "normal": {
+    "range": "3-12",
+    "skillRange": "3-1"
+   },
+   "golden": {
+    "range": "3-12",
+    "skillRange": "3-1"
+   }
+  },
+  "3_03": {
+   "normal": {
+    "range": "2-2",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "2-2",
+    "skillRange": null
+   }
+  },
+  "3_04": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "1-1"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "1-1"
+   }
+  },
+  "3_05": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "3_06": {
+   "normal": {
+    "range": "0-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "0-1",
+    "skillRange": null
+   }
+  },
+  "3_08": {
+   "normal": {
+    "range": "x-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "x-1",
+    "skillRange": null
+   }
+  },
+  "3_09": {
+   "normal": {
+    "range": "y-6",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "y-6",
+    "skillRange": null
+   }
+  },
+  "3_10": {
+   "normal": {
+    "range": "2-5",
+    "skillRange": "1-3"
+   },
+   "golden": {
+    "range": "2-5",
+    "skillRange": "1-3"
+   }
+  },
+  "3_11": {
+   "normal": {
+    "range": "4-9",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "4-9",
+    "skillRange": null
+   }
+  },
+  "3_12": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "x-1"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "x-1"
+   }
+  },
+  "3_13": {
+   "normal": {
+    "range": "3-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-1",
+    "skillRange": null
+   }
+  },
+  "3_14": {
+   "normal": {
+    "range": "y-6",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "y-6",
+    "skillRange": null
+   }
+  },
+  "3_16": {
+   "normal": {
+    "range": "0-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "0-1",
+    "skillRange": null
+   }
+  },
+  "3_17": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "3_18": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "2-2"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "2-2"
+   }
+  },
+  "3_19": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "3_20": {
+   "normal": {
+    "range": "3-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-1",
+    "skillRange": null
+   }
+  },
+  "3_21": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "4_01": {
+   "normal": {
+    "range": "2-2",
+    "skillRange": "3-13"
+   },
+   "golden": {
+    "range": "2-2",
+    "skillRange": "3-13"
+   }
+  },
+  "4_02": {
+   "normal": {
+    "range": "3-6",
+    "skillRange": "3-15"
+   },
+   "golden": {
+    "range": "3-6",
+    "skillRange": "3-15"
+   }
+  },
+  "4_04": {
+   "normal": {
+    "range": "2-2",
+    "skillRange": "3-13"
+   },
+   "golden": {
+    "range": "2-2",
+    "skillRange": "3-13"
+   }
+  },
+  "4_06": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "4_07": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "4_09": {
+   "normal": {
+    "range": "y-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "y-1",
+    "skillRange": null
+   }
+  },
+  "4_10": {
+   "normal": {
+    "range": "5-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "5-1",
+    "skillRange": null
+   }
+  },
+  "4_11": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "4_12": {
+   "normal": {
+    "range": "3-2",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-2",
+    "skillRange": null
+   }
+  },
+  "4_13": {
+   "normal": {
+    "range": "y-6",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "y-6",
+    "skillRange": null
+   }
+  },
+  "4_14": {
+   "normal": {
+    "range": "3-6",
+    "skillRange": "3-3"
+   },
+   "golden": {
+    "range": "3-6",
+    "skillRange": "3-3"
+   }
+  },
+  "4_16": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "x-4"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "x-4"
+   }
+  },
+  "4_17": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "4_18": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "x-4"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "x-4"
+   }
+  },
+  "4_19": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "4_20": {
+   "normal": {
+    "range": "3-9",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-9",
+    "skillRange": null
+   }
+  },
+  "4_21": {
+   "normal": {
+    "range": "y-2",
+    "skillRange": "y-7"
+   },
+   "golden": {
+    "range": "y-2",
+    "skillRange": "y-7"
+   }
+  },
+  "4_22": {
+   "normal": {
+    "range": "3-12",
+    "skillRange": "3-7"
+   },
+   "golden": {
+    "range": "3-12",
+    "skillRange": "3-7"
+   }
+  },
+  "4_23": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "4_24": {
+   "normal": {
+    "range": "x-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "x-1",
+    "skillRange": null
+   }
+  },
+  "4_25": {
+   "normal": {
+    "range": "x-1",
+    "skillRange": "x-2"
+   },
+   "golden": {
+    "range": "x-1",
+    "skillRange": "x-2"
+   }
+  },
+  "4_26": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "5_22": {
+   "normal": {
+    "range": "3-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-1",
+    "skillRange": null
+   }
+  },
+  "5_01": {
+   "normal": {
+    "range": "1-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-3",
+    "skillRange": null
+   }
+  },
+  "5_02": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "5_03": {
+   "normal": {
+    "range": "3-1",
+    "skillRange": "4-11"
+   },
+   "golden": {
+    "range": "3-1",
+    "skillRange": "4-11"
+   }
+  },
+  "5_05": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "6-1"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "6-1"
+   }
+  },
+  "5_06": {
+   "normal": {
+    "range": "1-3",
+    "skillRange": "2-5"
+   },
+   "golden": {
+    "range": "1-3",
+    "skillRange": "2-5"
+   }
+  },
+  "5_07": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "5_08": {
+   "normal": {
+    "range": "4-6",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "4-6",
+    "skillRange": null
+   }
+  },
+  "5_10": {
+   "normal": {
+    "range": "y-2",
+    "skillRange": "y-8"
+   },
+   "golden": {
+    "range": "y-2",
+    "skillRange": "y-8"
+   }
+  },
+  "5_11": {
+   "normal": {
+    "range": "0-1",
+    "skillRange": "x-2"
+   },
+   "golden": {
+    "range": "0-1",
+    "skillRange": "x-2"
+   }
+  },
+  "5_12": {
+   "normal": {
+    "range": "3-6",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-6",
+    "skillRange": null
+   }
+  },
+  "5_13": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "5_14": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "3-7"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "3-7"
+   }
+  },
+  "5_15": {
+   "normal": {
+    "range": "3-5",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-5",
+    "skillRange": null
+   }
+  },
+  "5_17": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "0-1"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "0-1"
+   }
+  },
+  "5_19": {
+   "normal": {
+    "range": "1-2",
+    "skillRange": "3-18"
+   },
+   "golden": {
+    "range": "1-2",
+    "skillRange": "3-18"
+   }
+  },
+  "5_20": {
+   "normal": {
+    "range": "y-2",
+    "skillRange": "y-4"
+   },
+   "golden": {
+    "range": "y-2",
+    "skillRange": "y-4"
+   }
+  },
+  "5_21": {
+   "normal": {
+    "range": "3-6",
+    "skillRange": "3-3"
+   },
+   "golden": {
+    "range": "3-6",
+    "skillRange": "3-3"
+   }
+  },
+  "5_23": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "6_01": {
+   "normal": {
+    "range": "3-9",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-9",
+    "skillRange": null
+   }
+  },
+  "6_02": {
+   "normal": {
+    "range": "x-1",
+    "skillRange": "x-2"
+   },
+   "golden": {
+    "range": "x-1",
+    "skillRange": "x-2"
+   }
+  },
+  "6_03": {
+   "normal": {
+    "range": "0-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "0-1",
+    "skillRange": null
+   }
+  },
+  "6_04": {
+   "normal": {
+    "range": "x-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "x-1",
+    "skillRange": null
+   }
+  },
+  "6_05": {
+   "normal": {
+    "range": "3-1",
+    "skillRange": "x-3"
+   },
+   "golden": {
+    "range": "3-1",
+    "skillRange": "x-3"
+   }
+  },
+  "6_06": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "6_07": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": null
+   }
+  },
+  "6_08": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "6_09": {
+   "normal": {
+    "range": "y-2",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "y-2",
+    "skillRange": null
+   }
+  },
+  "6_11": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "6_12": {
+   "normal": {
+    "range": "3-9",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-9",
+    "skillRange": null
+   }
+  },
+  "6_13": {
+   "normal": {
+    "range": "3-3",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-3",
+    "skillRange": null
+   }
+  },
+  "6_14": {
+   "normal": {
+    "range": "3-4",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-4",
+    "skillRange": null
+   }
+  },
+  "6_15": {
+   "normal": {
+    "range": "3-12",
+    "skillRange": "3-1"
+   },
+   "golden": {
+    "range": "3-12",
+    "skillRange": "3-1"
+   }
+  },
+  "6_16": {
+   "normal": {
+    "range": "y-2",
+    "skillRange": "y-4"
+   },
+   "golden": {
+    "range": "y-2",
+    "skillRange": "y-4"
+   }
+  },
+  "6_17": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "2-1"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "2-1"
+   }
+  },
+  "6_18": {
+   "normal": {
+    "range": "3-1",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-1",
+    "skillRange": null
+   }
+  },
+  "6_19": {
+   "normal": {
+    "range": "1-1",
+    "skillRange": "x-1"
+   },
+   "golden": {
+    "range": "1-1",
+    "skillRange": "x-1"
+   }
+  },
+  "6_20": {
+   "normal": {
+    "range": "3-17",
+    "skillRange": null
+   },
+   "golden": {
+    "range": "3-17",
+    "skillRange": null
+   }
+  }
+ },
+ "enemies": {
+  "enemy_1007_slime": {
+   "name": "オリジムシ",
+   "hp": 550,
+   "def": 0,
+   "res": 0.0,
+   "speed": 1.0,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1422_lrsldr": {
+   "name": "枯朽サルカズ先鋒",
+   "hp": 4700,
+   "def": 100,
+   "res": 40.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1005_yokai": {
+   "name": "怪鳥",
+   "hp": 800,
+   "def": 50,
+   "res": 0.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1427_lrnazg": {
+   "name": "「霊骸布」",
+   "hp": 15000,
+   "def": 500,
+   "res": 50.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1042_frostd": {
+   "name": "コキュートス",
+   "hp": 6500,
+   "def": 600,
+   "res": 30.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1425_lrcmra": {
+   "name": "大罪のキメラ",
+   "hp": 20000,
+   "def": 1000,
+   "res": 50.0,
+   "speed": 0.6,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1040_bombd": {
+   "name": "バクダンバチ",
+   "hp": 4000,
+   "def": 150,
+   "res": 30.0,
+   "speed": 0.6,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1006_shield_2": {
+   "name": "重装兵",
+   "hp": 10000,
+   "def": 1000,
+   "res": 0.0,
+   "speed": 0.75,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_9013_acstmk": {
+   "name": "仮想敵：冑",
+   "hp": 600000,
+   "def": 1000,
+   "res": 25.0,
+   "speed": 0.1,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": true,
+   "elite": false,
+   "lifeReduce": 2
+  },
+  "enemy_10027_vtsk": {
+   "name": "「帝国の甲冑」",
+   "hp": 30000,
+   "def": 1800,
+   "res": 5.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_9013_acstmk_2": {
+   "name": "仮想敵：冑",
+   "hp": 1200000,
+   "def": 1200,
+   "res": 30.0,
+   "speed": 0.1,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": true,
+   "elite": false,
+   "lifeReduce": 2
+  },
+  "enemy_9014_acstma": {
+   "name": "「冑を斬る剣」",
+   "hp": 240000,
+   "def": 400,
+   "res": 80.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 0
+  },
+  "enemy_9015_acstmb": {
+   "name": "「冑を砕く鎚」",
+   "hp": 250000,
+   "def": 3500,
+   "res": 10.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 0
+  }
+ },
+ "rounds": [
+  {
+   "round": 1,
+   "levelId": "level_act1autochess_01",
+   "timeLimit": 45.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1007_slime",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 3.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 3.0,
+     "delay": 12.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 3.0,
+     "delay": 12.0,
+     "route": 2
+    }
+   ]
+  },
+  {
+   "round": 2,
+   "levelId": "level_act1autochess_02",
+   "timeLimit": 45.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 3.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 7.0,
+     "delay": 15.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 4,
+     "interval": 7.0,
+     "delay": 3.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 5,
+     "interval": 7.0,
+     "delay": 15.0,
+     "route": 3
+    }
+   ]
+  },
+  {
+   "round": 3,
+   "levelId": "level_act1autochess_03",
+   "timeLimit": 55.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 10,
+     "interval": 6.0,
+     "delay": 6.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 1,
+     "interval": 10.0,
+     "delay": 18.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 9,
+     "interval": 7.0,
+     "delay": 6.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 2,
+     "interval": 10.0,
+     "delay": 10.0,
+     "route": 3
+    }
+   ]
+  },
+  {
+   "round": 4,
+   "levelId": "level_act1autochess_04",
+   "timeLimit": 55.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 4.0,
+     "delay": 12.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 1,
+     "interval": 12.0,
+     "delay": 13.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 1,
+     "interval": 7.0,
+     "delay": 29.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 6.0,
+     "delay": 3.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 6.0,
+     "delay": 3.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 6.5,
+     "delay": 26.0,
+     "route": 5
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 9.0,
+     "delay": 17.0,
+     "route": 6
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 2,
+     "interval": 9.0,
+     "delay": 18.0,
+     "route": 7
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 8.0,
+     "delay": 7.0,
+     "route": 8
+    }
+   ]
+  },
+  {
+   "round": 5,
+   "levelId": "level_act1autochess_05",
+   "timeLimit": 55.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 7.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 27.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 2,
+     "interval": 7.0,
+     "delay": 14.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 1,
+     "interval": 9.0,
+     "delay": 25.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 10.0,
+     "delay": 3.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 8.0,
+     "delay": 22.0,
+     "route": 5
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 6.0,
+     "delay": 3.0,
+     "route": 6
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 4,
+     "interval": 5.0,
+     "delay": 16.0,
+     "route": 7
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 1.0,
+     "delay": 17.0,
+     "route": 8
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 2,
+     "interval": 6.0,
+     "delay": 31.0,
+     "route": 9
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 6.0,
+     "delay": 5.0,
+     "route": 10
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 6.0,
+     "delay": 22.0,
+     "route": 11
+    }
+   ]
+  },
+  {
+   "round": 6,
+   "levelId": "level_act1autochess_06",
+   "timeLimit": 70.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 4,
+     "interval": 8.0,
+     "delay": 7.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 8.0,
+     "delay": 16.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 2,
+     "interval": 12.0,
+     "delay": 20.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 2,
+     "interval": 14.0,
+     "delay": 28.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 8.0,
+     "delay": 2.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 8.0,
+     "delay": 19.0,
+     "route": 5
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 4,
+     "interval": 5.0,
+     "delay": 2.0,
+     "route": 6
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 4,
+     "interval": 7.0,
+     "delay": 20.0,
+     "route": 7
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 4,
+     "interval": 5.0,
+     "delay": 27.0,
+     "route": 8
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 1.0,
+     "delay": 17.0,
+     "route": 9
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 29.0,
+     "route": 10
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 4,
+     "interval": 8.0,
+     "delay": 7.0,
+     "route": 11
+    }
+   ]
+  },
+  {
+   "round": 7,
+   "levelId": "level_act1autochess_07",
+   "timeLimit": 85.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 4,
+     "interval": 5.0,
+     "delay": 8.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 4,
+     "interval": 9.0,
+     "delay": 22.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 4,
+     "interval": 17.0,
+     "delay": 5.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 2,
+     "interval": 14.0,
+     "delay": 12.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 1,
+     "interval": 14.0,
+     "delay": 40.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 8.0,
+     "delay": 2.0,
+     "route": 5
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 10.0,
+     "delay": 18.0,
+     "route": 6
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 4,
+     "interval": 5.0,
+     "delay": 5.0,
+     "route": 7
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 1,
+     "interval": 5.0,
+     "delay": 30.0,
+     "route": 8
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 11.0,
+     "delay": 17.0,
+     "route": 9
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 1,
+     "interval": 12.0,
+     "delay": 9.0,
+     "route": 10
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 1,
+     "interval": 12.0,
+     "delay": 13.0,
+     "route": 11
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 2,
+     "interval": 11.0,
+     "delay": 41.0,
+     "route": 12
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 10.0,
+     "delay": 2.0,
+     "route": 13
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 8,
+     "interval": 4.0,
+     "delay": 27.0,
+     "route": 14
+    }
+   ]
+  },
+  {
+   "round": 8,
+   "levelId": "level_act1autochess_h01",
+   "timeLimit": 85.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 3.0,
+     "delay": 2.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 28.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 62.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 1,
+     "interval": 9.0,
+     "delay": 37.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 3,
+     "interval": 9.0,
+     "delay": 42.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 1.0,
+     "delay": 11.0,
+     "route": 5
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 2,
+     "interval": 10.0,
+     "delay": 17.0,
+     "route": 6
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 1,
+     "interval": 12.0,
+     "delay": 9.0,
+     "route": 7
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 3.0,
+     "route": 8
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 25.0,
+     "route": 9
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 17.0,
+     "route": 10
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 7.0,
+     "delay": 5.0,
+     "route": 11
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 13.0,
+     "route": 12
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 39.0,
+     "route": 13
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 1,
+     "interval": 20.0,
+     "delay": 10.0,
+     "route": 14
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 3,
+     "interval": 12.0,
+     "delay": 28.0,
+     "route": 15
+    }
+   ]
+  },
+  {
+   "round": 9,
+   "levelId": "level_act1autochess_h02",
+   "timeLimit": 95.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 2.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 7.0,
+     "delay": 42.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 65.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 2,
+     "interval": 10.0,
+     "delay": 17.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 1,
+     "interval": 16.0,
+     "delay": 13.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 3.0,
+     "route": 5
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 39.0,
+     "route": 6
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 1,
+     "interval": 5.0,
+     "delay": 40.0,
+     "route": 7
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 1,
+     "interval": 10.0,
+     "delay": 41.0,
+     "route": 8
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 1,
+     "interval": 1.0,
+     "delay": 3.0,
+     "route": 9
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 13.0,
+     "route": 10
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 20.0,
+     "route": 11
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 41.0,
+     "route": 12
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 1,
+     "interval": 7.0,
+     "delay": 7.0,
+     "route": 13
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 3,
+     "interval": 12.0,
+     "delay": 21.0,
+     "route": 14
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 3.0,
+     "delay": 3.0,
+     "route": 15
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 28.0,
+     "route": 16
+    }
+   ]
+  },
+  {
+   "round": 10,
+   "levelId": "level_act1autochess_h03",
+   "timeLimit": 95.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 3.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 25.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 49.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 3,
+     "interval": 10.0,
+     "delay": 17.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 1,
+     "interval": 10.0,
+     "delay": 41.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 1,
+     "interval": 5.0,
+     "delay": 57.0,
+     "route": 5
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 4.0,
+     "delay": 3.0,
+     "route": 6
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 4,
+     "interval": 5.0,
+     "delay": 5.0,
+     "route": 7
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 3,
+     "interval": 13.0,
+     "delay": 17.0,
+     "route": 8
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 7.0,
+     "route": 9
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 6.0,
+     "delay": 28.0,
+     "route": 10
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 4.0,
+     "delay": 3.0,
+     "route": 11
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 5.0,
+     "route": 12
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 13.0,
+     "route": 13
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 41.0,
+     "route": 14
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 1,
+     "interval": 10.0,
+     "delay": 10.0,
+     "route": 15
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 3,
+     "interval": 10.0,
+     "delay": 25.0,
+     "route": 16
+    }
+   ]
+  },
+  {
+   "round": 11,
+   "levelId": "level_act1autochess_h04",
+   "timeLimit": 115.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 2.0,
+     "delay": 5.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 2.0,
+     "delay": 22.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 45.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 50.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 1,
+     "interval": 9.0,
+     "delay": 10.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 3,
+     "interval": 7.0,
+     "delay": 54.0,
+     "route": 5
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 17.0,
+     "route": 6
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 4,
+     "interval": 5.0,
+     "delay": 42.0,
+     "route": 7
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 5.0,
+     "route": 8
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 10.0,
+     "route": 9
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 1,
+     "interval": 20.0,
+     "delay": 6.0,
+     "route": 10
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 2.0,
+     "delay": 27.0,
+     "route": 11
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 2.0,
+     "delay": 28.0,
+     "route": 12
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 2,
+     "interval": 2.0,
+     "delay": 52.0,
+     "route": 13
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 2,
+     "interval": 2.0,
+     "delay": 17.0,
+     "route": 14
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 3.0,
+     "delay": 3.0,
+     "route": 15
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 5.0,
+     "route": 16
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 4,
+     "interval": 5.0,
+     "delay": 9.0,
+     "route": 17
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 1,
+     "interval": 5.0,
+     "delay": 20.0,
+     "route": 18
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 1,
+     "interval": 10.0,
+     "delay": 7.0,
+     "route": 19
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 2,
+     "interval": 10.0,
+     "delay": 21.0,
+     "route": 20
+    }
+   ]
+  },
+  {
+   "round": 12,
+   "levelId": "level_act1autochess_h05",
+   "timeLimit": 115.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 3.0,
+     "delay": 5.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 3.0,
+     "delay": 30.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 3.0,
+     "delay": 10.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 35.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 4.0,
+     "delay": 51.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 2,
+     "interval": 10.0,
+     "delay": 12.0,
+     "route": 5
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 2,
+     "interval": 9.0,
+     "delay": 37.0,
+     "route": 6
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 2,
+     "interval": 7.0,
+     "delay": 53.0,
+     "route": 7
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 3,
+     "interval": 10.0,
+     "delay": 2.0,
+     "route": 8
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 3,
+     "interval": 10.0,
+     "delay": 10.0,
+     "route": 9
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 2,
+     "interval": 10.0,
+     "delay": 31.0,
+     "route": 10
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 2,
+     "interval": 3.0,
+     "delay": 5.0,
+     "route": 11
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 3,
+     "interval": 10.0,
+     "delay": 10.0,
+     "route": 12
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 2,
+     "interval": 12.0,
+     "delay": 21.0,
+     "route": 13
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 1.0,
+     "delay": 5.0,
+     "route": 14
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 4.0,
+     "delay": 8.0,
+     "route": 15
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 21.0,
+     "route": 16
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 43.0,
+     "route": 17
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 13.0,
+     "route": 18
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 15.0,
+     "route": 19
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 2,
+     "interval": 10.0,
+     "delay": 17.0,
+     "route": 20
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 3.0,
+     "delay": 10.0,
+     "route": 21
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 2.0,
+     "delay": 27.0,
+     "route": 22
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 2.0,
+     "delay": 28.0,
+     "route": 23
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 6.0,
+     "delay": 47.0,
+     "route": 24
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 12.0,
+     "route": 25
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 3,
+     "interval": 6.0,
+     "delay": 22.0,
+     "route": 26
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 35.0,
+     "route": 27
+    }
+   ]
+  },
+  {
+   "round": 13,
+   "levelId": "level_act1autochess_h06",
+   "timeLimit": 115.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 3.0,
+     "delay": 7.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 10.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 39.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 3,
+     "interval": 4.0,
+     "delay": 62.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 3,
+     "interval": 9.0,
+     "delay": 11.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 4,
+     "interval": 9.0,
+     "delay": 37.0,
+     "route": 5
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 3,
+     "interval": 9.0,
+     "delay": 55.0,
+     "route": 6
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 4,
+     "interval": 10.0,
+     "delay": 2.0,
+     "route": 7
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 4,
+     "interval": 7.0,
+     "delay": 10.0,
+     "route": 8
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 3,
+     "interval": 10.0,
+     "delay": 32.0,
+     "route": 9
+    },
+    {
+     "enemy": "enemy_1422_lrsldr",
+     "count": 1,
+     "interval": 1.0,
+     "delay": 7.0,
+     "route": 10
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 2,
+     "interval": 10.0,
+     "delay": 3.0,
+     "route": 11
+    },
+    {
+     "enemy": "enemy_1425_lrcmra",
+     "count": 2,
+     "interval": 15.0,
+     "delay": 21.0,
+     "route": 12
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 2,
+     "interval": 1.0,
+     "delay": 5.0,
+     "route": 13
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 4.0,
+     "delay": 21.0,
+     "route": 14
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 50.0,
+     "route": 15
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 13.0,
+     "route": 16
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 1,
+     "interval": 5.0,
+     "delay": 15.0,
+     "route": 17
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 3,
+     "interval": 11.0,
+     "delay": 17.0,
+     "route": 18
+    },
+    {
+     "enemy": "enemy_1005_yokai",
+     "count": 3,
+     "interval": 2.0,
+     "delay": 27.0,
+     "route": 19
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 4,
+     "interval": 2.0,
+     "delay": 28.0,
+     "route": 20
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 7.0,
+     "delay": 55.0,
+     "route": 21
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 10.0,
+     "route": 22
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 3,
+     "interval": 5.0,
+     "delay": 22.0,
+     "route": 23
+    },
+    {
+     "enemy": "enemy_1040_bombd",
+     "count": 2,
+     "interval": 5.0,
+     "delay": 35.0,
+     "route": 24
+    }
+   ]
+  },
+  {
+   "round": 14,
+   "levelId": "level_act1autochess_h07_01_S",
+   "timeLimit": 120.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 1,
+     "interval": 20.0,
+     "delay": 3.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 1,
+     "interval": 20.0,
+     "delay": 5.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 3,
+     "interval": 20.0,
+     "delay": 10.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_1006_shield_2",
+     "count": 5,
+     "interval": 18.0,
+     "delay": 7.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_1006_shield_2",
+     "count": 4,
+     "interval": 20.0,
+     "delay": 25.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_9013_acstmk",
+     "count": 1,
+     "interval": 1.0,
+     "delay": 0.0,
+     "route": 5
+    }
+   ]
+  },
+  {
+   "round": 15,
+   "levelId": "level_act1autochess_h08_01_S",
+   "timeLimit": 120.0,
+   "moveMultiplier": 0.5,
+   "spawns": [
+    {
+     "enemy": "enemy_1427_lrnazg",
+     "count": 2,
+     "interval": 12.0,
+     "delay": 25.0,
+     "route": 0
+    },
+    {
+     "enemy": "enemy_1042_frostd",
+     "count": 4,
+     "interval": 5.0,
+     "delay": 25.0,
+     "route": 1
+    },
+    {
+     "enemy": "enemy_10027_vtsk",
+     "count": 3,
+     "interval": 30.0,
+     "delay": 11.0,
+     "route": 2
+    },
+    {
+     "enemy": "enemy_9013_acstmk_2",
+     "count": 1,
+     "interval": 1.0,
+     "delay": 0.0,
+     "route": 3
+    },
+    {
+     "enemy": "enemy_9014_acstma",
+     "count": 1,
+     "interval": 1.0,
+     "delay": 0.0,
+     "route": 4
+    },
+    {
+     "enemy": "enemy_9015_acstmb",
+     "count": 1,
+     "interval": 1.0,
+     "delay": 0.0,
+     "route": 5
+    }
+   ]
+  }
+ ]
+}

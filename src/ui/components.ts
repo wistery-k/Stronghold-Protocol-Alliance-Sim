@@ -2,10 +2,9 @@ import { ALLIANCES } from '../core/data/alliances';
 import { DAMAGE_TYPE_NAME, PROFESSION_NAME, getUnit, unitState } from '../core/data/units';
 import { getItem, itemState } from '../core/data/items';
 import { isGarrisonImplemented, type AllianceStatus } from '../core/alliance';
-import { attackInterval, baseAtk, type SimResult } from '../core/sim';
-import type { AllianceId, Direction, EnemyDef, Modifier, OwnedItem, OwnedUnit, Star } from '../core/types';
-import { BOARD_CELLS, DEFAULT_DIRECTION, DIRECTIONS, DIRECTION_NAME } from '../core/board';
-import { fmt, h, pct, s } from './dom';
+import { attackInterval, baseAtk } from '../core/sim';
+import type { AllianceId, Modifier, OwnedItem, OwnedUnit, Star } from '../core/types';
+import { fmt, h, pct } from './dom';
 
 export function starBadge(star: Star) {
   return star === 2 ? h('span', { class: 'promoted', title: '精鋭' }, '精鋭') : null;
@@ -105,47 +104,6 @@ export function makeDropTarget<T extends HTMLElement>(el: T, onDrop: (uid: numbe
     if (raw && Number.isFinite(uid)) onDrop(uid);
   });
   return el;
-}
-
-/** 4x4 の配置エリア。右が前方 */
-export function boardGrid(
-  board: OwnedUnit[],
-  opts: {
-    cardOptions: (o: OwnedUnit) => CardOptions;
-    onDropCell: (pos: number, uid: number) => void;
-    onTurn: (uid: number, dir: Direction) => void;
-  },
-) {
-  const cells: HTMLElement[] = [];
-  for (let pos = 0; pos < BOARD_CELLS; pos++) {
-    const o = board.find((b) => b.pos === pos);
-    const cell = h('div', { class: 'cell' });
-    if (o) {
-      const dir = o.dir ?? DEFAULT_DIRECTION;
-      cell.append(
-        unitCard(o.defId, { star: o.star, dragUid: o.uid, ...opts.cardOptions(o) }),
-        // 長方形の上下左右の辺をクリックすると、その方向を向く
-        ...DIRECTIONS.map((d) =>
-          h('button', {
-            class: `edge edge-${d}${d === dir ? ' on' : ''}`,
-            title: `${DIRECTION_NAME[d]}を向く`,
-            'aria-label': `${DIRECTION_NAME[d]}を向く`,
-            onclick: (e: Event) => {
-              e.stopPropagation();
-              opts.onTurn(o.uid, d);
-            },
-          }),
-        ),
-      );
-    }
-    cells.push(makeDropTarget(cell, (uid) => opts.onDropCell(pos, uid)));
-  }
-  return h(
-    'div',
-    { class: 'grid-wrap' },
-    h('div', { class: 'front-label' }, 'カードの辺をクリックで向きを変更（太線が向いている方向）'),
-    h('div', { class: 'board-grid' }, cells),
-  );
 }
 
 export function emptySlot(label = '') {
@@ -293,30 +251,6 @@ export function makeItemDropTarget<T extends HTMLElement>(el: T, onDrop: (itemUi
   return el;
 }
 
-export function enemyInfo(e: EnemyDef) {
-  return h(
-    'div',
-    { class: `enemy ${e.isBoss ? 'boss' : ''}` },
-    h('div', { class: 'enemy-name' }, e.isBoss ? h('span', { class: 'badge' }, 'BOSS') : null, e.name),
-    h(
-      'div',
-      { class: 'enemy-stats' },
-      h('span', null, `HP ${fmt(e.hp)}`),
-      h('span', null, `防御 ${e.def}`),
-      h('span', null, `術耐性 ${e.res}`),
-      h('span', null, `制限 ${e.duration}秒`),
-    ),
-    e.description ? h('div', { class: 'muted small' }, e.description) : null,
-    e.phases?.length ? h('ul', { class: 'phases small' }, e.phases.map((p) => h('li', null, `HP${pct(p.belowHpRatio)}以下：${p.note}`))) : null,
-  );
-}
-
-/** 予測結果の1行サマリー */
-export function predictionLine(r: SimResult) {
-  if (r.killed) return h('div', { class: 'predict ok' }, `撃破見込み：${r.killTime}秒`);
-  return h('div', { class: 'predict ng' }, `撃破できない見込み：残りHP ${pct(r.remainingHp / r.enemy.hp)}`);
-}
-
 function modifierText(m: Modifier): string[] {
   const out: string[] = [];
   if (m.atkPct) out.push(`攻撃力+${pct(m.atkPct)}`);
@@ -392,83 +326,5 @@ export function unitDetail(o: OwnedUnit, mods: Modifier | undefined) {
       h('dt', null, '補正'),
       h('dd', null, modText.length ? modText.join('、') : h('span', { class: 'muted' }, 'なし（配置すると表示）')),
     ),
-  );
-}
-
-// ------------------------------------------------------------
-// 戦闘結果の表示
-// ------------------------------------------------------------
-
-export function hpChart(r: SimResult) {
-  const W = 560;
-  const H = 160;
-  const pad = { l: 44, r: 10, t: 10, b: 22 };
-  const iw = W - pad.l - pad.r;
-  const ih = H - pad.t - pad.b;
-  const x = (t: number) => pad.l + (t / r.enemy.duration) * iw;
-  const y = (hp: number) => pad.t + (1 - hp / r.enemy.hp) * ih;
-  const path = r.timeline.map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.hp).toFixed(1)}`).join(' ');
-  const ticks = [];
-  const step = r.enemy.duration > 40 ? 15 : 10;
-  for (let t = 0; t <= r.enemy.duration; t += step) ticks.push(t);
-  return s(
-    'svg',
-    { viewBox: `0 0 ${W} ${H}`, class: 'chart', role: 'img', 'aria-label': '敵HPの推移' },
-    [0, 0.5, 1].map((f) =>
-      s(
-        'g',
-        {},
-        s('line', { x1: pad.l, x2: W - pad.r, y1: y(r.enemy.hp * f), y2: y(r.enemy.hp * f), class: 'grid' }),
-        s('text', { x: pad.l - 6, y: y(r.enemy.hp * f) + 4, class: 'axis', 'text-anchor': 'end' }, pct(f)),
-      ),
-    ),
-    ticks.map((t) => s('text', { x: x(t), y: H - 6, class: 'axis', 'text-anchor': 'middle' }, `${t}s`)),
-    r.phaseLog.map((p) => s('line', { x1: x(p.t), x2: x(p.t), y1: pad.t, y2: pad.t + ih, class: 'phase-line' })),
-    s('path', { d: path, class: 'hp-line' }),
-    r.killTime !== null ? s('circle', { cx: x(r.killTime), cy: y(0), r: 4, class: 'kill-dot' }) : null,
-  );
-}
-
-export function damageBars(r: SimResult) {
-  const sorted = [...r.perUnit].sort((a, b) => b.damage - a.damage);
-  const max = Math.max(1, ...sorted.map((u) => u.damage));
-  const total = Math.max(1, r.totalDamage);
-  return h(
-    'ul',
-    { class: 'bars' },
-    sorted.map((u) =>
-      h(
-        'li',
-        null,
-        h('span', { class: 'bar-name' }, u.name, ' ', starBadge(u.star)),
-        h('span', { class: 'bar-track' }, h('span', { class: 'bar-fill', style: `width:${(u.damage / max) * 100}%` })),
-        h('span', { class: 'bar-val' }, `${fmt(u.damage)}（${pct(u.damage / total)}）`),
-        h('span', { class: 'bar-sub muted' }, `DPS ${fmt(u.damage / r.elapsed)}・スキル${u.skillCasts}回`),
-      ),
-    ),
-  );
-}
-
-export function simSummary(r: SimResult) {
-  return h(
-    'div',
-    { class: 'sim-summary' },
-    h(
-      'div',
-      { class: `verdict ${r.killed ? 'ok' : 'ng'}` },
-      r.killed ? `撃破！ ${r.killTime}秒` : `撃破失敗　残りHP ${fmt(r.remainingHp)}（${pct(r.remainingHp / r.enemy.hp)}）`,
-    ),
-    h(
-      'div',
-      { class: 'kpis' },
-      h('div', null, h('span', { class: 'muted small' }, '総ダメージ'), h('b', null, fmt(r.totalDamage))),
-      h('div', null, h('span', { class: 'muted small' }, '平均DPS'), h('b', null, fmt(r.totalDamage / r.elapsed))),
-      h('div', null, h('span', { class: 'muted small' }, '必要DPS'), h('b', null, fmt(r.enemy.hp / r.enemy.duration))),
-    ),
-    hpChart(r),
-    r.phaseLog.length
-      ? h('ul', { class: 'phases small' }, r.phaseLog.map((p) => h('li', null, `${p.t.toFixed(1)}秒：${p.note}`)))
-      : null,
-    damageBars(r),
   );
 }

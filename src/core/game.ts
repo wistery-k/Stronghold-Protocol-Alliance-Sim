@@ -1,4 +1,4 @@
-import { enemyForRound } from './data/enemies';
+import { roundSpec } from './data/battle';
 import { UNITS, getUnit, unitState } from './data/units';
 import { activeAllianceIds, battleSetup, evaluateAlliances, type AllianceStatus, type BattleOptions } from './alliance';
 import {
@@ -27,7 +27,7 @@ import {
 } from './items';
 import { getItem, itemState } from './data/items';
 import { ALLIANCE_IDS, CORE_IDS } from './data/alliances';
-import { firstFreeCell, normalizePositions, unitAt } from './board';
+import { autoCell, bestDirection, canPlace, normalizePositions, unitAt } from './board';
 import {
   BENCH_SIZE,
   CHOICE_LOCK_MESSAGE,
@@ -39,19 +39,21 @@ import {
   baseLevelUpCost,
   buyPrice,
   DEPLOY_CAP,
-  lifeLoss,
+  MAX_LIFE_LOSS,
   roundIncome,
   sellPriceOf,
   shopSlots,
 } from './rules';
-import { simulateDps, type SimResult } from './sim';
-import { isItemEntry, isUnitEntry, type AllianceId, type BenchEntry, type Direction, type OwnedItem, type OwnedUnit } from './types';
+import { simulateBattle, type BattleResult } from './sim';
+import { isItemEntry, isUnitEntry, type AllianceId, type BenchEntry, type Direction, type OwnedItem, type OwnedUnit, type Star } from './types';
 
 export type Phase = 'prep' | 'result' | 'gameover' | 'clear';
 
 export interface BattleReport {
   round: number;
-  sim: SimResult;
+  sim: BattleResult;
+  /** 戦闘時の配置（リプレイ表示用） */
+  units: { uid: number; defId: string; star: Star; pos?: number; dir?: Direction }[];
   lifeLost: number;
   /** この戦闘（準備フェーズ終了時〜戦闘中）で増えた加算数 */
   stacksGained: Partial<Record<AllianceId, number>>;
@@ -66,7 +68,7 @@ export interface BattleReport {
 }
 
 export interface GameState {
-  version: 6;
+  version: 7;
   seed: number;
   rngState: number;
   round: number;
@@ -151,7 +153,7 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
   const pool: Record<string, number> = {};
   for (const u of UNITS) pool[u.id] = POOL_COPIES[u.tier];
   const state: GameState = {
-    version: 6,
+    version: 7,
     seed,
     rngState: seed,
     round: 1,
@@ -351,10 +353,12 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       const f = findOwned(state, action.uid);
       if (!f || f.where !== 'bench') return fail('控えのユニットを選んでください');
       if (state.board.length >= deployCapOf(state)) return fail('配置上限に達しています');
-      const pos = action.pos ?? firstFreeCell(state.board);
-      if (pos === null || unitAt(state.board, pos)) return fail('そのマスには配置できません');
+      const auto = autoCell(state.board, f.unit.defId, f.unit.star);
+      const pos = action.pos ?? auto?.pos ?? null;
+      if (pos === null || unitAt(state.board, pos) || !canPlace(pos, f.unit.defId)) return fail(placeError(f.unit.defId));
       state.bench[f.index] = null;
       f.unit.pos = pos;
+      f.unit.dir = bestDirection(pos, f.unit.defId, f.unit.star);
       state.board.push(f.unit);
       return { state };
     }
@@ -371,7 +375,8 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
     case 'move': {
       const f = findOwned(state, action.uid);
       if (!f) return fail('ユニットが見つかりません');
-      moveUnit(state, f, action.to);
+      const err = moveUnit(state, f, action.to);
+      if (err) return fail(err);
       if (state.board.length > deployCapOf(state)) return fail('配置上限に達しています');
       return { state };
     }
@@ -481,12 +486,14 @@ function moveUnit(
   state: GameState,
   from: { unit: OwnedUnit; where: 'board' | 'bench'; index: number },
   to: { zone: 'board'; pos: number } | { zone: 'bench'; index: number },
-): void {
+): string | undefined {
   const u = from.unit;
   if (to.zone === 'board') {
+    if (!canPlace(to.pos, u.defId)) return placeError(u.defId);
     const other = unitAt(state.board, to.pos);
     if (other === u) return;
     if (from.where === 'board') {
+      if (other && !canPlace(u.pos!, other.defId)) return `${getUnit(other.defId).name}はそのマスに置けません`;
       if (other) other.pos = u.pos;
       u.pos = to.pos;
     } else {
@@ -494,9 +501,11 @@ function moveUnit(
       if (other) {
         state.board = state.board.filter((o) => o !== other);
         delete other.pos;
+        delete other.dir;
         state.bench[from.index] = other;
       }
       u.pos = to.pos;
+      u.dir = bestDirection(to.pos, u.defId, u.star);
       state.board.push(u);
     }
   } else {
@@ -506,17 +515,27 @@ function moveUnit(
       state.bench[from.index] = other;
       state.bench[to.index] = u;
     } else {
+      if (isUnitEntry(other) && !canPlace(u.pos!, other.defId)) return `${getUnit(other.defId).name}はそのマスに置けません`;
       state.board = state.board.filter((o) => o !== u);
       if (isUnitEntry(other)) {
         other.pos = u.pos;
+        other.dir = bestDirection(u.pos!, other.defId, other.star);
         state.board.push(other);
       }
       delete u.pos;
+      delete u.dir;
       state.bench[to.index] = u;
       // 装備がいた枠なら、その装備は別の枠へ
       if (isItemEntry(other)) putOnBench(state, other);
     }
   }
+  return undefined;
+}
+
+function placeError(defId: string): string {
+  return getUnit(defId) && ['vanguard', 'guard', 'defender', 'specialist'].includes(getUnit(defId).profession)
+    ? 'そのマスには置けません（近距離オペレーターは地上マスのみ）'
+    : 'そのマスには置けません';
 }
 
 /** 盤面から戦闘入力を作る（UIの予測でも使う） */
@@ -539,6 +558,8 @@ export function buildSimInputs(
         mods: setup.mods.get(o.uid) ?? {},
         garrisons: setup.garrisons.get(o.uid),
         rowCount: setup.rowCount.get(o.uid),
+        pos: o.pos,
+        dir: o.dir,
         bonusGain: setup.bonusGain.get(o.uid),
       })),
   };
@@ -566,13 +587,13 @@ function resolveBattle(state: GameState): void {
 
   const bench = benchUnits(state);
   const { statuses, inputs, globals } = buildSimInputs(state.board, bench, state.stacks, { banned: state.banned, roundGained: state.round_.gained });
-  const enemy = enemyForRound(state.round);
-  const sim = simulateDps(inputs, enemy, { globals, activeAlliances: activeAllianceIds(statuses), stacks: state.stacks });
+  const spec = roundSpec(state.round);
+  const sim = simulateBattle(inputs, spec, { globals, activeAlliances: activeAllianceIds(statuses), stacks: state.stacks, record: true });
   const afterPrep = { ...state.stacks };
   const active = activeAllianceIds(evaluateAlliances(state.board, bench, state.banned));
   for (const [b, n] of Object.entries(sim.stackGains) as [AllianceId, number][]) addStacks(state, b, n, active);
 
-  const lost = sim.killed ? 0 : lifeLoss(sim.remainingHp / enemy.hp, enemy.isBoss);
+  const lost = Math.min(sim.lifeLoss, MAX_LIFE_LOSS);
   state.life = Math.max(0, state.life - lost);
   itemBattleEnd(state);
 
@@ -590,6 +611,7 @@ function resolveBattle(state: GameState): void {
   state.lastBattle = {
     round: state.round,
     sim,
+    units: state.board.map((o) => ({ uid: o.uid, defId: o.defId, star: o.star, pos: o.pos, dir: o.dir })),
     lifeLost: lost,
     stacksGained,
     stacksBefore: before,
@@ -598,11 +620,11 @@ function resolveBattle(state: GameState): void {
     alliances: statuses,
     nextIncome: last ? null : { base: roundIncome(state.round + 1), extra: state.pendingGold },
   };
-  state.history.push({ round: state.round, killed: sim.killed, lifeLost: lost });
+  state.history.push({ round: state.round, killed: sim.cleared, lifeLost: lost });
   state.log.push(
-    sim.killed
-      ? `ラウンド${state.round}：${enemy.name}を撃破（${sim.killTime}秒）`
-      : `ラウンド${state.round}：${enemy.name}を倒しきれず、耐久値-${lost}`,
+    sim.cleared
+      ? `ラウンド${state.round}：敵${sim.total}体をすべて撃破（${sim.elapsed}秒）`
+      : `ラウンド${state.round}：${sim.leaked}体に突破され、耐久値-${lost}`,
   );
   state.phase = 'result';
 }
