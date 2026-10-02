@@ -1,11 +1,13 @@
 import { ALLIANCES } from '../core/data/alliances';
-import { roundEnemySummary, roundSpec } from '../core/data/battle';
+import { groupLabel, groupName, roundEnemySummary, roundSpec } from '../core/data/battle';
 import { activeAllianceIds, evaluateAlliances, unitAlliances } from '../core/alliance';
 import { benchUnits } from '../core/garrison';
 import {
   allOwned,
   buildSimInputs,
   findOwned,
+  roundGroupOf,
+  roundSpecOf,
   levelUpCost,
   previewBattleStacks,
   priceOf,
@@ -78,7 +80,8 @@ const lastClick: { uid: number | null; at: number } = { uid: null, at: 0 };
 function prepView(p: GameViewProps): HTMLElement {
   const { state, dispatch, select, selectedUid } = p;
   const cap = deployCapOf(state);
-  const spec = roundSpec(state.round);
+  const group = roundGroupOf(state, state.round);
+  const spec = roundSpecOf(state, state.round);
   const bench = benchUnits(state);
   const statuses = evaluateAlliances(state.board, bench, state.banned);
   const activeIds = activeAllianceIds(statuses);
@@ -302,14 +305,20 @@ function prepView(p: GameViewProps): HTMLElement {
           'section',
           { class: 'panel' },
           h('h2', null, `次の敵（ラウンド${state.round}）`),
-          roundInfo(spec, battleTimeLimit(spec)),
+          roundInfo(spec, battleTimeLimit(spec), group),
           predictionLine(prediction),
           gainedStacks.length
             ? h('p', { class: 'small muted' }, '戦闘開始時に得る加算数：', gainedStacks.map(([id, d]) => `${ALLIANCES[id].name}+${d}`).join('、'))
             : null,
+          h(
+            'p',
+            { class: 'small muted', title: 'ラウンドごとにこの中から1グループが選ばれます' },
+            `このゲームの敵：力押し・${state.enemyTypes.map(groupName).join('・')}`,
+          ),
         ),
         detailPanel,
         h('section', { class: 'panel' }, h('h2', null, '盟約'), alliancePanel(statuses, state.stacks)),
+
       ),
     ),
   );
@@ -327,7 +336,7 @@ function resultView(p: GameViewProps): HTMLElement {
     h(
       'div',
       { class: 'layout' },
-      h('main', null, h('section', { class: 'panel' }, h('h2', null, `ラウンド${b.round}　戦闘結果`), battleSummary(b.sim, b.units ?? []))),
+      h('main', null, h('section', { class: 'panel' }, h('h2', null, `ラウンド${b.round}　vs ${b.group ? groupLabel(b.group) : ''}`), battleSummary(b.sim, b.units ?? []))),
       h(
         'aside',
         null,
@@ -397,7 +406,7 @@ function endView(p: GameViewProps): HTMLElement {
         'ol',
         { class: 'history' },
         state.history.map((x) =>
-          h('li', { class: x.killed ? 'ok' : 'ng' }, `R${x.round}${roundEnemySummary(roundSpec(x.round)).some((e) => e.enemy.boss) ? '（ボス）' : ''}：${x.killed ? '全滅' : x.lifeLost ? `耐久値-${x.lifeLost}` : '損害なし'}`),
+          h('li', { class: x.killed ? 'ok' : 'ng' }, `R${x.round} ${groupLabel(roundGroupOf(state, x.round))}${roundEnemySummary(roundSpec(x.round)).some((e) => e.enemy.boss) ? '・ボス' : ''}：${x.killed ? '全滅' : x.lifeLost ? `耐久値-${x.lifeLost}` : '損害なし'}`),
         ),
       ),
       h('p', { class: 'muted small' }, `シード ${state.seed}`),

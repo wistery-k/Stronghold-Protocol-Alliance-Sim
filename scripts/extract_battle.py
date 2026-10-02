@@ -2,8 +2,9 @@
 """
 オートバトル用のデータを本家データから抽出し、src/core/data/battledata.json を生成する。
 
-- ラウンドごとの敵の出現（険境シミュレーションのステージ）
-- 敵の能力値（HP・防御力・術耐性・移動速度・飛行・耐久値の減少量）
+- ラウンドごとの敵の出現（険境シミュレーションのステージ。敵は役割ごとの「枠」）
+- 敵グループ（力押し＋特殊敵6種。ゲーム開始時に3種を抽選し、ラウンドごとに1グループが枠に入る）
+- 敵の能力値（HP・防御力・術耐性・移動速度・飛行・耐久値の減少量・隠匿などの特殊能力）
 - オペレーターの攻撃範囲（通常時・スキル中）
 
 使い方:
@@ -12,6 +13,7 @@
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -26,6 +28,30 @@ ENEMY_NAME_OVERRIDES = {
     'enemy_9014_acstma': '「冑を斬る剣」',
     'enemy_9015_acstmb': '「冑を砕く鎚」',
 }
+
+# ステージファイルの敵は「枠」で、ラウンドごとに選ばれた敵グループの敵に置き換わる
+SLOT_ROLES = {
+    'enemy_1007_slime': 'normal',
+    'enemy_1422_lrsldr': 'normal',
+    'enemy_1005_yokai': 'normal',
+    'enemy_1427_lrnazg': 'elite',
+    'enemy_1042_frostd': 'elite',
+    'enemy_1425_lrcmra': 'strong',
+    'enemy_1040_bombd': 'strong',
+}
+
+GROUP_NAMES = {
+    'SPECIAL': '力押し',
+    'FLY': '飛行',
+    'TIMES': '頻度',
+    'ELEMENT': '元素',
+    'DOT': '持続',
+    'INVISIBLE': '潜行',
+    'REFLECTION': '屈折',
+}
+
+# isInFirstHalf の敵が出るラウンド（険境の act1autochess_01〜07）
+FIRST_HALF_ROUNDS = 7
 
 PHASE = {'PHASE_0': 0, 'PHASE_1': 1, 'PHASE_2': 2}
 
@@ -94,16 +120,102 @@ def main():
             continue
         ranges[rid] = [[g['col'], g['row']] for g in r['grids']]
 
-    # ---------------- ラウンドと敵 ----------------
+    # ---------------- 敵 ----------------
+    cn_handbook = load(cn_root / 'excel/enemy_handbook_table.json')
+    cn_handbook = cn_handbook.get('enemyData', cn_handbook)
+    ac_refs = {r['id']: r for r in load(cn_root / 'levels/activities/act1autochess/level_autochess_enemy_data.json')['enemyDbRefs']}
     enemies = {}
+
+    def add_enemy(key, ref=None):
+        """敵の能力値と、シミュレーターで扱う特殊能力を登録する"""
+        if key in enemies:
+            return True
+        variants = enemy_db.get(key)
+        if not variants:
+            print(f'warning: unknown enemy {key}', file=sys.stderr)
+            return False
+        ref = ref or ac_refs.get(key) or {}
+        lvl = ref.get('level', 0)
+        base = ([v for v in variants if v['level'] == lvl] or variants)[0]['enemyData']
+        ed = merge_enemy(base, ref.get('overwrittenData'))
+        at = ed['attributes']
+        bb = {b['key'].lower(): b for b in (ed.get('talentBlackboard') or [])}
+        abilities = [a.get('text') or '' for a in ((cn_handbook.get(key) or cn_handbook.get(re.sub(r'_\d$', '', key)) or {}).get('abilityList') or [])]
+        ja = ja_handbook.get(key) or {}
+        name = ENEMY_NAME_OVERRIDES.get(key) or ja.get('name')
+        if not name:
+            jb = ja_handbook.get(re.sub(r'_\d$', '', key)) or {}
+            name = jb.get('name') or (cn_handbook.get(key) or {}).get('name') or ed['name']['m_value']
+        name = name.replace('假想敌', '仮想敵')
+        level_type = ed['levelType']['m_value'] if ed['levelType']['m_defined'] else 'NORMAL'
+        e = {
+            'name': name,
+            'hp': enemy_value(at, 'maxHp', 0),
+            'def': enemy_value(at, 'def', 0),
+            'res': enemy_value(at, 'magicResistance', 0),
+            'speed': enemy_value(at, 'moveSpeed', 1.0),
+            'blockCnt': enemy_value(at, 'blockCnt', 1) or 1,
+            'flying': (ed['motion']['m_value'] if ed['motion']['m_defined'] else 'WALK') == 'FLY',
+            'boss': level_type == 'BOSS',
+            'elite': level_type == 'ELITE',
+            'lifeReduce': ed['lifePointReduce']['m_value'] if ed['lifePointReduce']['m_defined'] else 1,
+        }
+        # 隠匿（ブロックされるまで狙えない）
+        if abilities and abilities[0].startswith('<$ba.invisible>'):
+            e['stealth'] = True
+        if any('无法被阻挡' in a for a in abilities):
+            e['unblockable'] = True
+        m = next((re.search(r'只能被阻挡数大于等于(\d+)', a) for a in abilities if '只能被阻挡数' in a), None)
+        if m:
+            e['blockCnt'] = int(m.group(1))
+        # 決まった回数の攻撃で倒れる（HPが回数）
+        if any(re.search(r'^需要\d+次伤害击倒', a) for a in abilities):
+            e['hitsToKill'] = True
+        # 屈折：術耐性が上がる
+        for k in ('refracting.magic_resistance',):
+            if k in bb:
+                e['refract'] = bb[k]['value']
+        # 1回分のダメージを防ぐ盾
+        if 'shield.max_block_damage_cnt' in bb:
+            e['hitShield'] = int(bb['shield.max_block_damage_cnt']['value'])
+        # 攻撃を受けるたびに防御・術耐性が下がる
+        if 'def_reduce.max_stack_cnt' in bb:
+            n = bb['def_reduce.max_stack_cnt']['value']
+            e['defReduce'] = {'max': int(n), 'def': bb['def_reduce.def']['value'] / n, 'res': bb.get('def_reduce.magic_resistance', {'value': 0})['value'] / n}
+        # 倒れると別の敵を生む
+        if 'deadspawn.enemy_key' in bb:
+            child = bb['deadspawn.enemy_key']['valueStr']
+            if add_enemy(child):
+                e['deadSpawn'] = {'enemy': child, 'count': int(bb['deadspawn.cnt']['value'])}
+        # 倒れると一定回数で倒せる状態になり、時間が経つと復活する
+        if 'revive[trigger].interval' in bb:
+            e['revive'] = {'hits': int(bb['revive[trigger].prop_max_hp']['value']), 'interval': bb['revive[trigger].interval']['value']}
+        enemies[key] = e
+        return True
+
+    # ---------------- 敵グループ（力押し＋特殊敵6種から3種） ----------------
+    groups = {}
+    for key, v in act['specialEnemyInfoDict'].items():
+        keys = [key, *v['attachedNormalEnemyKeys'], *v['attachedEliteEnemyKeys']]
+        if not all(add_enemy(k) for k in keys):
+            continue
+        groups.setdefault(v['type'], {'name': GROUP_NAMES.get(v['type'], v['type']), 'entries': []})['entries'].append({
+            'strong': key,
+            'normal': v['attachedNormalEnemyKeys'],
+            'elite': v['attachedEliteEnemyKeys'],
+            'weight': v['randomWeight'],
+            'firstHalf': v['isInFirstHalf'],
+        })
+
+    # ---------------- ラウンド ----------------
     rounds = []
     battle = act['battleDataDict'][MODE]
     for r in range(1, ROUNDS + 1):
         entry = battle[str(r)][0]  # ボス戦は先頭のボス（14: 仮想敵：冑, 15: 仮想敵：冑ほか）
         level_path = entry['levelId'].lower().replace('activities/', '')
-        lp = cn_root / 'levels/activities' / (level_path + '.json')
-        level = load(lp)
+        level = load(cn_root / 'levels/activities' / (level_path + '.json'))
         refs = {x['id']: x for x in level['enemyDbRefs']}
+        routes = level['routes']
         spawns = []
         for wave in level['waves']:
             t0 = wave['preDelay']
@@ -113,39 +225,19 @@ def main():
                     if a['actionType'] != 'SPAWN':
                         continue
                     key = a['key']
-                    ref = refs.get(key, {})
-                    lvl = ref.get('level', 0)
-                    if key not in enemies:
-                        variants = enemy_db.get(key)
-                        if not variants:
-                            print(f'warning: unknown enemy {key}', file=sys.stderr)
-                            continue
-                        base = [v for v in variants if v['level'] == lvl][0]['enemyData']
-                        ed = merge_enemy(base, ref.get('overwrittenData'))
-                        at = ed['attributes']
-                        ja = ja_handbook.get(key.removesuffix('_2'), {}) or ja_handbook.get(key, {})
-                        name = ENEMY_NAME_OVERRIDES.get(key) or ja.get('name')
-                        if not name:
-                            print(f'warning: no Japanese name for {key} ({ed["name"]["m_value"]})', file=sys.stderr)
-                            name = ed['name']['m_value']
-                        enemies[key] = {
-                            'name': name,
-                            'hp': enemy_value(at, 'maxHp', 0),
-                            'def': enemy_value(at, 'def', 0),
-                            'res': enemy_value(at, 'magicResistance', 0),
-                            'speed': enemy_value(at, 'moveSpeed', 1.0),
-                            'blockCnt': enemy_value(at, 'blockCnt', 1) or 1,
-                            'flying': (ed['motion']['m_value'] if ed['motion']['m_defined'] else 'WALK') == 'FLY',
-                            'boss': (ed['levelType']['m_value'] if ed['levelType']['m_defined'] else 'NORMAL') == 'BOSS',
-                            'elite': (ed['levelType']['m_value'] if ed['levelType']['m_defined'] else 'NORMAL') == 'ELITE',
-                            'lifeReduce': ed['lifePointReduce']['m_value'] if ed['lifePointReduce']['m_defined'] else 1,
-                        }
+                    if not add_enemy(key, refs.get(key)):
+                        continue
+                    route = routes[a['routeIndex']]
+                    # 本家の出現地点は2つ（防衛地点と同じ行＝下、もう一方＝上）
+                    start_row = route['startPosition']['row']
+                    goal_row = route['endPosition']['row']
                     spawns.append({
                         'enemy': key,
+                        'role': SLOT_ROLES.get(key),
                         'count': a['count'],
                         'interval': a['interval'],
                         'delay': round(t1 + a['preDelay'], 2),
-                        'route': a['routeIndex'],
+                        'spawn': 1 if start_row == goal_row else 0,
                     })
         rounds.append({
             'round': r,
@@ -155,10 +247,10 @@ def main():
             'spawns': spawns,
         })
 
-    out = {'ranges': ranges, 'unitRanges': unit_ranges, 'enemies': enemies, 'rounds': rounds}
+    out = {'ranges': ranges, 'unitRanges': unit_ranges, 'enemies': enemies, 'groups': groups, 'firstHalfRounds': FIRST_HALF_ROUNDS, 'rounds': rounds}
     dest = Path(__file__).resolve().parent.parent / 'src/core/data/battledata.json'
     dest.write_text(json.dumps(out, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
-    print(f'wrote {dest} ({len(ranges)} ranges, {len(enemies)} enemies, {len(rounds)} rounds)')
+    print(f'wrote {dest} ({len(ranges)} ranges, {len(enemies)} enemies, {len(groups)} groups, {len(rounds)} rounds)')
 
 
 if __name__ == '__main__':

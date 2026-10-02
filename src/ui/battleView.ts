@@ -15,7 +15,7 @@ import {
   tileAt,
   unitRangeCells,
 } from '../core/board';
-import { roundEnemySummary, type RoundSpec } from '../core/data/battle';
+import { ENEMIES, groupLabel, roundEnemySummary, type EnemySpec, type RoundGroup, type RoundSpec } from '../core/data/battle';
 import { getUnit } from '../core/data/units';
 import { ENEMY_HP_SCALE } from '../core/rules';
 import type { BattleResult } from '../core/sim';
@@ -107,8 +107,28 @@ export function placeHint(defId: string, pos: number): string | null {
   return canPlace(pos, defId) ? null : tileAt(pos) === 'high' ? '高台には遠距離オペレーターのみ' : '置けないマス';
 }
 
+/** 敵の特殊能力のバッジ */
+function enemyBadges(e: EnemySpec) {
+  const out: HTMLElement[] = [];
+  const b = (label: string, title: string, cls = '') => out.push(h('span', { class: `badge ${cls}`, title }, label));
+  if (e.boss) b('BOSS', 'ボス');
+  if (e.flying) b('飛行', '飛行：ブロックできず、近距離オペレーターは攻撃できない', 'fly');
+  if (e.stealth) b('隠匿', '隠匿：ブロックされている間しか攻撃の対象にならない', 'sp');
+  if (e.unblockable) b('ブロック不可', 'ブロックできない', 'sp');
+  if (e.hitsToKill) b(`${e.hp}回`, `攻撃${e.hp}回で倒れる（ダメージ量は関係ない）`, 'sp');
+  if (e.refract) b(`屈折+${e.refract}`, `屈折：術耐性+${e.refract}`, 'sp');
+  if (e.hitShield) b('盾', `最初の${e.hitShield}回の攻撃を無効にする`, 'sp');
+  if (e.defReduce) b('防御低下', `攻撃を受けるたびに防御${e.defReduce.def}・術耐性${e.defReduce.res}（最大${e.defReduce.max}回）`, 'sp');
+  if (e.revive) b('復活', `倒れると攻撃${e.revive.hits}回で倒せる状態になり、${e.revive.interval}秒以内に倒さないと復活する`, 'sp');
+  if (e.deadSpawn) {
+    const c = ENEMIES[e.deadSpawn.enemy];
+    b('分裂', `倒れると${c?.name ?? '敵'}×${e.deadSpawn.count}が現れる${c?.hitsToKill ? `（攻撃${c.hp}回で倒れる・ブロック不可）` : ''}`, 'sp');
+  }
+  return out;
+}
+
 /** ラウンドに出てくる敵の一覧 */
-export function roundInfo(spec: RoundSpec, timeLimit: number) {
+export function roundInfo(spec: RoundSpec, timeLimit: number, group?: RoundGroup | null) {
   const list = roundEnemySummary(spec);
   const total = list.reduce((sum, x) => sum + x.count, 0);
   return h(
@@ -117,6 +137,7 @@ export function roundInfo(spec: RoundSpec, timeLimit: number) {
     h(
       'div',
       { class: 'enemy-stats' },
+      group ? h('b', null, groupLabel(group)) : null,
       h('span', null, `敵 ${total}体`),
       h('span', null, `時間 ${timeLimit}秒`),
       ENEMY_HP_SCALE !== 1 ? h('span', { class: 'muted', title: 'ボス以外の敵HPの倍率' }, `HP×${ENEMY_HP_SCALE}`) : null,
@@ -132,17 +153,11 @@ export function roundInfo(spec: RoundSpec, timeLimit: number) {
           h(
             'tr',
             { class: enemy.boss ? 'boss' : '' },
-            h(
-              'td',
-              null,
-              enemy.boss ? h('span', { class: 'badge' }, 'BOSS') : null,
-              enemy.flying ? h('span', { class: 'badge fly', title: '飛行：ブロックできず、近距離オペレーターは攻撃できない' }, '飛行') : null,
-              enemy.name,
-            ),
+            h('td', null, enemy.name, ' ', enemyBadges(enemy)),
             h('td', null, count),
-            h('td', null, fmt(enemy.boss ? enemy.hp : enemy.hp * ENEMY_HP_SCALE)),
+            h('td', null, enemy.hitsToKill ? '-' : fmt(enemy.boss ? enemy.hp : enemy.hp * ENEMY_HP_SCALE)),
             h('td', null, enemy.def),
-            h('td', null, enemy.res),
+            h('td', null, Math.min(100, enemy.res + (enemy.refract ?? 0))),
           ),
         ),
       ),

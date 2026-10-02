@@ -1051,6 +1051,9 @@ aside {
   color: var(--path);
   margin-right: 4px;
 }
+.badge.sp {
+  background: var(--extra);
+}
 .badge.fly {
   background: var(--core);
   margin-right: 4px;

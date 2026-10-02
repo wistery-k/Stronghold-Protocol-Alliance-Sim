@@ -2870,6 +2870,1558 @@
   }
  },
  "enemies": {
+  "enemy_1041_lazerd": {
+   "name": "アーツバードA1",
+   "hp": 2700,
+   "def": 100,
+   "res": 65.0,
+   "speed": 1.5,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_10083_hlbird": {
+   "name": "「サンクタの翼」",
+   "hp": 1500,
+   "def": 0,
+   "res": 30.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1005_yokai_2": {
+   "name": "怪鳥Mk2",
+   "hp": 1550,
+   "def": 50,
+   "res": 0.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1355_mrfly": {
+   "name": "バリケード",
+   "hp": 6000,
+   "def": 80,
+   "res": 40.0,
+   "speed": 1.2,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1005_yokai": {
+   "name": "怪鳥",
+   "hp": 800,
+   "def": 50,
+   "res": 0.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1017_defdrn": {
+   "name": "Mvc4",
+   "hp": 4000,
+   "def": 150,
+   "res": 20.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_10084_hlegle": {
+   "name": "「サンクタの眼」",
+   "hp": 5500,
+   "def": 150,
+   "res": 30.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1407_hummbd": {
+   "name": "スコープ",
+   "hp": 4500,
+   "def": 120,
+   "res": 20.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1005_yokai_3": {
+   "name": "飛龍",
+   "hp": 30000,
+   "def": 170,
+   "res": 0.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1112_emppnt": {
+   "name": "帝国砲撃誘導機",
+   "hp": 13000,
+   "def": 800,
+   "res": 50.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1041_lazerd_2": {
+   "name": "アーツバードA2",
+   "hp": 6000,
+   "def": 140,
+   "res": 65.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1042_frostd": {
+   "name": "コキュートス",
+   "hp": 6500,
+   "def": 600,
+   "res": 30.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_9009_acfort": {
+   "name": "仮想敵：黑云",
+   "hp": 24000,
+   "def": 150,
+   "res": 20.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1196_msfyin_2": {
+   "name": "紅木瑞印",
+   "hp": 3,
+   "def": 0,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "unblockable": true,
+   "hitsToKill": true
+  },
+  "enemy_1195_sfyin_2": {
+   "name": "明鑑",
+   "hp": 3100,
+   "def": 0,
+   "res": 20.0,
+   "speed": 1.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "deadSpawn": {
+    "enemy": "enemy_1196_msfyin_2",
+    "count": 2
+   }
+  },
+  "enemy_1196_msfyin": {
+   "name": "木製瑞印",
+   "hp": 2,
+   "def": 0,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "unblockable": true,
+   "hitsToKill": true
+  },
+  "enemy_1195_sfyin": {
+   "name": "磨礱",
+   "hp": 2000,
+   "def": 0,
+   "res": 20.0,
+   "speed": 1.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "deadSpawn": {
+    "enemy": "enemy_1196_msfyin",
+    "count": 2
+   }
+  },
+  "enemy_1198_msfshu": {
+   "name": "小説の巻物",
+   "hp": 3,
+   "def": 0,
+   "res": 0.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "unblockable": true,
+   "hitsToKill": true
+  },
+  "enemy_1197_sfshu": {
+   "name": "俗心",
+   "hp": 2500,
+   "def": 60,
+   "res": 0.0,
+   "speed": 1.4,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "deadSpawn": {
+    "enemy": "enemy_1198_msfshu",
+    "count": 3
+   }
+  },
+  "enemy_1288_duskls_2": {
+   "name": "ダブリン精鋭追炎戦士",
+   "hp": 6000,
+   "def": 100,
+   "res": 50.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "revive": {
+    "hits": 5,
+    "interval": 10.0
+   }
+  },
+  "enemy_1288_duskls": {
+   "name": "ダブリン追炎戦士",
+   "hp": 5000,
+   "def": 50,
+   "res": 50.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "revive": {
+    "hits": 5,
+    "interval": 10.0
+   }
+  },
+  "enemy_1292_duskld": {
+   "name": "ダブリン追炎従兵",
+   "hp": 10000,
+   "def": 550,
+   "res": 60.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "revive": {
+    "hits": 10,
+    "interval": 10.0
+   }
+  },
+  "enemy_1208_msfji": {
+   "name": "銅矛",
+   "hp": 25,
+   "def": 0,
+   "res": 0.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "unblockable": true,
+   "hitsToKill": true
+  },
+  "enemy_1207_sfji": {
+   "name": "沈砂",
+   "hp": 11000,
+   "def": 600,
+   "res": 30.0,
+   "speed": 1.3,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "deadSpawn": {
+    "enemy": "enemy_1208_msfji",
+    "count": 4
+   }
+  },
+  "enemy_1200_msfjin": {
+   "name": "青銅の鏡",
+   "hp": 30,
+   "def": 0,
+   "res": 0.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "unblockable": true,
+   "hitsToKill": true
+  },
+  "enemy_1199_sfjin": {
+   "name": "身観",
+   "hp": 6500,
+   "def": 750,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "deadSpawn": {
+    "enemy": "enemy_1200_msfjin",
+    "count": 1
+   }
+  },
+  "enemy_9010_acpupp": {
+   "name": "仮想敵：再生",
+   "hp": 12000,
+   "def": 300,
+   "res": 40.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "revive": {
+    "hits": 15,
+    "interval": 15.0
+   }
+  },
+  "enemy_1198_msfshu_2": {
+   "name": "詩画の巻物",
+   "hp": 4,
+   "def": 0,
+   "res": 0.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "unblockable": true,
+   "hitsToKill": true
+  },
+  "enemy_1197_sfshu_2": {
+   "name": "雅気",
+   "hp": 3350,
+   "def": 70,
+   "res": 0.0,
+   "speed": 1.4,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "deadSpawn": {
+    "enemy": "enemy_1198_msfshu_2",
+    "count": 3
+   }
+  },
+  "enemy_1161_tidmag": {
+   "name": "造波術師",
+   "hp": 6000,
+   "def": 200,
+   "res": 60.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1158_divman": {
+   "name": "潜水員",
+   "hp": 3300,
+   "def": 150,
+   "res": 20.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1160_hvyslr": {
+   "name": "水兵",
+   "hp": 10000,
+   "def": 800,
+   "res": 20.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1305_mhslim_2": {
+   "name": "猛焔オリジムシ",
+   "hp": 1800,
+   "def": 0,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1305_mhslim": {
+   "name": "灼熱オリジムシ",
+   "hp": 1200,
+   "def": 0,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_2025_syufo": {
+   "name": "掠海のフローター",
+   "hp": 20000,
+   "def": 250,
+   "res": 40.0,
+   "speed": 0.6,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_2021_syfish": {
+   "name": "骨海のワンダラー",
+   "hp": 4000,
+   "def": 150,
+   "res": 10.0,
+   "speed": 1.2,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1161_tidmag_2": {
+   "name": "造波術師隊長",
+   "hp": 8000,
+   "def": 220,
+   "res": 60.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1160_hvyslr_2": {
+   "name": "水兵長",
+   "hp": 14000,
+   "def": 1000,
+   "res": 20.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1439_dslntf": {
+   "name": "元核のマレフィセント",
+   "hp": 30000,
+   "def": 0,
+   "res": 70.0,
+   "speed": 0.25,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1148_dssbr": {
+   "name": "淵海のスライダー",
+   "hp": 2800,
+   "def": 130,
+   "res": 10.0,
+   "speed": 1.1,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1148_dssbr_2": {
+   "name": "富栄養化したスライダー",
+   "hp": 3600,
+   "def": 150,
+   "res": 10.0,
+   "speed": 1.1,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1275_dwlock_2": {
+   "name": "サルカズ王庭軍精鋭術師",
+   "hp": 14000,
+   "def": 250,
+   "res": 50.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1229_darmy": {
+   "name": "サルカズ王庭軍戦士",
+   "hp": 4200,
+   "def": 220,
+   "res": 40.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1229_darmy_2": {
+   "name": "サルカズ王庭軍戦士隊長",
+   "hp": 5500,
+   "def": 280,
+   "res": 40.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_9007_acelem": {
+   "name": "仮想敵：淤困",
+   "hp": 36000,
+   "def": 200,
+   "res": 40.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1234_dsubrl": {
+   "name": "深溟のミキサー",
+   "hp": 10000,
+   "def": 550,
+   "res": 60.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1433_dsbasi": {
+   "name": "単核のプレデター",
+   "hp": 4300,
+   "def": 0,
+   "res": 10.0,
+   "speed": 1.6,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1433_dsbasi_2": {
+   "name": "異光体プレデター",
+   "hp": 5700,
+   "def": 0,
+   "res": 10.0,
+   "speed": 1.6,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1272_nhtank": {
+   "name": "枯朽サルカズ戦車",
+   "hp": 12000,
+   "def": 750,
+   "res": 10.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1267_nhpbr": {
+   "name": "枯朽サルカズ戦士",
+   "hp": 4500,
+   "def": 100,
+   "res": 20.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1267_nhpbr_2": {
+   "name": "枯朽サルカズ戦士隊長",
+   "hp": 5500,
+   "def": 100,
+   "res": 20.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1270_nhstlk": {
+   "name": "逐腐獣",
+   "hp": 12000,
+   "def": 150,
+   "res": 20.0,
+   "speed": 1.4,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1234_dsubrl_2": {
+   "name": "富栄養化したミキサー",
+   "hp": 14000,
+   "def": 550,
+   "res": 60.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_10122_uacann_2": {
+   "name": "集团军重型火炮",
+   "hp": 10000,
+   "def": 350,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1272_nhtank_2": {
+   "name": "枯朽サルカズ精鋭戦車",
+   "hp": 15000,
+   "def": 750,
+   "res": 10.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1270_nhstlk_2": {
+   "name": "狂った逐腐獣",
+   "hp": 16000,
+   "def": 200,
+   "res": 20.0,
+   "speed": 1.4,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_9006_actoxi": {
+   "name": "仮想敵：蚀裂",
+   "hp": 15000,
+   "def": 400,
+   "res": 10.0,
+   "speed": 0.6,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1299_ymkilr": {
+   "name": "山海衆精鋭",
+   "hp": 8500,
+   "def": 250,
+   "res": 20.0,
+   "speed": 1.1,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_1043_zomsbr": {
+   "name": "寄生兵",
+   "hp": 2500,
+   "def": 100,
+   "res": 30.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1019_jshoot": {
+   "name": "迷彩射撃兵",
+   "hp": 1800,
+   "def": 100,
+   "res": 20.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_10034_cnvsax": {
+   "name": "祝祭のジャズ奏者",
+   "hp": 10000,
+   "def": 300,
+   "res": 10.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_10042_prtrop_2": {
+   "name": "ベテラン橋持ち師",
+   "hp": 8000,
+   "def": 300,
+   "res": 30.0,
+   "speed": 0.65,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_10043_sailor": {
+   "name": "冒険水夫",
+   "hp": 5500,
+   "def": 50,
+   "res": 10.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_10042_prtrop": {
+   "name": "橋架け船大工",
+   "hp": 6000,
+   "def": 150,
+   "res": 30.0,
+   "speed": 0.65,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_1389_winbab_2": {
+   "name": "訪問団の強襲王",
+   "hp": 7000,
+   "def": 400,
+   "res": 10.0,
+   "speed": 0.6,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_1381_winman": {
+   "name": "訪問団の新兵",
+   "hp": 5800,
+   "def": 100,
+   "res": 0.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1019_jshoot_2": {
+   "name": "迷彩射撃隊長",
+   "hp": 2700,
+   "def": 130,
+   "res": 20.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_1299_ymkilr_2": {
+   "name": "山海衆密使",
+   "hp": 11000,
+   "def": 300,
+   "res": 20.0,
+   "speed": 1.1,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_1422_lrsldr_2": {
+   "name": "枯朽サルカズ切込み先鋒",
+   "hp": 5500,
+   "def": 100,
+   "res": 40.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1404_msnip": {
+   "name": "重型クロスボウ強襲者",
+   "hp": 6000,
+   "def": 180,
+   "res": 60.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_1009_lurker": {
+   "name": "潜入者",
+   "hp": 2200,
+   "def": 90,
+   "res": 20.0,
+   "speed": 1.0,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_9008_acbunn": {
+   "name": "仮想敵：骨刺",
+   "hp": 12000,
+   "def": 300,
+   "res": 60.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_10031_cnvsld": {
+   "name": "一般参加の競演者",
+   "hp": 4000,
+   "def": 100,
+   "res": 0.0,
+   "speed": 1.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_1174_duholy": {
+   "name": "ダブリンヘタイロイ衛兵",
+   "hp": 15000,
+   "def": 900,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_1166_dusbr": {
+   "name": "ダブリン偵察兵",
+   "hp": 3000,
+   "def": 110,
+   "res": 0.0,
+   "speed": 1.0,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_1170_dushld": {
+   "name": "ダブリン重装兵",
+   "hp": 7000,
+   "def": 750,
+   "res": 0.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_1168_dumage": {
+   "name": "ダブリン暗影術師",
+   "hp": 4500,
+   "def": 150,
+   "res": 20.0,
+   "speed": 1.1,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_1165_duhond": {
+   "name": "ダブリン偵察犬",
+   "hp": 2800,
+   "def": 0,
+   "res": 0.0,
+   "speed": 1.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_1169_duphlx": {
+   "name": "ダブリン方陣戦士",
+   "hp": 4000,
+   "def": 300,
+   "res": 0.0,
+   "speed": 1.0,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_1174_duholy_2": {
+   "name": "ダブリンヘタイロイ上級衛兵",
+   "hp": 20000,
+   "def": 1000,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_1166_dusbr_2": {
+   "name": "ダブリン偵察隊長",
+   "hp": 4400,
+   "def": 180,
+   "res": 0.0,
+   "speed": 1.0,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_1170_dushld_2": {
+   "name": "ダブリン重装隊長",
+   "hp": 9000,
+   "def": 1100,
+   "res": 0.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_1169_duphlx_2": {
+   "name": "ダブリン方陣指揮官",
+   "hp": 6000,
+   "def": 400,
+   "res": 0.0,
+   "speed": 1.0,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_1172_dugago": {
+   "name": "墓守の石像",
+   "hp": 10000,
+   "def": 550,
+   "res": 0.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_9011_acrefr": {
+   "name": "仮想敵：镜膜",
+   "hp": 18000,
+   "def": 600,
+   "res": 0.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "refract": 70.0
+  },
+  "enemy_1010_demon_2": {
+   "name": "サルカズ大剣隊長",
+   "hp": 15000,
+   "def": 250,
+   "res": 50.0,
+   "speed": 0.85,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1071_dftman": {
+   "name": "サルカズ刀術師",
+   "hp": 2800,
+   "def": 70,
+   "res": 50.0,
+   "speed": 1.0,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1010_demon": {
+   "name": "サルカズ大剣士",
+   "hp": 7500,
+   "def": 230,
+   "res": 50.0,
+   "speed": 0.85,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1045_hammer": {
+   "name": "クラッシャー",
+   "hp": 10000,
+   "def": 1000,
+   "res": 0.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1046_agent": {
+   "name": "歩兵",
+   "hp": 2500,
+   "def": 85,
+   "res": 40.0,
+   "speed": 1.1,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1118_lidbox_2": {
+   "name": "重罪拳闘士囚人",
+   "hp": 9500,
+   "def": 400,
+   "res": 0.0,
+   "speed": 1.6,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1116_liprr": {
+   "name": "一般囚人",
+   "hp": 5500,
+   "def": 60,
+   "res": 0.0,
+   "speed": 1.1,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1116_liprr_2": {
+   "name": "重罪囚人",
+   "hp": 7500,
+   "def": 60,
+   "res": 0.0,
+   "speed": 1.1,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1325_cbgpro_2": {
+   "name": "精鋭軍用猟犬",
+   "hp": 4600,
+   "def": 0,
+   "res": 30.0,
+   "speed": 1.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1000_gopro_2": {
+   "name": "上級猟犬",
+   "hp": 1700,
+   "def": 0,
+   "res": 20.0,
+   "speed": 1.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1325_cbgpro": {
+   "name": "軍用猟犬",
+   "hp": 3800,
+   "def": 0,
+   "res": 30.0,
+   "speed": 1.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1121_lifbos": {
+   "name": "凶悪犯",
+   "hp": 20000,
+   "def": 400,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1006_shield_3": {
+   "name": "重装連隊長",
+   "hp": 40000,
+   "def": 1200,
+   "res": 0.0,
+   "speed": 0.75,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1402_tgshd_2": {
+   "name": "重装偵察兵",
+   "hp": 13000,
+   "def": 1500,
+   "res": 0.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1329_cbshld": {
+   "name": "アーク鏡衛",
+   "hp": 10000,
+   "def": 3300,
+   "res": 60.0,
+   "speed": 0.75,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "defReduce": {
+    "max": 80,
+    "def": -50.0,
+    "res": -2.0
+   }
+  },
+  "enemy_1251_lysyta": {
+   "name": "Dor-1号失敗作",
+   "hp": 2750,
+   "def": 0,
+   "res": 50.0,
+   "speed": 1.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1249_lysdb_2": {
+   "name": "ライン生命警備課上級職員",
+   "hp": 6000,
+   "def": 300,
+   "res": 0.0,
+   "speed": 1.0,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "hitShield": 1
+  },
+  "enemy_1045_hammer_2": {
+   "name": "凶悪クラッシャー",
+   "hp": 20000,
+   "def": 2000,
+   "res": 0.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1061_zomshd": {
+   "name": "寄生重装兵",
+   "hp": 10000,
+   "def": 800,
+   "res": 0.0,
+   "speed": 0.75,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1387_winshd": {
+   "name": "訪問団の盾兵",
+   "hp": 12000,
+   "def": 1200,
+   "res": 20.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1381_winman_2": {
+   "name": "訪問団の老兵",
+   "hp": 7800,
+   "def": 200,
+   "res": 0.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1121_lifbos_2": {
+   "name": "伝説の凶悪犯",
+   "hp": 25000,
+   "def": 500,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1119_vofsd": {
+   "name": "巨漢囚人",
+   "hp": 11000,
+   "def": 700,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1320_wdrrl_2": {
+   "name": "サルカズ悖理暴虐兵士長",
+   "hp": 25000,
+   "def": 800,
+   "res": 20.0,
+   "speed": 0.8,
+   "blockCnt": 3,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_10124_uashld_2": {
+   "name": "集团军中坚盾卫",
+   "hp": 25000,
+   "def": 1800,
+   "res": 60.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1328_cbjedi": {
+   "name": "アーク鋒衛",
+   "hp": 10000,
+   "def": 550,
+   "res": 50.0,
+   "speed": 0.75,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1355_mrfly_2": {
+   "name": "バリケードP",
+   "hp": 10000,
+   "def": 80,
+   "res": 50.0,
+   "speed": 1.2,
+   "blockCnt": 1,
+   "flying": true,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_10067_ftsjc": {
+   "name": "ホテリツル",
+   "hp": 13000,
+   "def": 250,
+   "res": 65.0,
+   "speed": 0.85,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_10065_ftzlc": {
+   "name": "バクダンダネ",
+   "hp": 3800,
+   "def": 0,
+   "res": 5.0,
+   "speed": 1.0,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1283_sgkill": {
+   "name": "マフィアの掃除人",
+   "hp": 12000,
+   "def": 800,
+   "res": 45.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1175_dushdo_2": {
+   "name": "ダブリンヘタイロイ上級影刃",
+   "hp": 15000,
+   "def": 550,
+   "res": 0.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "stealth": true
+  },
+  "enemy_1254_lypa_2": {
+   "name": "テスト用パワードスーツ",
+   "hp": 10000,
+   "def": 800,
+   "res": 20.0,
+   "speed": 1.2,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1425_lrcmra_2": {
+   "name": "冒涜のキメラ",
+   "hp": 25000,
+   "def": 1200,
+   "res": 50.0,
+   "speed": 0.6,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
+  "enemy_1329_cbshld_2": {
+   "name": "アーク鏡衛隊長",
+   "hp": 13000,
+   "def": 3500,
+   "res": 60.0,
+   "speed": 0.75,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "defReduce": {
+    "max": 85,
+    "def": -50.0,
+    "res": -2.0
+   }
+  },
+  "enemy_1251_lysyta_2": {
+   "name": "Dor-α号失敗作",
+   "hp": 3200,
+   "def": 50,
+   "res": 50.0,
+   "speed": 1.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1252_lysytb_2": {
+   "name": "Dor-β号複製体",
+   "hp": 9000,
+   "def": 50,
+   "res": 50.0,
+   "speed": 0.9,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1
+  },
+  "enemy_1072_dlancer": {
+   "name": "サルカズ突撃兵",
+   "hp": 6000,
+   "def": 150,
+   "res": 40.0,
+   "speed": 0.25,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1
+  },
   "enemy_1007_slime": {
    "name": "オリジムシ",
    "hp": 550,
@@ -2894,18 +4446,6 @@
    "elite": false,
    "lifeReduce": 1
   },
-  "enemy_1005_yokai": {
-   "name": "怪鳥",
-   "hp": 800,
-   "def": 50,
-   "res": 0.0,
-   "speed": 0.9,
-   "blockCnt": 1,
-   "flying": true,
-   "boss": false,
-   "elite": false,
-   "lifeReduce": 1
-  },
   "enemy_1427_lrnazg": {
    "name": "「霊骸布」",
    "hp": 15000,
@@ -2914,18 +4454,6 @@
    "speed": 0.7,
    "blockCnt": 1,
    "flying": false,
-   "boss": false,
-   "elite": true,
-   "lifeReduce": 1
-  },
-  "enemy_1042_frostd": {
-   "name": "コキュートス",
-   "hp": 6500,
-   "def": 600,
-   "res": 30.0,
-   "speed": 0.9,
-   "blockCnt": 1,
-   "flying": true,
    "boss": false,
    "elite": true,
    "lifeReduce": 1
@@ -2955,7 +4483,7 @@
    "lifeReduce": 1
   },
   "enemy_1006_shield_2": {
-   "name": "重装兵",
+   "name": "重装隊長",
    "hp": 10000,
    "def": 1000,
    "res": 0.0,
@@ -3027,6 +4555,781 @@
    "lifeReduce": 0
   }
  },
+ "groups": {
+  "FLY": {
+   "name": "飛行",
+   "entries": [
+    {
+     "strong": "enemy_1041_lazerd",
+     "normal": [
+      "enemy_10083_hlbird"
+     ],
+     "elite": [
+      "enemy_1005_yokai_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1355_mrfly",
+     "normal": [
+      "enemy_1005_yokai"
+     ],
+     "elite": [
+      "enemy_1005_yokai_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1017_defdrn",
+     "normal": [
+      "enemy_1005_yokai"
+     ],
+     "elite": [
+      "enemy_1005_yokai_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_10084_hlegle",
+     "normal": [
+      "enemy_10083_hlbird"
+     ],
+     "elite": [
+      "enemy_1005_yokai_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1407_hummbd",
+     "normal": [
+      "enemy_1005_yokai"
+     ],
+     "elite": [
+      "enemy_1005_yokai_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1005_yokai_3",
+     "normal": [
+      "enemy_1005_yokai"
+     ],
+     "elite": [
+      "enemy_1005_yokai_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1112_emppnt",
+     "normal": [
+      "enemy_1005_yokai"
+     ],
+     "elite": [
+      "enemy_1005_yokai_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1041_lazerd_2",
+     "normal": [
+      "enemy_1005_yokai_2"
+     ],
+     "elite": [
+      "enemy_1042_frostd"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_9009_acfort",
+     "normal": [
+      "enemy_1005_yokai_2"
+     ],
+     "elite": [
+      "enemy_1005_yokai_3"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1355_mrfly_2",
+     "normal": [
+      "enemy_1005_yokai"
+     ],
+     "elite": [
+      "enemy_1017_defdrn"
+     ],
+     "weight": 8,
+     "firstHalf": true
+    }
+   ]
+  },
+  "TIMES": {
+   "name": "頻度",
+   "entries": [
+    {
+     "strong": "enemy_1195_sfyin_2",
+     "normal": [
+      "enemy_1195_sfyin"
+     ],
+     "elite": [
+      "enemy_1197_sfshu"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1288_duskls_2",
+     "normal": [
+      "enemy_1288_duskls"
+     ],
+     "elite": [
+      "enemy_1288_duskls"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1197_sfshu",
+     "normal": [
+      "enemy_1195_sfyin"
+     ],
+     "elite": [
+      "enemy_1197_sfshu"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1292_duskld",
+     "normal": [
+      "enemy_1288_duskls"
+     ],
+     "elite": [
+      "enemy_1288_duskls_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1207_sfji",
+     "normal": [
+      "enemy_1195_sfyin"
+     ],
+     "elite": [
+      "enemy_1197_sfshu"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1199_sfjin",
+     "normal": [
+      "enemy_1195_sfyin"
+     ],
+     "elite": [
+      "enemy_1197_sfshu"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_9010_acpupp",
+     "normal": [
+      "enemy_1197_sfshu"
+     ],
+     "elite": [
+      "enemy_1197_sfshu_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1197_sfshu_2",
+     "normal": [
+      "enemy_1195_sfyin"
+     ],
+     "elite": [
+      "enemy_1197_sfshu_2"
+     ],
+     "weight": 8,
+     "firstHalf": true
+    }
+   ]
+  },
+  "ELEMENT": {
+   "name": "元素",
+   "entries": [
+    {
+     "strong": "enemy_1161_tidmag",
+     "normal": [
+      "enemy_1158_divman"
+     ],
+     "elite": [
+      "enemy_1160_hvyslr"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1305_mhslim_2",
+     "normal": [
+      "enemy_1305_mhslim"
+     ],
+     "elite": [
+      "enemy_1305_mhslim_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_2025_syufo",
+     "normal": [
+      "enemy_2021_syfish"
+     ],
+     "elite": [
+      "enemy_2021_syfish"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1161_tidmag_2",
+     "normal": [
+      "enemy_1158_divman"
+     ],
+     "elite": [
+      "enemy_1160_hvyslr_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1439_dslntf",
+     "normal": [
+      "enemy_1148_dssbr"
+     ],
+     "elite": [
+      "enemy_1148_dssbr_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1275_dwlock_2",
+     "normal": [
+      "enemy_1229_darmy"
+     ],
+     "elite": [
+      "enemy_1229_darmy_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_9007_acelem",
+     "normal": [
+      "enemy_1229_darmy"
+     ],
+     "elite": [
+      "enemy_1229_darmy_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_10067_ftsjc",
+     "normal": [
+      "enemy_10065_ftzlc"
+     ],
+     "elite": [
+      "enemy_10067_ftsjc"
+     ],
+     "weight": 8,
+     "firstHalf": false
+    }
+   ]
+  },
+  "DOT": {
+   "name": "持続",
+   "entries": [
+    {
+     "strong": "enemy_1234_dsubrl",
+     "normal": [
+      "enemy_1433_dsbasi"
+     ],
+     "elite": [
+      "enemy_1433_dsbasi_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1272_nhtank",
+     "normal": [
+      "enemy_1267_nhpbr"
+     ],
+     "elite": [
+      "enemy_1267_nhpbr_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1270_nhstlk",
+     "normal": [
+      "enemy_1267_nhpbr"
+     ],
+     "elite": [
+      "enemy_1267_nhpbr_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1234_dsubrl_2",
+     "normal": [
+      "enemy_1433_dsbasi_2"
+     ],
+     "elite": [
+      "enemy_1433_dsbasi_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_10122_uacann_2",
+     "normal": [
+      "enemy_1267_nhpbr_2"
+     ],
+     "elite": [
+      "enemy_1267_nhpbr_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1272_nhtank_2",
+     "normal": [
+      "enemy_1267_nhpbr_2"
+     ],
+     "elite": [
+      "enemy_1270_nhstlk_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_9006_actoxi",
+     "normal": [
+      "enemy_1267_nhpbr_2"
+     ],
+     "elite": [
+      "enemy_1270_nhstlk_2"
+     ],
+     "weight": 15,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1270_nhstlk_2",
+     "normal": [
+      "enemy_1267_nhpbr"
+     ],
+     "elite": [
+      "enemy_1267_nhpbr_2"
+     ],
+     "weight": 8,
+     "firstHalf": false
+    }
+   ]
+  },
+  "INVISIBLE": {
+   "name": "潜行",
+   "entries": [
+    {
+     "strong": "enemy_1299_ymkilr",
+     "normal": [
+      "enemy_1043_zomsbr"
+     ],
+     "elite": [
+      "enemy_1019_jshoot"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_10034_cnvsax",
+     "normal": [
+      "enemy_1043_zomsbr"
+     ],
+     "elite": [
+      "enemy_1019_jshoot"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_10042_prtrop_2",
+     "normal": [
+      "enemy_10043_sailor"
+     ],
+     "elite": [
+      "enemy_10042_prtrop"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1389_winbab_2",
+     "normal": [
+      "enemy_1381_winman"
+     ],
+     "elite": [
+      "enemy_1019_jshoot_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1299_ymkilr_2",
+     "normal": [
+      "enemy_1422_lrsldr_2"
+     ],
+     "elite": [
+      "enemy_1019_jshoot_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1404_msnip",
+     "normal": [
+      "enemy_1009_lurker"
+     ],
+     "elite": [
+      "enemy_1019_jshoot_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_9008_acbunn",
+     "normal": [
+      "enemy_10031_cnvsld"
+     ],
+     "elite": [
+      "enemy_1019_jshoot_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1283_sgkill",
+     "normal": [
+      "enemy_10031_cnvsld"
+     ],
+     "elite": [
+      "enemy_1019_jshoot_2"
+     ],
+     "weight": 8,
+     "firstHalf": false
+    }
+   ]
+  },
+  "REFLECTION": {
+   "name": "屈折",
+   "entries": [
+    {
+     "strong": "enemy_1174_duholy",
+     "normal": [
+      "enemy_1166_dusbr"
+     ],
+     "elite": [
+      "enemy_1170_dushld"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1168_dumage",
+     "normal": [
+      "enemy_1165_duhond"
+     ],
+     "elite": [
+      "enemy_1169_duphlx"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1170_dushld",
+     "normal": [
+      "enemy_1166_dusbr"
+     ],
+     "elite": [
+      "enemy_1169_duphlx"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1174_duholy_2",
+     "normal": [
+      "enemy_1166_dusbr_2"
+     ],
+     "elite": [
+      "enemy_1170_dushld_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1170_dushld_2",
+     "normal": [
+      "enemy_1166_dusbr_2"
+     ],
+     "elite": [
+      "enemy_1169_duphlx_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1172_dugago",
+     "normal": [
+      "enemy_1166_dusbr_2"
+     ],
+     "elite": [
+      "enemy_1169_duphlx_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_9011_acrefr",
+     "normal": [
+      "enemy_1166_dusbr_2"
+     ],
+     "elite": [
+      "enemy_1170_dushld_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1175_dushdo_2",
+     "normal": [
+      "enemy_1165_duhond"
+     ],
+     "elite": [
+      "enemy_1174_duholy_2"
+     ],
+     "weight": 8,
+     "firstHalf": false
+    }
+   ]
+  },
+  "SPECIAL": {
+   "name": "力押し",
+   "entries": [
+    {
+     "strong": "enemy_1010_demon_2",
+     "normal": [
+      "enemy_1071_dftman"
+     ],
+     "elite": [
+      "enemy_1010_demon"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1045_hammer",
+     "normal": [
+      "enemy_1043_zomsbr"
+     ],
+     "elite": [
+      "enemy_1046_agent"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1118_lidbox_2",
+     "normal": [
+      "enemy_1116_liprr"
+     ],
+     "elite": [
+      "enemy_1116_liprr_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1325_cbgpro_2",
+     "normal": [
+      "enemy_1000_gopro_2"
+     ],
+     "elite": [
+      "enemy_1325_cbgpro"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1121_lifbos",
+     "normal": [
+      "enemy_1116_liprr"
+     ],
+     "elite": [
+      "enemy_1116_liprr_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1006_shield_3",
+     "normal": [
+      "enemy_1043_zomsbr"
+     ],
+     "elite": [
+      "enemy_1402_tgshd_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1329_cbshld",
+     "normal": [
+      "enemy_1251_lysyta"
+     ],
+     "elite": [
+      "enemy_1249_lysdb_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1045_hammer_2",
+     "normal": [
+      "enemy_1061_zomshd"
+     ],
+     "elite": [
+      "enemy_1061_zomshd"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1387_winshd",
+     "normal": [
+      "enemy_1381_winman"
+     ],
+     "elite": [
+      "enemy_1381_winman_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1121_lifbos_2",
+     "normal": [
+      "enemy_1116_liprr_2"
+     ],
+     "elite": [
+      "enemy_1119_vofsd"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1320_wdrrl_2",
+     "normal": [
+      "enemy_1422_lrsldr_2"
+     ],
+     "elite": [
+      "enemy_1010_demon"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_10124_uashld_2",
+     "normal": [
+      "enemy_1043_zomsbr"
+     ],
+     "elite": [
+      "enemy_1061_zomshd"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1328_cbjedi",
+     "normal": [
+      "enemy_1251_lysyta"
+     ],
+     "elite": [
+      "enemy_1249_lysdb_2"
+     ],
+     "weight": 10,
+     "firstHalf": true
+    },
+    {
+     "strong": "enemy_1254_lypa_2",
+     "normal": [
+      "enemy_1251_lysyta"
+     ],
+     "elite": [
+      "enemy_1249_lysdb_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1425_lrcmra_2",
+     "normal": [
+      "enemy_1422_lrsldr_2"
+     ],
+     "elite": [
+      "enemy_1010_demon"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1329_cbshld_2",
+     "normal": [
+      "enemy_1251_lysyta_2"
+     ],
+     "elite": [
+      "enemy_1252_lysytb_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    },
+    {
+     "strong": "enemy_1072_dlancer",
+     "normal": [
+      "enemy_1071_dftman"
+     ],
+     "elite": [
+      "enemy_1010_demon_2"
+     ],
+     "weight": 10,
+     "firstHalf": false
+    }
+   ]
+  }
+ },
+ "firstHalfRounds": 7,
  "rounds": [
   {
    "round": 1,
@@ -3036,24 +5339,27 @@
    "spawns": [
     {
      "enemy": "enemy_1007_slime",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 3.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 3.0,
      "delay": 12.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 3.0,
      "delay": 12.0,
-     "route": 2
+     "spawn": 1
     }
    ]
   },
@@ -3065,31 +5371,35 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 3.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 7.0,
      "delay": 15.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 4,
      "interval": 7.0,
      "delay": 3.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 5,
      "interval": 7.0,
      "delay": 15.0,
-     "route": 3
+     "spawn": 1
     }
    ]
   },
@@ -3101,31 +5411,35 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 10,
      "interval": 6.0,
      "delay": 6.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 1,
      "interval": 10.0,
      "delay": 18.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 9,
      "interval": 7.0,
      "delay": 6.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 2,
      "interval": 10.0,
      "delay": 10.0,
-     "route": 3
+     "spawn": 1
     }
    ]
   },
@@ -3137,66 +5451,75 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 4.0,
      "delay": 12.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 1,
      "interval": 12.0,
      "delay": 13.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 1,
      "interval": 7.0,
      "delay": 29.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 6.0,
      "delay": 3.0,
-     "route": 3
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 6.0,
      "delay": 3.0,
-     "route": 4
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 6.5,
      "delay": 26.0,
-     "route": 5
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 9.0,
      "delay": 17.0,
-     "route": 6
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 2,
      "interval": 9.0,
      "delay": 18.0,
-     "route": 7
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 8.0,
      "delay": 7.0,
-     "route": 8
+     "spawn": 0
     }
    ]
   },
@@ -3208,87 +5531,99 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 7.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 27.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 2,
      "interval": 7.0,
      "delay": 14.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 1,
      "interval": 9.0,
      "delay": 25.0,
-     "route": 3
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 10.0,
      "delay": 3.0,
-     "route": 4
+     "spawn": 0
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 8.0,
      "delay": 22.0,
-     "route": 5
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 6.0,
      "delay": 3.0,
-     "route": 6
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 4,
      "interval": 5.0,
      "delay": 16.0,
-     "route": 7
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 1.0,
      "delay": 17.0,
-     "route": 8
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 2,
      "interval": 6.0,
      "delay": 31.0,
-     "route": 9
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 6.0,
      "delay": 5.0,
-     "route": 10
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 6.0,
      "delay": 22.0,
-     "route": 11
+     "spawn": 0
     }
    ]
   },
@@ -3300,87 +5635,99 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 4,
      "interval": 8.0,
      "delay": 7.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 8.0,
      "delay": 16.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 2,
      "interval": 12.0,
      "delay": 20.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 2,
      "interval": 14.0,
      "delay": 28.0,
-     "route": 3
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 8.0,
      "delay": 2.0,
-     "route": 4
+     "spawn": 0
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 8.0,
      "delay": 19.0,
-     "route": 5
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 4,
      "interval": 5.0,
      "delay": 2.0,
-     "route": 6
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 4,
      "interval": 7.0,
      "delay": 20.0,
-     "route": 7
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 4,
      "interval": 5.0,
      "delay": 27.0,
-     "route": 8
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 1.0,
      "delay": 17.0,
-     "route": 9
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 3,
      "interval": 5.0,
      "delay": 29.0,
-     "route": 10
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 4,
      "interval": 8.0,
      "delay": 7.0,
-     "route": 11
+     "spawn": 0
     }
    ]
   },
@@ -3392,108 +5739,123 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 4,
      "interval": 5.0,
      "delay": 8.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 4,
      "interval": 9.0,
      "delay": 22.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 4,
      "interval": 17.0,
      "delay": 5.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 2,
      "interval": 14.0,
      "delay": 12.0,
-     "route": 3
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 1,
      "interval": 14.0,
      "delay": 40.0,
-     "route": 4
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 8.0,
      "delay": 2.0,
-     "route": 5
+     "spawn": 0
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 10.0,
      "delay": 18.0,
-     "route": 6
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 4,
      "interval": 5.0,
      "delay": 5.0,
-     "route": 7
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 1,
      "interval": 5.0,
      "delay": 30.0,
-     "route": 8
+     "spawn": 0
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 11.0,
      "delay": 17.0,
-     "route": 9
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 1,
      "interval": 12.0,
      "delay": 9.0,
-     "route": 10
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 1,
      "interval": 12.0,
      "delay": 13.0,
-     "route": 11
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 2,
      "interval": 11.0,
      "delay": 41.0,
-     "route": 12
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 10.0,
      "delay": 2.0,
-     "route": 13
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 8,
      "interval": 4.0,
      "delay": 27.0,
-     "route": 14
+     "spawn": 1
     }
    ]
   },
@@ -3505,115 +5867,131 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 3.0,
      "delay": 2.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 28.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 62.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 1,
      "interval": 9.0,
      "delay": 37.0,
-     "route": 3
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 3,
      "interval": 9.0,
      "delay": 42.0,
-     "route": 4
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 1.0,
      "delay": 11.0,
-     "route": 5
+     "spawn": 0
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 2,
      "interval": 10.0,
      "delay": 17.0,
-     "route": 6
+     "spawn": 0
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 1,
      "interval": 12.0,
      "delay": 9.0,
-     "route": 7
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 3.0,
-     "route": 8
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 25.0,
-     "route": 9
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 2,
      "interval": 5.0,
      "delay": 17.0,
-     "route": 10
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 7.0,
      "delay": 5.0,
-     "route": 11
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 13.0,
-     "route": 12
+     "spawn": 0
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 5.0,
      "delay": 39.0,
-     "route": 13
+     "spawn": 0
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 1,
      "interval": 20.0,
      "delay": 10.0,
-     "route": 14
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 3,
      "interval": 12.0,
      "delay": 28.0,
-     "route": 15
+     "spawn": 0
     }
    ]
   },
@@ -3625,122 +6003,139 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 2.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 7.0,
      "delay": 42.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 65.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 2,
      "interval": 10.0,
      "delay": 17.0,
-     "route": 3
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 1,
      "interval": 16.0,
      "delay": 13.0,
-     "route": 4
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 3.0,
-     "route": 5
+     "spawn": 0
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 39.0,
-     "route": 6
+     "spawn": 0
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 1,
      "interval": 5.0,
      "delay": 40.0,
-     "route": 7
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 1,
      "interval": 10.0,
      "delay": 41.0,
-     "route": 8
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 1,
      "interval": 1.0,
      "delay": 3.0,
-     "route": 9
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 13.0,
-     "route": 10
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 20.0,
-     "route": 11
+     "spawn": 0
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 2,
      "interval": 5.0,
      "delay": 41.0,
-     "route": 12
+     "spawn": 0
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 1,
      "interval": 7.0,
      "delay": 7.0,
-     "route": 13
+     "spawn": 0
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 3,
      "interval": 12.0,
      "delay": 21.0,
-     "route": 14
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 3.0,
      "delay": 3.0,
-     "route": 15
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 5.0,
      "delay": 28.0,
-     "route": 16
+     "spawn": 1
     }
    ]
   },
@@ -3752,122 +6147,139 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 3.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 25.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 49.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 3,
      "interval": 10.0,
      "delay": 17.0,
-     "route": 3
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 1,
      "interval": 10.0,
      "delay": 41.0,
-     "route": 4
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 1,
      "interval": 5.0,
      "delay": 57.0,
-     "route": 5
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 4.0,
      "delay": 3.0,
-     "route": 6
+     "spawn": 0
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 4,
      "interval": 5.0,
      "delay": 5.0,
-     "route": 7
+     "spawn": 0
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 3,
      "interval": 13.0,
      "delay": 17.0,
-     "route": 8
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 7.0,
-     "route": 9
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 6.0,
      "delay": 28.0,
-     "route": 10
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 4.0,
      "delay": 3.0,
-     "route": 11
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 5.0,
-     "route": 12
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 13.0,
-     "route": 13
+     "spawn": 0
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 2,
      "interval": 5.0,
      "delay": 41.0,
-     "route": 14
+     "spawn": 0
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 1,
      "interval": 10.0,
      "delay": 10.0,
-     "route": 15
+     "spawn": 0
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 3,
      "interval": 10.0,
      "delay": 25.0,
-     "route": 16
+     "spawn": 0
     }
    ]
   },
@@ -3879,150 +6291,171 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 2.0,
      "delay": 5.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 2.0,
      "delay": 22.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 45.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 50.0,
-     "route": 3
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 1,
      "interval": 9.0,
      "delay": 10.0,
-     "route": 4
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 3,
      "interval": 7.0,
      "delay": 54.0,
-     "route": 5
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 2,
      "interval": 5.0,
      "delay": 17.0,
-     "route": 6
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 4,
      "interval": 5.0,
      "delay": 42.0,
-     "route": 7
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 5.0,
-     "route": 8
+     "spawn": 0
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 10.0,
-     "route": 9
+     "spawn": 0
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 1,
      "interval": 20.0,
      "delay": 6.0,
-     "route": 10
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 2.0,
      "delay": 27.0,
-     "route": 11
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 2.0,
      "delay": 28.0,
-     "route": 12
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 2,
      "interval": 2.0,
      "delay": 52.0,
-     "route": 13
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 2,
      "interval": 2.0,
      "delay": 17.0,
-     "route": 14
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 3.0,
      "delay": 3.0,
-     "route": 15
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 5.0,
      "delay": 5.0,
-     "route": 16
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 4,
      "interval": 5.0,
      "delay": 9.0,
-     "route": 17
+     "spawn": 0
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 1,
      "interval": 5.0,
      "delay": 20.0,
-     "route": 18
+     "spawn": 0
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 1,
      "interval": 10.0,
      "delay": 7.0,
-     "route": 19
+     "spawn": 0
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 2,
      "interval": 10.0,
      "delay": 21.0,
-     "route": 20
+     "spawn": 0
     }
    ]
   },
@@ -4034,199 +6467,227 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 3.0,
      "delay": 5.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 3.0,
      "delay": 30.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 3.0,
      "delay": 10.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 35.0,
-     "route": 3
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 4.0,
      "delay": 51.0,
-     "route": 4
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 2,
      "interval": 10.0,
      "delay": 12.0,
-     "route": 5
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 2,
      "interval": 9.0,
      "delay": 37.0,
-     "route": 6
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 2,
      "interval": 7.0,
      "delay": 53.0,
-     "route": 7
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 3,
      "interval": 10.0,
      "delay": 2.0,
-     "route": 8
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 3,
      "interval": 10.0,
      "delay": 10.0,
-     "route": 9
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 2,
      "interval": 10.0,
      "delay": 31.0,
-     "route": 10
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 2,
      "interval": 3.0,
      "delay": 5.0,
-     "route": 11
+     "spawn": 0
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 3,
      "interval": 10.0,
      "delay": 10.0,
-     "route": 12
+     "spawn": 0
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 2,
      "interval": 12.0,
      "delay": 21.0,
-     "route": 13
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 1.0,
      "delay": 5.0,
-     "route": 14
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 4.0,
      "delay": 8.0,
-     "route": 15
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 21.0,
-     "route": 16
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 43.0,
-     "route": 17
+     "spawn": 0
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 2,
      "interval": 5.0,
      "delay": 13.0,
-     "route": 18
+     "spawn": 0
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 2,
      "interval": 5.0,
      "delay": 15.0,
-     "route": 19
+     "spawn": 0
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 2,
      "interval": 10.0,
      "delay": 17.0,
-     "route": 20
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 3.0,
      "delay": 10.0,
-     "route": 21
+     "spawn": 1
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 2.0,
      "delay": 27.0,
-     "route": 22
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 2.0,
      "delay": 28.0,
-     "route": 23
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 6.0,
      "delay": 47.0,
-     "route": 24
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 2,
      "interval": 5.0,
      "delay": 12.0,
-     "route": 25
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 3,
      "interval": 6.0,
      "delay": 22.0,
-     "route": 26
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 2,
      "interval": 5.0,
      "delay": 35.0,
-     "route": 27
+     "spawn": 1
     }
    ]
   },
@@ -4238,178 +6699,203 @@
    "spawns": [
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 3.0,
      "delay": 7.0,
-     "route": 0
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 10.0,
-     "route": 1
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 39.0,
-     "route": 2
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 3,
      "interval": 4.0,
      "delay": 62.0,
-     "route": 3
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 3,
      "interval": 9.0,
      "delay": 11.0,
-     "route": 4
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 4,
      "interval": 9.0,
      "delay": 37.0,
-     "route": 5
+     "spawn": 1
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 3,
      "interval": 9.0,
      "delay": 55.0,
-     "route": 6
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 4,
      "interval": 10.0,
      "delay": 2.0,
-     "route": 7
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 4,
      "interval": 7.0,
      "delay": 10.0,
-     "route": 8
+     "spawn": 1
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 3,
      "interval": 10.0,
      "delay": 32.0,
-     "route": 9
+     "spawn": 1
     },
     {
      "enemy": "enemy_1422_lrsldr",
+     "role": "normal",
      "count": 1,
      "interval": 1.0,
      "delay": 7.0,
-     "route": 10
+     "spawn": 0
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 2,
      "interval": 10.0,
      "delay": 3.0,
-     "route": 11
+     "spawn": 0
     },
     {
      "enemy": "enemy_1425_lrcmra",
+     "role": "strong",
      "count": 2,
      "interval": 15.0,
      "delay": 21.0,
-     "route": 12
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 2,
      "interval": 1.0,
      "delay": 5.0,
-     "route": 13
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 4.0,
      "delay": 21.0,
-     "route": 14
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 5.0,
      "delay": 50.0,
-     "route": 15
+     "spawn": 0
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 2,
      "interval": 5.0,
      "delay": 13.0,
-     "route": 16
+     "spawn": 0
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 1,
      "interval": 5.0,
      "delay": 15.0,
-     "route": 17
+     "spawn": 0
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 3,
      "interval": 11.0,
      "delay": 17.0,
-     "route": 18
+     "spawn": 0
     },
     {
      "enemy": "enemy_1005_yokai",
+     "role": "normal",
      "count": 3,
      "interval": 2.0,
      "delay": 27.0,
-     "route": 19
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 4,
      "interval": 2.0,
      "delay": 28.0,
-     "route": 20
+     "spawn": 1
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 7.0,
      "delay": 55.0,
-     "route": 21
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 2,
      "interval": 5.0,
      "delay": 10.0,
-     "route": 22
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 3,
      "interval": 5.0,
      "delay": 22.0,
-     "route": 23
+     "spawn": 1
     },
     {
      "enemy": "enemy_1040_bombd",
+     "role": "strong",
      "count": 2,
      "interval": 5.0,
      "delay": 35.0,
-     "route": 24
+     "spawn": 1
     }
    ]
   },
@@ -4421,45 +6907,51 @@
    "spawns": [
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 1,
      "interval": 20.0,
      "delay": 3.0,
-     "route": 0
+     "spawn": 0
     },
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 1,
      "interval": 20.0,
      "delay": 5.0,
-     "route": 1
+     "spawn": 0
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 3,
      "interval": 20.0,
      "delay": 10.0,
-     "route": 2
+     "spawn": 0
     },
     {
      "enemy": "enemy_1006_shield_2",
+     "role": null,
      "count": 5,
      "interval": 18.0,
      "delay": 7.0,
-     "route": 3
+     "spawn": 0
     },
     {
      "enemy": "enemy_1006_shield_2",
+     "role": null,
      "count": 4,
      "interval": 20.0,
      "delay": 25.0,
-     "route": 4
+     "spawn": 0
     },
     {
      "enemy": "enemy_9013_acstmk",
+     "role": null,
      "count": 1,
      "interval": 1.0,
      "delay": 0.0,
-     "route": 5
+     "spawn": 0
     }
    ]
   },
@@ -4471,45 +6963,51 @@
    "spawns": [
     {
      "enemy": "enemy_1427_lrnazg",
+     "role": "elite",
      "count": 2,
      "interval": 12.0,
      "delay": 25.0,
-     "route": 0
+     "spawn": 0
     },
     {
      "enemy": "enemy_1042_frostd",
+     "role": "elite",
      "count": 4,
      "interval": 5.0,
      "delay": 25.0,
-     "route": 1
+     "spawn": 0
     },
     {
      "enemy": "enemy_10027_vtsk",
+     "role": null,
      "count": 3,
      "interval": 30.0,
      "delay": 11.0,
-     "route": 2
+     "spawn": 0
     },
     {
      "enemy": "enemy_9013_acstmk_2",
+     "role": null,
      "count": 1,
      "interval": 1.0,
      "delay": 0.0,
-     "route": 3
+     "spawn": 0
     },
     {
      "enemy": "enemy_9014_acstma",
+     "role": null,
      "count": 1,
      "interval": 1.0,
      "delay": 0.0,
-     "route": 4
+     "spawn": 0
     },
     {
      "enemy": "enemy_9015_acstmb",
+     "role": null,
      "count": 1,
      "interval": 1.0,
      "delay": 0.0,
-     "route": 5
+     "spawn": 0
     }
    ]
   }

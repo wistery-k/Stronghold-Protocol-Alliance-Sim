@@ -1,4 +1,5 @@
-import { roundSpec } from './data/battle';
+import { Rng } from './rng';
+import { pickGroupTypes, pickRoundGroup, roundSpec, type EnemyGroupType, type RoundGroup, type RoundSpec } from './data/battle';
 import { UNITS, getUnit, unitState } from './data/units';
 import { activeAllianceIds, battleSetup, evaluateAlliances, type AllianceStatus, type BattleOptions } from './alliance';
 import {
@@ -51,6 +52,8 @@ export type Phase = 'prep' | 'result' | 'gameover' | 'clear';
 
 export interface BattleReport {
   round: number;
+  /** このラウンドの敵グループ */
+  group: RoundGroup;
   sim: BattleResult;
   /** 戦闘時の配置（リプレイ表示用） */
   units: { uid: number; defId: string; star: Star; pos?: number; dir?: Direction }[];
@@ -68,7 +71,7 @@ export interface BattleReport {
 }
 
 export interface GameState {
-  version: 7;
+  version: 8;
   seed: number;
   rngState: number;
   round: number;
@@ -83,6 +86,8 @@ export interface GameState {
   frozen: boolean;
   /** 盟約BANされた盟約 */
   banned: AllianceId[];
+  /** ゲーム開始時に抽選された特殊敵の種類（力押しは常に出る） */
+  enemyTypes: EnemyGroupType[];
   /** ラウンド開始時の追加資金（倹約家の人形） */
   extraRoundGold: number;
   /** 最大配置人数の上書き（人事部の書類） */
@@ -144,6 +149,16 @@ export interface GameOptions {
   ban?: 'random' | 'none';
 }
 
+/** ラウンドの敵グループ（シードとラウンドで決まる） */
+export function roundGroupOf(state: Pick<GameState, 'seed' | 'enemyTypes'>, round: number): RoundGroup {
+  return pickRoundGroup(state.seed, round, state.enemyTypes);
+}
+
+/** ラウンドの敵の出現（敵グループを反映） */
+export function roundSpecOf(state: Pick<GameState, 'seed' | 'enemyTypes'>, round: number): RoundSpec {
+  return roundSpec(round, roundGroupOf(state, round));
+}
+
 export const BAN_CORE_COUNT = 3;
 export const BAN_EXTRA_COUNT = 4;
 /** BANの対象にならない追加盟約（本家データで出現の重みが0のもの） */
@@ -153,7 +168,7 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
   const pool: Record<string, number> = {};
   for (const u of UNITS) pool[u.id] = POOL_COPIES[u.tier];
   const state: GameState = {
-    version: 7,
+    version: 8,
     seed,
     rngState: seed,
     round: 1,
@@ -165,6 +180,8 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
     itemShop: null,
     frozen: false,
     banned: [],
+    // ショップの乱数とは別系統で抽選する（同じシードならショップは変わらない）
+    enemyTypes: pickGroupTypes(new Rng(seed ^ 0x5eed5eed)),
     extraRoundGold: 0,
     deployCapOverride: null,
     soldCount: 0,
@@ -587,7 +604,7 @@ function resolveBattle(state: GameState): void {
 
   const bench = benchUnits(state);
   const { statuses, inputs, globals } = buildSimInputs(state.board, bench, state.stacks, { banned: state.banned, roundGained: state.round_.gained });
-  const spec = roundSpec(state.round);
+  const spec = roundSpecOf(state, state.round);
   const sim = simulateBattle(inputs, spec, { globals, activeAlliances: activeAllianceIds(statuses), stacks: state.stacks, record: true });
   const afterPrep = { ...state.stacks };
   const active = activeAllianceIds(evaluateAlliances(state.board, bench, state.banned));
@@ -610,6 +627,7 @@ function resolveBattle(state: GameState): void {
   const last = state.life <= 0 || state.round >= MAX_ROUND;
   state.lastBattle = {
     round: state.round,
+    group: roundGroupOf(state, state.round),
     sim,
     units: state.board.map((o) => ({ uid: o.uid, defId: o.defId, star: o.star, pos: o.pos, dir: o.dir })),
     lifeLost: lost,

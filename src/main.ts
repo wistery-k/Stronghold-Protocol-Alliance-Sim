@@ -3,7 +3,7 @@ import { h } from './ui/dom';
 import { gameView } from './ui/gameView';
 import { createSandbox, sandboxView, type SandboxState } from './ui/sandboxView';
 
-const SAVE_KEY = 'sp-sim:game:v7';
+const SAVE_KEY = 'sp-sim:game:v8';
 
 type Mode = 'game' | 'sandbox';
 
@@ -22,7 +22,7 @@ function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
-    return s.version === 7 ? s : null;
+    return s.version === 8 ? s : null;
   } catch {
     return null;
   }

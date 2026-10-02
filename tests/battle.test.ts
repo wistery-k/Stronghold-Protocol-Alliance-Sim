@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMY_PATHS, GOAL, SPAWNS, canPlace, tileAt } from '../src/core/board';
-import { ENEMIES, ROUNDS, roundSpec, type RoundSpec } from '../src/core/data/battle';
+import { ENEMIES, ENEMY_GROUPS, ROUNDS, pickRoundGroup, roundSpec, type EnemySpec, type RoundSpec } from '../src/core/data/battle';
 import { UNITS } from '../src/core/data/units';
-import { buildSimInputs } from '../src/core/game';
+import { buildSimInputs, createGame, roundGroupOf } from '../src/core/game';
 import { simulateBattle } from '../src/core/sim';
 import type { OwnedUnit } from '../src/core/types';
 
 const byProf = (p: string) => UNITS.find((u) => u.profession === p && u.tier <= 3)!;
 
 /** テスト用：倒れない敵を1体だけ出すラウンド */
-function oneEnemy(key: string, flying: boolean): RoundSpec {
-  ENEMIES[key] = { name: key, hp: 1e9, def: 5000, res: 100, speed: 1, blockCnt: 1, flying, boss: false, elite: false, lifeReduce: 1 };
-  return { round: 1, levelId: 'test', timeLimit: 30, moveMultiplier: 0.5, spawns: [{ enemy: key, count: 1, interval: 0, delay: 0, route: 1 }] };
+function oneEnemy(key: string, flying: boolean, over: Partial<EnemySpec> = {}): RoundSpec {
+  ENEMIES[key] = { name: key, hp: 1e9, def: 5000, res: 100, speed: 1, blockCnt: 1, flying, boss: false, elite: false, lifeReduce: 1, ...over };
+  return { round: 1, levelId: 'test', timeLimit: 30, moveMultiplier: 0.5, spawns: [{ enemy: key, count: 1, interval: 0, delay: 0, spawn: 1 }] };
 }
 
 function run(board: OwnedUnit[], spec: RoundSpec) {
@@ -88,5 +88,56 @@ describe('マップ戦闘', () => {
     ];
     const r = run(board, roundSpec(1));
     expect(r.killed).toBeGreaterThan(0);
+  });
+
+  it('隠匿の敵はブロックされるまで遠距離から狙われない', () => {
+    const spec = oneEnemy('test_stealth', false, { hp: 100, def: 0, res: 0, stealth: true });
+    const sniper = byProf('sniper');
+    const r = run([{ uid: 1, defId: sniper.id, star: 2, pos: 22, dir: 'down' }], spec);
+    expect(r.killed).toBe(0);
+    const tank = UNITS.find((u) => u.profession === 'defender')!;
+    const r2 = run([{ uid: 1, defId: sniper.id, star: 2, pos: 22, dir: 'down' }, { uid: 2, defId: tank.id, star: 2, pos: 31, dir: 'right' }], spec);
+    expect(r2.killed).toBe(1);
+  });
+
+  it('攻撃回数で倒れる敵は、ダメージ量に関係なく回数で倒れる', () => {
+    const spec = oneEnemy('test_hits', false, { hp: 3, def: 99999, res: 100, hitsToKill: true, unblockable: true });
+    const sniper = byProf('sniper');
+    const r = run([{ uid: 1, defId: sniper.id, star: 2, pos: 22, dir: 'down' }], spec);
+    expect(r.killed).toBe(1);
+  });
+
+  it('分裂する敵は倒れると子が生まれる', () => {
+    ENEMIES.test_child = { name: 'child', hp: 1, def: 0, res: 0, speed: 1, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1, hitsToKill: true };
+    const spec = oneEnemy('test_parent', false, { hp: 10, def: 0, res: 0, deadSpawn: { enemy: 'test_child', count: 2 } });
+    const r = run([], spec);
+    expect(r.total).toBe(1); // 倒れないので子は出ない
+    const sniper = byProf('sniper');
+    const r2 = run([{ uid: 1, defId: sniper.id, star: 2, pos: 22, dir: 'down' }], spec);
+    expect(r2.total).toBe(3);
+  });
+});
+
+describe('敵グループ', () => {
+  it('力押しと6種のグループがある', () => {
+    expect(Object.keys(ENEMY_GROUPS).sort()).toEqual(['DOT', 'ELEMENT', 'FLY', 'INVISIBLE', 'REFLECTION', 'SPECIAL', 'TIMES']);
+  });
+
+  it('ゲーム開始時に3種が選ばれ、ラウンドの敵はそのグループか力押しから出る', () => {
+    const s = createGame(42);
+    expect(s.enemyTypes.length).toBe(3);
+    for (let r = 1; r <= 13; r++) {
+      const g = roundGroupOf(s, r);
+      expect(['SPECIAL', ...s.enemyTypes]).toContain(g.type);
+      const entry = ENEMY_GROUPS[g.type].entries[g.entry];
+      const allowed = new Set([entry.strong, ...entry.normal, ...entry.elite]);
+      for (const sp of roundSpec(r, g).spawns) if (sp.role) expect(allowed.has(sp.enemy)).toBe(true);
+    }
+    // シードとラウンドで決まる
+    expect(pickRoundGroup(42, 5, s.enemyTypes)).toEqual(roundGroupOf(s, 5));
+  });
+
+  it('序盤2ラウンドは雑魚だけ', () => {
+    for (const r of [1, 2]) expect(ROUNDS[r - 1].spawns.every((s) => s.role === 'normal')).toBe(true);
   });
 });

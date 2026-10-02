@@ -275,9 +275,14 @@ export interface SimOptions {
   moveMultiplier?: number;
 }
 
+type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive'>>;
+
 interface EnemyInput {
   key: string;
-  spec: Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'>;
+  spec: EnemyInputSpec;
+  /** 倒れた時に生まれる敵 */
+  child?: { key: string; spec: EnemyInputSpec; count: number };
   spawnAt: number;
   /** 経路（マス番号）。null なら動かない標的 */
   path: number[] | null;
@@ -288,6 +293,15 @@ interface Enemy {
   id: number;
   input: EnemyInput;
   hp: number;
+  /** 現在の最大HP（復活待ちの間は攻撃回数） */
+  maxHp: number;
+  /** 残りの攻撃無効回数 */
+  shield: number;
+  /** 防御低下の回数 */
+  reduceStacks: number;
+  /** 復活待ち（攻撃回数で倒せる状態）なら復活する時刻 */
+  reviveAt: number | null;
+  revived: boolean;
   defense: DefenseState;
   phases: EnemyPhase[];
   phaseIdx: number;
@@ -374,12 +388,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     };
   });
 
-  const enemies: Enemy[] = enemyInputs
-    .map((input, i) => ({
-      id: i + 1,
+  const baseRes = (s: EnemyInputSpec) => Math.min(100, s.res + (s.refract ?? 0));
+  const newEnemy = (input: EnemyInput, id: number): Enemy => ({
+      id,
       input,
       hp: input.spec.hp,
-      defense: { def: input.spec.def, res: input.spec.res, damageTaken: 1 },
+      maxHp: input.spec.hp,
+      shield: input.spec.hitShield ?? 0,
+      reduceStacks: 0,
+      reviveAt: null,
+      revived: false,
+      defense: { def: input.spec.def, res: baseRes(input.spec), damageTaken: 1 },
       phases: [...(input.phases ?? [])].sort((a, b) => b.belowHpRatio - a.belowHpRatio),
       phaseIdx: 0,
       spawned: false,
@@ -390,8 +409,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       y: input.path ? cellY(input.path[0]) : 0,
       blockedBy: null,
       arcaneUntil: -1,
-    }))
-    .sort((a, b) => a.input.spawnAt - b.input.spawnAt);
+    });
+  const enemies: Enemy[] = enemyInputs.map((input, i) => newEnemy(input, i + 1)).sort((a, b) => a.input.spawnAt - b.input.spawnAt);
 
   const gainStacks = (ev: GarrisonEvent, times = 1) => {
     const amount = Math.min(ev.count * times, ev.max - ev.gained);
@@ -416,20 +435,49 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const remainingHp = () => enemies.reduce((sum, e) => sum + (e.leaked ? 0 : e.alive || !e.spawned ? e.hp : 0), 0);
   const aliveCount = () => enemies.filter((e) => e.alive).length;
 
-  const killEnemy = (e: Enemy, by: Runtime) => {
-    e.alive = false;
+  const release = (e: Enemy) => {
     if (e.blockedBy !== null) {
       const b = byUid.get(e.blockedBy);
       if (b) b.blocked = b.blocked.filter((x) => x !== e);
       e.blockedBy = null;
     }
+  };
+
+  const killEnemy = (e: Enemy, by: Runtime) => {
+    release(e);
+    // 復活する敵：攻撃回数で倒せる状態になってその場に留まる
+    const rv = e.input.spec.revive;
+    if (rv && !e.revived && e.reviveAt === null) {
+      e.reviveAt = t + rv.interval;
+      e.hp = rv.hits;
+      e.maxHp = rv.hits;
+      return;
+    }
+    e.alive = false;
+    e.reviveAt = null;
+    // 倒れると別の敵が生まれる
+    const c = e.input.child;
+    if (c && e.input.path) {
+      for (let i = 0; i < c.count; i++) {
+        const ne = newEnemy({ key: c.key, spec: c.spec, spawnAt: t, path: e.input.path }, enemies.length + 1);
+        ne.spawned = true;
+        ne.alive = true;
+        ne.d = e.d;
+        ne.x = e.x;
+        ne.y = e.y;
+        enemies.push(ne);
+      }
+    }
     by.result.kills++;
     for (const ev of by.events) if (ev.kind === 'kill' && by.result.kills % ev.every === 0) gainStacks(ev);
   };
 
+  /** 攻撃回数で倒す状態か */
+  const countsHits = (e: Enemy) => !!e.input.spec.hitsToKill || e.reviveAt !== null;
+
   const deal = (u: Runtime, e: Enemy, amount: number) => {
     if (!e.alive || amount <= 0) return;
-    const applied = Math.min(amount, e.hp);
+    const applied = Math.min(countsHits(e) ? 1 : amount, e.hp);
     e.hp -= applied;
     u.result.damage += applied;
     while (e.phaseIdx < e.phases.length && e.hp / e.input.spec.hp <= e.phases[e.phaseIdx].belowHpRatio) {
@@ -451,6 +499,16 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   /** 1ヒット（倍率 scale）を与える */
   const strike = (u: Runtime, e: Enemy, atk: number, scale: number) => {
     const { def, mods, uid } = u.input;
+    if (!e.alive) return;
+    // 攻撃を無効にする盾
+    if (e.shield > 0 && def.damageType !== 'heal') {
+      e.shield--;
+      return;
+    }
+    if (countsHits(e)) {
+      if (def.damageType !== 'heal') deal(u, e, 1);
+      return;
+    }
     const raw = atk * scale;
     const type = bestType(def.damageType, raw, e.defense, mods);
     const dmg = hitDamage(raw, type, e.defense, mods, type === 'arts' ? artsVuln(e) : 0) * flagFactor(mods, t);
@@ -459,6 +517,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken);
       if (g.siracusa?.members.has(uid) && t < g.siracusa.procWindow) deal(u, e, g.siracusa.procProb * g.siracusa.procDmg * e.defense.damageTaken);
       if (type === 'arts' && g.arcane?.members.has(uid) && dmg > 0) e.arcaneUntil = t + g.arcane.duration;
+      // 攻撃を受けるたびに防御・術耐性が下がる
+      const dr = e.input.spec.defReduce;
+      if (dr && e.reduceStacks < dr.max) {
+        e.reduceStacks++;
+        e.defense.def = Math.max(0, e.input.spec.def + dr.def * e.reduceStacks);
+        e.defense.res = Math.max(0, baseRes(e.input.spec) + dr.res * e.reduceStacks);
+      }
     }
   };
 
@@ -472,6 +537,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (!e.alive) return false;
       if (!field) return true;
       if (e.input.spec.flying && u.melee) return false;
+      // 隠匿：ブロックされている間だけ狙える（復活待ちの間は狙える）
+      if (e.input.spec.stealth && e.blockedBy === null && e.reviveAt === null) return false;
       return !!range && range.has(enemyTile(e));
     });
     // ブロック中の敵を優先し、次に防衛地点に近い敵
@@ -493,6 +560,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const p = main[0][0];
       for (const e of enemies) {
         if (!e.alive || main.some(([m]) => m === e)) continue;
+        if (e.input.spec.stealth && e.blockedBy === null && e.reviveAt === null) continue;
         if (Math.hypot(e.x - p.x, e.y - p.y) <= 1.0) main.push([e, 1]);
       }
     }
@@ -548,12 +616,21 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.alive = true;
       }
       if (!e.alive || !e.input.path || e.blockedBy !== null) continue;
+      // 復活待ち：その場に留まり、時間が来たら元のHPで復活する
+      if (e.reviveAt !== null) {
+        if (t >= e.reviveAt) {
+          e.reviveAt = null;
+          e.revived = true;
+          e.hp = e.input.spec.hp;
+          e.maxHp = e.input.spec.hp;
+        } else continue;
+      }
       const path = e.input.path;
       const speed = e.input.spec.speed * moveMultiplier;
       const curTile = path[Math.min(Math.round(e.d), path.length - 1)];
       const nd = e.d + speed * dt;
       const nextTile = path[Math.min(Math.round(nd), path.length - 1)];
-      if (!e.input.spec.flying) {
+      if (!e.input.spec.flying && !e.input.spec.unblockable) {
         // 今いるマス・次に入るマスにブロックできるユニットがいれば止まる
         const b = blockerAt(curTile, e) ?? (nextTile !== curTile ? blockerAt(nextTile, e) : undefined);
         if (b) {
@@ -682,7 +759,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (opts.record && step % frameEvery === 0) {
       frames.push({
         t: Math.round(t * 100) / 100,
-        e: enemies.filter((e) => e.alive).map((e) => [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.input.spec.hp) * 100)]),
+        e: enemies.filter((e) => e.alive).map((e) => [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)]),
         s: rt.filter((u) => u.skillLeft > 0 || u.ammoLeft > 0).map((u) => u.input.uid),
       });
     }
@@ -696,7 +773,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   if (opts.record) {
     frames.push({
       t: Math.round(t * 100) / 100,
-      e: enemies.filter((e) => e.alive).map((e) => [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.input.spec.hp) * 100)]),
+      e: enemies.filter((e) => e.alive).map((e) => [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)]),
       s: [],
     });
   }
@@ -707,17 +784,23 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 // マップ戦闘
 // ------------------------------------------------------------
 
-/** ラウンドの敵の出現予定（経路は本家の経路番号を出現地点に振り分ける） */
+/** 敵の能力値に調整を掛ける。ボスと「攻撃回数で倒す敵」の HP は本家のまま */
+export function scaledEnemy(enemy: EnemySpec): EnemySpec {
+  const hpScale = enemy.boss || enemy.hitsToKill ? 1 : ENEMY_HP_SCALE;
+  return { ...enemy, hp: Math.max(1, Math.round(enemy.hp * hpScale)), speed: enemy.speed * ENEMY_SPEED_SCALE };
+}
+
+/** ラウンドの敵の出現予定（出現マスは本家の出現地点に合わせる） */
 export function roundEnemies(spec: RoundSpec): EnemyInput[] {
   const out: EnemyInput[] = [];
   for (const s of spec.spawns) {
     const enemy = ENEMIES[s.enemy];
     if (!enemy) continue;
-    const path = ENEMY_PATHS[s.route % ENEMY_PATHS.length];
-    // ボスは調整しない（本家の耐久のまま）
-    const hpScale = enemy.boss ? 1 : ENEMY_HP_SCALE;
-    const scaled = { ...enemy, hp: Math.round(enemy.hp * hpScale), speed: enemy.speed * ENEMY_SPEED_SCALE };
-    for (let i = 0; i < s.count; i++) out.push({ key: s.enemy, spec: scaled, spawnAt: s.delay + i * s.interval, path });
+    const path = ENEMY_PATHS[s.spawn % ENEMY_PATHS.length];
+    const scaled = scaledEnemy(enemy);
+    const ds = enemy.deadSpawn;
+    const child = ds && ENEMIES[ds.enemy] ? { key: ds.enemy, spec: scaledEnemy(ENEMIES[ds.enemy]), count: ds.count } : undefined;
+    for (let i = 0; i < s.count; i++) out.push({ key: s.enemy, spec: scaled, child, spawnAt: s.delay + i * s.interval, path });
   }
   return out;
 }

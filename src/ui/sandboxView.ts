@@ -1,5 +1,5 @@
 import { ALLIANCES } from '../core/data/alliances';
-import { ROUNDS, roundEnemySummary, roundSpec } from '../core/data/battle';
+import { ENEMIES, ENEMY_GROUPS, ROUNDS, groupName, roundEnemySummary, roundSpec, type EnemyGroupType, type RoundGroup } from '../core/data/battle';
 import { UNITS, getUnit } from '../core/data/units';
 import { activeAllianceIds } from '../core/alliance';
 import { buildSimInputs } from '../core/game';
@@ -16,6 +16,8 @@ import { h } from './dom';
 export interface SandboxState {
   units: OwnedUnit[];
   round: number;
+  /** 敵グループ（null ならステージファイルの敵のまま） */
+  group: RoundGroup | null;
   /** リプレイ付きで実行した結果（編成を変えると消える） */
   replay: BattleResult | null;
   stacks: Partial<Record<AllianceId, number>>;
@@ -26,7 +28,7 @@ export interface SandboxState {
 export const SANDBOX_MAX_UNITS = DEPLOY_CAP;
 
 export function createSandbox(): SandboxState {
-  return { units: [], round: 14, replay: null, stacks: {}, nextUid: 1, selectedUid: null };
+  return { units: [], round: 14, group: null, replay: null, stacks: {}, nextUid: 1, selectedUid: null };
 }
 
 export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) => void) => void): HTMLElement {
@@ -36,7 +38,8 @@ export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) =
       s.replay = null;
       f(s);
     });
-  const spec = roundSpec(sb.round ?? 14);
+  const group = sb.group ?? null;
+  const spec = roundSpec(sb.round ?? 14, group);
   const { inputs, statuses, globals, excluded } = buildSimInputs(sb.units, [], sb.stacks);
   const selected = sb.units.find((u) => u.uid === sb.selectedUid);
   const activeIds = activeAllianceIds(statuses);
@@ -166,7 +169,37 @@ export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) =
               return h('option', { value: r.round, selected: r.round === spec.round }, `ラウンド${r.round}${boss ? `　★${boss.enemy.name}` : ''}`);
             }),
           ),
-          roundInfo(spec, battleTimeLimit(spec)),
+          h(
+            'select',
+            {
+              class: 'select',
+              'aria-label': '敵グループ',
+              onchange: (e: Event) =>
+                update((s) => {
+                  const v = (e.target as HTMLSelectElement).value;
+                  if (!v) s.group = null;
+                  else {
+                    const [type, entry] = v.split(':');
+                    s.group = { type: type as EnemyGroupType, entry: Number(entry) };
+                  }
+                }),
+            },
+            h('option', { value: '', selected: !group }, 'ステージの敵のまま'),
+            (Object.keys(ENEMY_GROUPS) as EnemyGroupType[]).map((type) =>
+              h(
+                'optgroup',
+                { label: groupName(type) },
+                ENEMY_GROUPS[type].entries.map((en, i) =>
+                  h(
+                    'option',
+                    { value: `${type}:${i}`, selected: group?.type === type && group.entry === i },
+                    `${groupName(type)}：${ENEMIES[en.strong]?.name}（${en.firstHalf ? '前半' : '後半'}）`,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          roundInfo(spec, battleTimeLimit(spec), group),
         ),
         h(
           'section',
