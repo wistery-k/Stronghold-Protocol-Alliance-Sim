@@ -1362,3 +1362,86 @@ body.dragging * {
 .enemy-table tr.bounty td {
   color: var(--accent);
 }
+
+/* リプレイの演出 */
+.rp-fx {
+  pointer-events: none;
+}
+.fx-shot {
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.fx-slash {
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+.fx-shot.phys,
+.fx-slash.phys {
+  stroke: #ffb347;
+}
+.fx-shot.arts,
+.fx-slash.arts {
+  stroke: #c08bff;
+}
+.fx-shot.true,
+.fx-slash.true {
+  stroke: #ffffff;
+}
+.fx-hit {
+  fill: none;
+  stroke-width: 3;
+}
+.fx-hit.phys {
+  stroke: #ffb347;
+}
+.fx-hit.arts {
+  stroke: #c08bff;
+}
+.fx-hit.true {
+  stroke: #ffffff;
+}
+.fx-burst {
+  stroke-width: 4;
+}
+.fx-burst.phys {
+  fill: rgba(255, 179, 71, 0.25);
+  stroke: #ffb347;
+}
+.fx-burst.arts {
+  fill: rgba(192, 139, 255, 0.25);
+  stroke: #c08bff;
+}
+.fx-area.phys {
+  fill: rgba(255, 179, 71, 0.28);
+  stroke: rgba(255, 179, 71, 0.8);
+  stroke-width: 2;
+}
+.fx-area.arts {
+  fill: rgba(192, 139, 255, 0.28);
+  stroke: rgba(192, 139, 255, 0.8);
+  stroke-width: 2;
+}
+.fx-zone {
+  fill: rgba(76, 195, 138, 0.15);
+  stroke: rgba(76, 195, 138, 0.6);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.fx-enemy-shot {
+  stroke: rgba(239, 107, 107, 0.55);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.fx-enemy-shot.arts {
+  stroke: rgba(192, 139, 255, 0.55);
+}
+.fx-heal {
+  stroke: rgba(76, 195, 138, 0.8);
+  stroke-width: 3;
+  stroke-dasharray: 4 4;
+}
+.fx-heal-ring {
+  fill: none;
+  stroke: rgba(76, 195, 138, 0.8);
+  stroke-width: 3;
+}

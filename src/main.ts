@@ -37,7 +37,7 @@ function loadGame(): GameState | null {
 
 function saveGame() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(app.game, (k, v) => (k === 'frames' ? undefined : v)));
+    localStorage.setItem(SAVE_KEY, JSON.stringify(app.game, (k, v) => (k === 'frames' || k === 'fx' ? undefined : v)));
   } catch {
     // 保存できなくても遊べるようにする
   }

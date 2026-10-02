@@ -87,6 +87,17 @@ export interface ReplayFrame {
   u?: [number, number, number, number, number, number?][];
 }
 
+/**
+ * リプレイの演出（攻撃・範囲攻撃・敵の射撃など）。[時刻×100, 種類, ...]
+ * - 0 命中：[uid, 敵id, ダメージ種別（0物理・1術・2確定）]
+ * - 1 円形の範囲：[uid, x×100, y×100, 半径×100]
+ * - 2 攻撃範囲全体への攻撃：[uid, スキル中なら1]
+ * - 3 敵の遠距離攻撃：[敵id, uid, 術なら1]
+ * - 4 治療：[uid, 対象uid]
+ * - 5 設置した範囲（ブリキなど）：[uid, x×100, y×100, 半径×100, 秒数×10]
+ */
+export type FxEvent = number[];
+
 export interface BattleResult {
   round: number;
   timeLimit: number;
@@ -114,6 +125,8 @@ export interface BattleResult {
   opBursts: number;
   enBursts: number;
   enemies: EnemyMeta[];
+  /** リプレイの演出 */
+  fx?: FxEvent[];
   /** 懸賞の敵を倒して得た資金 */
   bountyGold: number;
   bountyKills: number;
@@ -631,6 +644,7 @@ interface EngineResult {
   phaseLog: { t: number; note: string }[];
   stackGains: Partial<Record<AllianceId, number>>;
   frames: ReplayFrame[];
+  fx: FxEvent[];
   killTime: number | null;
   colds: number;
   freezes: number;
@@ -876,7 +890,20 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const phaseLog: EngineResult['phaseLog'] = [];
   const timeline: EngineResult['timeline'] = [];
   const frames: ReplayFrame[] = [];
+  const fx: FxEvent[] = [];
+  const fxLast = new Map<string, number>();
   let t = 0;
+  /** 演出を記録する（key が同じものは gap 秒以内なら間引く） */
+  const emit = (ev: number[], key?: string, gap = 0) => {
+    if (!opts.record) return;
+    if (key) {
+      const last = fxLast.get(key);
+      if (last !== undefined && t - last < gap - 1e-9) return;
+      fxLast.set(key, t);
+    }
+    fx.push([Math.round(t * 100), ...ev]);
+  };
+  const DMG_CODE: Record<string, number> = { physical: 0, arts: 1, true: 2 };
   let lateranoAmmo = 0;
   let killTime: number | null = null;
   const byUid = new Map(rt.map((u) => [u.input.uid, u]));
@@ -951,6 +978,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const strike = (u: Runtime, e: Enemy, atk: number, scale: number) => {
     const { def, mods, uid } = u.input;
     if (!e.alive) return;
+    emit([0, uid, e.id, DMG_CODE[def.damageType] ?? 0], `h${uid}:${e.id}`, 0.01);
     // 攻撃を無効にする盾
     if (def.damageType !== 'heal') {
       if (u.neutralize) neutralize(e, u.neutralize);
@@ -1111,12 +1139,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     } else if (support === 'zone') {
       const main = pickTargets(u, true)[0]?.[0];
       const p = main ? { x: main.x, y: main.y } : posOf(u);
+      const zr = Math.min(1.5, s.bb.projectile_range ?? 1.2);
+      const zd = s.bb.projectile_delay_time ?? 10;
+      emit([5, uid, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(zr * 100), Math.round(zd * 10)]);
       zones.push({
         owner: u,
         x: p.x,
         y: p.y,
-        r: Math.min(1.5, s.bb.projectile_range ?? 1.2),
-        until: t + (s.bb.projectile_delay_time ?? 10),
+        r: zr,
+        until: t + zd,
         atk: skillAtk(),
         heal: s.bb.hp_recovery_per_sec_ratio ?? s.bb.hp_recovery_per_sec_ratio_chr ?? 0,
         dot: s.bb.atk_scale ?? 0,
@@ -1143,6 +1174,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         // 対象と周囲の敵に術ダメージ、与えたダメージの一部を凋亡損傷に
         const main = cands[0];
         if (main) {
+          emit([1, uid, Math.round(main.x * 100), Math.round(main.y * 100), Math.round((s.bb.projectile_range ?? 1.5) * 100)]);
           for (const e of enemies) {
             if (!e.alive || Math.hypot(e.x - main.x, e.y - main.y) > (s.bb.projectile_range ?? 1.5)) continue;
             const before = e.hp;
@@ -1167,7 +1199,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     } else if (s.instant) {
       if (support === 'selfHeal') healUnit(u, u, u.maxHp * (s.bb.hp_ratio ?? 0));
       const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
-      for (const [e, m] of pickTargets(u, true)) {
+      const hitList = pickTargets(u, true);
+      if (hitList.length >= 2) emit([2, uid, 1]);
+      for (const [e, m] of hitList) {
         for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m);
         if (s.cold > 0) applyCold(e, s.cold);
       }
@@ -1391,6 +1425,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (applied <= 0) return;
     target.hp += applied;
     healer.result.healed += applied;
+    if (healer !== target) emit([4, healer.input.uid, target.input.uid], `heal${healer.input.uid}:${target.input.uid}`, 0.6);
   };
 
   /** 治療の範囲内にいる味方 */
@@ -1648,6 +1683,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         }
       }
       if (!target || !target.alive) continue;
+      if (a.kind === 'ranged') emit([3, e.id, target.input.uid, a.arts ? 1 : 0]);
       hurt(target, a.atk * weakFactor(e), a.arts, e);
       if (e.input.spec.element) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
       e.atkTimer = a.interval;
@@ -1884,6 +1920,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           }
         }
         // 狩人は弾を消費して攻撃力120%
+        // 範囲攻撃の演出：攻撃範囲全体（複数を巻き込む攻撃）、または着弾地点の周囲（スプラッシュ）
+        if (SPLASH_SUB.has(def.subProfession) && field) {
+          const p0 = targets[0][0];
+          emit([1, uid, Math.round(p0.x * 100), Math.round(p0.y * 100), 100]);
+        } else {
+          const inSkill = !s.passive && activeNow;
+          if (targets.length >= 3 || (inSkill && targets.length >= 2)) emit([2, uid, inSkill ? 1 : 0], `area${uid}`, 0.3);
+        }
         for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1));
         // ブレミシャイン：スキル中は攻撃のたびに周囲の自分以外の味方1人を治療
         if (field && activeNow && SUPPORT_SKILL[def.charId] === 'attackHeal') {
@@ -1966,7 +2010,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       c: Math.floor(cost),
     });
   }
-  return { t, enemies, units: rt, timeline, phaseLog, stackGains, frames, killTime, colds, freezes, opBursts, enBursts };
+  return { t, enemies, units: rt, timeline, phaseLog, stackGains, frames, fx, killTime, colds, freezes, opBursts, enBursts };
 }
 
 // ------------------------------------------------------------
@@ -2074,6 +2118,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     bountyGold: bountyKilled.reduce((sum, e) => sum + (e.input.bounty ?? 0), 0),
     bountyKills: bountyKilled.length,
     frames: opts.record ? r.frames : undefined,
+    fx: opts.record ? r.fx : undefined,
   };
 }
 

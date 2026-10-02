@@ -313,6 +313,125 @@ function enemyRadius(m: { boss: boolean; maxHp: number }): number {
   return Math.max(9, Math.min(26, 9 + 3.2 * Math.log(Math.max(1, m.maxHp) / 400)));
 }
 
+/** 演出の表示時間（秒） */
+const FX_LIFE = [0.18, 0.4, 0.4, 0.3, 0.45];
+const DMG_CLASS = ['phys', 'arts', 'true'];
+
+/**
+ * リプレイの演出を描く関数を作る。
+ * 命中は攻撃者から敵への線（近距離は敵の上の斬撃）、範囲攻撃は攻撃範囲のマスや着弾地点の円、
+ * 敵の遠距離攻撃は薄い点線、治療は緑の線、設置した範囲は効果時間のあいだ円を表示する
+ */
+function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
+  const fx = r.fx ?? [];
+  const zones = fx.filter((e) => e[1] === 5);
+  const events = fx.filter((e) => e[1] !== 5);
+  const byUid = new Map(units.map((u) => [u.uid, u]));
+  const center = (pos: number) => ({ x: cellX(pos) * S + S / 2, y: cellY(pos) * S + S / 2 });
+  const rangeCache = new Map<string, number[]>();
+  const rangeOf = (u: ReplayUnit, skill: boolean) => {
+    const key = `${u.uid}:${skill}`;
+    let cells = rangeCache.get(key);
+    if (!cells) {
+      cells = unitRangeCells({ uid: u.uid, defId: u.defId, star: u.star, pos: u.pos, dir: u.dir } as OwnedUnit, skill);
+      rangeCache.set(key, cells);
+    }
+    return cells;
+  };
+  const lastPos = new Map<number, { x: number; y: number }>();
+  const maxLife = Math.max(...FX_LIFE);
+  const firstAfter = (time: number) => {
+    let lo = 0;
+    let hi = events.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (events[mid][0] / 100 < time) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  };
+
+  return (layer: SVGElement, t: number, a: NonNullable<BattleResult['frames']>[number], b: NonNullable<BattleResult['frames']>[number], f: number) => {
+    // 敵の現在位置（消えた敵は最後の位置）
+    const next = new Map(b.e.map((e) => [e[0], e]));
+    for (const e of a.e) {
+      const nb = next.get(e[0]);
+      const x = nb ? e[1] + (nb[1] - e[1]) * f : e[1];
+      const y = nb ? e[2] + (nb[2] - e[2]) * f : e[2];
+      lastPos.set(e[0], { x: (x / 100) * S + S / 2, y: (y / 100) * S + S / 2 });
+    }
+    const nodes: SVGElement[] = [];
+    for (const z of zones) {
+      const t0 = z[0] / 100;
+      if (t < t0 || t > t0 + z[6] / 10) continue;
+      nodes.push(s('circle', { cx: (z[3] / 100) * S + S / 2, cy: (z[4] / 100) * S + S / 2, r: (z[5] / 100) * S, class: 'fx-zone' }));
+    }
+    for (let i = firstAfter(t - maxLife); i < events.length && events[i][0] / 100 <= t; i++) {
+      const ev = events[i];
+      const age = t - ev[0] / 100;
+      const life = FX_LIFE[ev[1]] ?? 0.3;
+      if (age > life) continue;
+      const op = String(Math.max(0, 1 - age / life));
+      switch (ev[1]) {
+        case 0: {
+          const u = byUid.get(ev[2]);
+          const ep = lastPos.get(ev[3]);
+          if (!u || u.pos === undefined || !ep) break;
+          const cls = DMG_CLASS[ev[4]] ?? 'phys';
+          if (getUnit(u.defId).position === 'melee') {
+            nodes.push(s('line', { x1: ep.x - 16, y1: ep.y - 16, x2: ep.x + 16, y2: ep.y + 16, class: `fx-slash ${cls}`, opacity: op }));
+          } else {
+            const up = center(u.pos);
+            nodes.push(s('line', { x1: up.x, y1: up.y, x2: ep.x, y2: ep.y, class: `fx-shot ${cls}`, opacity: op }));
+            nodes.push(s('circle', { cx: ep.x, cy: ep.y, r: 8, class: `fx-hit ${cls}`, opacity: op }));
+          }
+          break;
+        }
+        case 1: {
+          const u = byUid.get(ev[2]);
+          const cls = u ? (getUnit(u.defId).damageType === 'arts' ? 'arts' : 'phys') : 'phys';
+          nodes.push(s('circle', { cx: (ev[3] / 100) * S + S / 2, cy: (ev[4] / 100) * S + S / 2, r: (ev[5] / 100) * S * (0.6 + 0.4 * (age / life)), class: `fx-burst ${cls}`, opacity: op }));
+          break;
+        }
+        case 2: {
+          const u = byUid.get(ev[2]);
+          if (!u || u.pos === undefined) break;
+          const cls = getUnit(u.defId).damageType === 'arts' ? 'arts' : 'phys';
+          for (const c of rangeOf(u, ev[3] === 1)) {
+            nodes.push(s('rect', { x: cellX(c) * S + 4, y: cellY(c) * S + 4, width: S - 8, height: S - 8, rx: 8, class: `fx-area ${cls}`, opacity: op }));
+          }
+          break;
+        }
+        case 3: {
+          const ep = lastPos.get(ev[2]);
+          const u = byUid.get(ev[3]);
+          if (!ep || !u || u.pos === undefined) break;
+          const up = center(u.pos);
+          // 敵弾：敵から味方へ進む短い線
+          const k = Math.min(1, age / life);
+          const hx = ep.x + (up.x - ep.x) * k;
+          const hy = ep.y + (up.y - ep.y) * k;
+          const tx = ep.x + (up.x - ep.x) * Math.max(0, k - 0.35);
+          const ty = ep.y + (up.y - ep.y) * Math.max(0, k - 0.35);
+          nodes.push(s('line', { x1: tx, y1: ty, x2: hx, y2: hy, class: `fx-enemy-shot${ev[4] ? ' arts' : ''}` }));
+          break;
+        }
+        case 4: {
+          const h0 = byUid.get(ev[2]);
+          const tg = byUid.get(ev[3]);
+          if (!h0 || !tg || h0.pos === undefined || tg.pos === undefined) break;
+          const p0 = center(h0.pos);
+          const p1 = center(tg.pos);
+          nodes.push(s('line', { x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y, class: 'fx-heal', opacity: op }));
+          nodes.push(s('circle', { cx: p1.x, cy: p1.y, r: 30, class: 'fx-heal-ring', opacity: op }));
+          break;
+        }
+      }
+    }
+    layer.replaceChildren(...nodes);
+  };
+}
+
 export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   const frames = r.frames ?? [];
   const meta = new Map(r.enemies.map((e) => [e.id, e]));
@@ -362,6 +481,10 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   // 敵
   const enemyLayer = s('g', {});
   svg.append(enemyLayer);
+  // 演出（攻撃・範囲攻撃・敵の射撃）
+  const fxLayer = s('g', { class: 'rp-fx' });
+  svg.append(fxLayer);
+  const fxDraw = replayFx(r, units, S);
   const enemyNodes = new Map<number, { g: SVGElement; bar: SVGElement }>();
   const enemyNode = (id: number) => {
     let n = enemyNodes.get(id);
@@ -422,6 +545,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       seen.add(e[0]);
     }
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';
+    fxDraw(fxLayer, t, a, b, f);
     const skill = new Set(a.s);
     for (const [uid, g] of unitNodes) g.classList.toggle('skill', skill.has(uid));
     const states = new Map((a.u ?? []).map((x) => [x[0], x]));
@@ -491,6 +615,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線'),
   );
 }
