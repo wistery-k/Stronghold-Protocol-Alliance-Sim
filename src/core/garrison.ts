@@ -1,4 +1,5 @@
 import { evaluateAlliances, activeAllianceIds, bondKey, effectiveGarrisons } from './alliance';
+import { notify } from './log';
 import { gainRandom, rollChoices } from './acquire';
 import { gainItem, gainItemFromPool, gainRandomItem } from './items';
 import { ITEM_POOLS } from './data/items';
@@ -36,16 +37,16 @@ export function stackRewards(state: GameState, active: Set<AllianceId>): void {
     if (tens > r.visiTens) {
       const gold = (tens - r.visiTens) * v('visi', 'count');
       state.gold += gold;
-      state.log.push(`【先見】加算数${s}：資金+${gold}`);
+      notify(state, `【先見】加算数${s}：資金+${gold}`);
       r.visiTens = tens;
     }
     if (s >= v('visi', 'layer1') && !r.visiDiscount) {
       r.visiDiscount = true;
-      state.log.push('【先見】80層：【先見】の購入価格-1');
+      notify(state, '【先見】80層：【先見】の購入価格-1');
     }
     if (s >= v('visi', 'layer2') && !r.allDiscount) {
       r.allDiscount = true;
-      state.log.push('【先見】150層：すべての購入価格-1');
+      notify(state, '【先見】150層：すべての購入価格-1');
     }
   }
   if (active.has('victoria')) {
@@ -62,7 +63,7 @@ export function stackRewards(state: GameState, active: Set<AllianceId>): void {
     if (hundreds > r.miraHundreds) {
       const gold = (hundreds - r.miraHundreds) * 20;
       state.gold += gold;
-      state.log.push(`【奇跡】加算数${s}：資金+${gold}`);
+      notify(state, `【奇跡】加算数${s}：資金+${gold}`);
       r.miraHundreds = hundreds;
     }
   }
@@ -126,7 +127,7 @@ function runGarrison(
       if (onlyActive && !active.has(b)) continue;
       if (count > 0) {
         addStacks(state, b, count, active);
-        state.log.push(`${name}：【${ALLIANCES[b].name}】+${count}`);
+        notify(state, `${name}：【${ALLIANCES[b].name}】+${count}`);
       }
     }
   };
@@ -158,7 +159,7 @@ function runGarrison(
       const b = mostStackedActive(state, active);
       if (b) {
         addStacks(state, b, n('count'), active);
-        state.log.push(`${name}：【${ALLIANCES[b].name}】+${n('count')}`);
+        notify(state, `${name}：【${ALLIANCES[b].name}】+${n('count')}`);
       }
       return true;
     }
@@ -167,7 +168,7 @@ function runGarrison(
       if (b) {
         const add = distinctTiers(state, b) * n('multi');
         addStacks(state, b, add, active);
-        if (add) state.log.push(`${name}：【${ALLIANCES[b].name}】+${add}`);
+        if (add) notify(state, `${name}：【${ALLIANCES[b].name}】+${add}`);
       }
       return true;
     }
@@ -189,25 +190,25 @@ function runGarrison(
         const bonds = bondList(bb.bond).filter((b) => active.has(b));
         for (const b of bonds) {
           addStacks(state, b, n('layer'), active);
-          state.log.push(`${name}：【${ALLIANCES[b].name}】+${n('layer')}`);
+          notify(state, `${name}：【${ALLIANCES[b].name}】+${n('layer')}`);
         }
       }
       return true;
     case 'SERVER_ONCE_GOLD':
       state.pendingGold += n('count');
-      state.log.push(`${name}：次の準備フェーズで資金+${n('count')}`);
+      notify(state, `${name}：次の準備フェーズで資金+${n('count')}`);
       return true;
     case 'SERVER_ONCE_GOLD_WITH_BOND_CONDITION': {
       const ok = where === 'board' || bondList(bb.bond).some((b) => active.has(b));
       if (ok) {
         state.pendingGold += n('count');
-        state.log.push(`${name}：次の準備フェーズで資金+${n('count')}`);
+        notify(state, `${name}：次の準備フェーズで資金+${n('count')}`);
       }
       return true;
     }
     case 'SERVER_GAIN_FREE_REFRESH_COUNT':
       state.freeRefreshes += n('count');
-      state.log.push(`${name}：無料更新+${n('count')}`);
+      notify(state, `${name}：無料更新+${n('count')}`);
       return true;
     case 'SERVER_CHESS_PRICE':
       return true; // 価格計算側で処理
@@ -217,7 +218,7 @@ function runGarrison(
         if (!o) continue;
         const bonds = getUnit(o.defId).bonds.filter((b) => active.has(b));
         for (const b of bonds) addStacks(state, b, n('count'), active);
-        if (bonds.length) state.log.push(`${name}：${getUnit(o.defId).name}の盟約の加算数+${n('count')}`);
+        if (bonds.length) notify(state, `${name}：${getUnit(o.defId).name}の盟約の加算数+${n('count')}`);
       }
       return true;
     }
@@ -235,7 +236,7 @@ function runGarrison(
       const options = rollChoices(state, Math.min(Math.max(tier, 1), 6) as Tier);
       if (options.length) {
         state.choices.push({ title: `${name}の特別招集`, options });
-        state.log.push(`${name}：等級${tier}の特別招集`);
+        notify(state, `${name}：等級${tier}の特別招集`);
       }
       return true;
     }
@@ -315,7 +316,7 @@ export function deputBonus(state: GameState): void {
   const add = deput.level >= 2 ? v('deput', 'more_layer') : v('deput', 'layer');
   const active = activeAllianceIds(statuses);
   for (const id of active) addStacks(state, id, add, active);
-  state.log.push(`【助力】有効化中の盟約の加算数+${add}`);
+  notify(state, `【助力】有効化中の盟約の加算数+${add}`);
 }
 
 /** 〈配置時〉〈戦闘開始時〉に加算数を得る特性と、エーギルの捕食による加算数（戦闘前に反映） */
@@ -327,7 +328,7 @@ export function onDeployStacks(state: GameState): void {
     const dv = egirDevour(state.board, new Set(egir.memberUids), v('egir', 'damage_value'));
     if (dv.stacks > 0) {
       addStacks(state, 'egir', dv.stacks, active);
-      state.log.push(`【エーギル】捕食：加算数+${dv.stacks}`);
+      notify(state, `【エーギル】捕食：加算数+${dv.stacks}`);
     }
   }
   const garrisons = effectiveGarrisons(state.board);
@@ -341,7 +342,7 @@ export function onDeployStacks(state: GameState): void {
       for (const b of bonds) {
         if (!active.has(b)) continue;
         addStacks(state, b, count, active);
-        state.log.push(`${def.name}（配置時）：【${ALLIANCES[b].name}】+${count}`);
+        notify(state, `${def.name}（配置時）：【${ALLIANCES[b].name}】+${count}`);
       }
     }
   }

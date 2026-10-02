@@ -77,6 +77,36 @@ function cachedPrediction(inputs: SimUnitInput[], spec: RoundSpec, opts: SimOpti
   return result;
 }
 
+/** ログパネルの開閉（再描画しても保つ） */
+let logOpen = true;
+
+/** プレイヤーに見せる出来事のログ（新しい順、ラウンドごと） */
+function eventLog(state: GameState): HTMLElement {
+  const events = [...(state.events ?? [])].reverse().slice(0, 120);
+  const groups: { round: number; texts: string[] }[] = [];
+  for (const e of events) {
+    const last = groups[groups.length - 1];
+    if (last && last.round === e.round) last.texts.push(e.text);
+    else groups.push({ round: e.round, texts: [e.text] });
+  }
+  const details = h(
+    'details',
+    { class: 'panel event-log', open: logOpen },
+    h('summary', null, h('h2', null, 'ログ')),
+    groups.length
+      ? h(
+          'div',
+          { class: 'event-log-body' },
+          groups.map((g) =>
+            h('div', { class: 'event-group' }, h('div', { class: 'event-round muted small' }, `ラウンド${g.round}`), h('ul', null, g.texts.map((t) => h('li', null, t)))),
+          ),
+        )
+      : h('p', { class: 'muted small' }, '特性の発動・資金の増減・精鋭化などがここに表示されます'),
+  ) as HTMLDetailsElement;
+  details.addEventListener('toggle', () => (logOpen = details.open));
+  return details;
+}
+
 /** 資金が残っている時の戦闘開始の確認 */
 let confirmBattle = false;
 
@@ -439,6 +469,7 @@ function prepView(p: GameViewProps): HTMLElement {
         ),
         detailPanel,
         h('section', { class: 'panel' }, h('h2', null, '盟約'), alliancePanel(statuses, state.stacks)),
+        eventLog(state),
 
       ),
     ),
@@ -507,6 +538,7 @@ function resultView(p: GameViewProps): HTMLElement {
         ),
         h('section', { class: 'panel' }, h('h2', null, '敵の構成'), roundInfo(roundSpec(b.round, b.group), b.sim.timeLimit, b.group)),
         h('section', { class: 'panel' }, h('h2', null, '発動した盟約'), alliancePanel(b.alliances.filter((a) => a.level > 0), state.stacks)),
+        eventLog(state),
       ),
     ),
   );

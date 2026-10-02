@@ -1,4 +1,5 @@
 import { Rng } from './rng';
+import { notify, trimLog } from './log';
 import { pickGroupTypes, pickRoundGroup, roundSpec, type EnemyGroupType, type RoundGroup, type RoundSpec } from './data/battle';
 import { UNITS, getUnit, unitState } from './data/units';
 import { activeAllianceIds, battleSetup, evaluateAlliances, type AllianceStatus, type BattleOptions } from './alliance';
@@ -114,6 +115,8 @@ export interface GameState {
   lastBattle: BattleReport | null;
   history: { round: number; killed: boolean; lifeLost: number }[];
   log: string[];
+  /** プレイヤーに見せる出来事（特性の発動・資金の増減・精鋭化など） */
+  events?: { round: number; text: string }[];
 }
 
 export type Action =
@@ -200,6 +203,7 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
     lastBattle: null,
     history: [],
     log: [`シード ${seed} で開始`],
+    events: [],
   };
   if ((opts.ban ?? 'random') === 'random') {
     state.banned = withRng(state, (rng) => {
@@ -290,7 +294,10 @@ function spend(state: GameState, amount: number) {
 
 export function applyAction(prev: GameState, action: Action): ActionResult {
   const r = applyActionInner(prev, action);
-  if (!r.error) r.state.bench = compactBench(r.state.bench);
+  if (!r.error) {
+    r.state.bench = compactBench(r.state.bench);
+    trimLog(r.state);
+  }
   return r;
 }
 
@@ -440,7 +447,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
         const free = withRng(state, (rng) => rng.next() < miraProb(state.stacks.mira ?? 0));
         if (free) {
           state.nextRefreshFree = true;
-          state.log.push('【奇跡】次の更新が無料に！');
+          notify(state, '【奇跡】次の更新が無料に！');
         }
       }
       triggerGarrisons(state, 'SERVER_REFRESH_SHOP', allTargets(state));
@@ -486,8 +493,8 @@ function startRound(state: GameState, round: number): void {
   state.phase = 'prep';
   const income = roundIncome(round);
   state.gold += income + state.pendingGold + state.extraRoundGold;
-  if (state.pendingGold) state.log.push(`追加資金+${state.pendingGold}`);
-  if (state.extraRoundGold) state.log.push(`倹約家の人形：資金+${state.extraRoundGold}`);
+  if (state.pendingGold) notify(state, `追加資金+${state.pendingGold}`);
+  if (state.extraRoundGold) notify(state, `倹約家の人形：資金+${state.extraRoundGold}`);
   state.pendingGold = 0;
   state.round_ = { gained: 0, spent: 0, refreshes: 0, cauldron: 0 };
   itemRoundStart(state);
@@ -600,7 +607,7 @@ function prepFinish(state: GameState): void {
 
 function resolveBattle(state: GameState): void {
   // 使い切れなかった資金は繰り越さない（戦闘後に得た資金は次のラウンドで使える）
-  if (state.gold > 0) state.log.push(`残った資金${state.gold}は失われた`);
+  if (state.gold > 0) notify(state, `残った資金${state.gold}は失われた`);
   state.gold = 0;
   const before = { ...state.stacks };
   prepFinish(state);
@@ -642,7 +649,7 @@ function resolveBattle(state: GameState): void {
     nextIncome: last ? null : { base: roundIncome(state.round + 1), extra: state.pendingGold },
   };
   state.history.push({ round: state.round, killed: sim.cleared, lifeLost: lost });
-  state.log.push(
+  notify(state, 
     sim.cleared
       ? `ラウンド${state.round}：敵${sim.total}体をすべて撃破（${sim.elapsed}秒）`
       : `ラウンド${state.round}：${sim.leaked}体に突破され、耐久値-${lost}`,

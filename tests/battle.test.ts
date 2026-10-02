@@ -198,4 +198,17 @@ describe('敵の攻撃と回復', () => {
     const r = run(board, spec);
     expect(r.perUnit.find((u) => u.uid === 2)!.healed).toBeGreaterThan(0);
   });
+
+  it('医療以外の治療スキル（グム・サリア・ブリキ）も味方を回復する', () => {
+    const spec = oneEnemy('test_poke2', false, { attack: { kind: 'melee', atk: 1200, interval: 2, range: 0, arts: false } });
+    for (const name of ['グム', 'サリア']) {
+      const u = UNITS.find((x) => x.name === name)!;
+      const r = run([{ uid: 1, defId: u.id, star: 2, pos: 31, dir: 'right' }], spec);
+      expect(r.perUnit[0].healed).toBeGreaterThan(0);
+    }
+    const tin = UNITS.find((x) => x.name === 'ブリキ')!;
+    const tank = UNITS.find((u) => u.profession === 'defender')!;
+    const r = run([{ uid: 1, defId: tank.id, star: 2, pos: 31, dir: 'right' }, { uid: 2, defId: tin.id, star: 2, pos: 22, dir: 'down' }], spec);
+    expect(r.perUnit.find((u) => u.uid === 2)!.healed).toBeGreaterThan(0);
+  });
 });

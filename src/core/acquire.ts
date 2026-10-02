@@ -1,4 +1,5 @@
 import { UNITS, getUnit } from './data/units';
+import { notify } from './log';
 import { benchUnits, currentActive, gainTriggerTimes, triggerGarrisons } from './garrison';
 import { Rng } from './rng';
 import { itemOnGain, returnItems, unitAvailable } from './items';
@@ -82,7 +83,7 @@ function mergeUnits(state: GameState, defId: string): void {
   // 合成したオペレーター全員の装備は控えに戻す
   for (const o of [keep, ...others.filter((o) => toRemove.has(o.uid))]) returnItems(state, o);
   keep.star = 2 as Star;
-  state.log.push(`${def.name} を精鋭化！`);
+  notify(state, `${def.name} を精鋭化！`);
   const tier = Math.min(state.level + 1, 6) as Tier;
   const options = rollChoices(state, tier);
   if (options.length) state.choices.push({ title: `${def.name}の精鋭化報酬`, options });
@@ -111,5 +112,5 @@ export function gainRandom(state: GameState, candidates: { id: string; weight: n
   const idx = withRng(state, (rng) => rng.weighted(avail.map((c) => c.weight)));
   if (idx < 0) return;
   const id = avail[idx].id;
-  if (gainUnit(state, id)) state.log.push(`${source}：${getUnit(id).name} を獲得`);
+  if (gainUnit(state, id)) notify(state, `${source}：${getUnit(id).name} を獲得`);
 }

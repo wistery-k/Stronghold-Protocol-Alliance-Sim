@@ -1248,3 +1248,35 @@ body.dragging * {
   white-space: normal;
   line-height: 1.4;
 }
+
+/* ログ */
+.event-log summary {
+  cursor: pointer;
+  list-style: none;
+}
+.event-log summary::-webkit-details-marker {
+  display: none;
+}
+.event-log summary h2 {
+  display: inline;
+}
+.event-log summary::before {
+  content: '▸ ';
+  color: var(--muted);
+}
+.event-log[open] summary::before {
+  content: '▾ ';
+}
+.event-log-body {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.event-group ul {
+  margin: 2px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}

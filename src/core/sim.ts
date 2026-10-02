@@ -131,7 +131,11 @@ export interface SkillModel {
   /** スキル中の防御力・最大HPの上昇（割合）と毎秒の回復（最大HP比） */
   defPct: number;
   hpPct: number;
+  /** 最大HPの固定値の上昇 */
+  hpFlat: number;
   regenPct: number;
+  /** blackboard の生の値（スキルごとの特殊な処理用） */
+  bb: Record<string, number>;
 }
 
 export function parseSkill(s: SkillData): SkillModel {
@@ -146,7 +150,8 @@ export function parseSkill(s: SkillData): SkillModel {
   const timesRaw = get('times', 'attack@times');
   const hits = timesRaw !== undefined && Number.isInteger(timesRaw) && timesRaw >= 2 ? timesRaw : 1;
   const ammo = s.durationType === 'AMMO' ? get('attack@trigger_time', 'trigger_time', 'ammo', 'cnt', 'attack@cnt') ?? 0 : 0;
-  const duration = Math.max(0, s.duration);
+  // 「退場まで効果継続」のスキル（スルト）は長い効果時間として扱う。それ以外の duration < 0 は即時発動
+  const duration = s.duration < 0 && s.durationType !== 'AMMO' && s.description.includes('退場まで効果継続') ? 9999 : Math.max(0, s.duration);
   return {
     charge,
     passive,
@@ -164,8 +169,11 @@ export function parseSkill(s: SkillData): SkillModel {
     blockAdd: Math.max(0, Math.round(get('block_cnt') ?? 0)),
     instant: !passive && duration <= 0 && ammo <= 0,
     defPct: (get('def') ?? 0) < 10 ? get('def') ?? 0 : 0,
-    hpPct: get('max_hp') ?? 0,
-    regenPct: get('hp_recovery_per_sec_by_max_hp_ratio') ?? 0,
+    hpPct: (get('max_hp') ?? 0) < 10 ? get('max_hp') ?? 0 : 0,
+    hpFlat: (get('max_hp') ?? 0) >= 10 ? get('max_hp') ?? 0 : 0,
+    // 負の値は敵への効果（回復量低下など）なので使わない
+    regenPct: Math.max(0, get('hp_recovery_per_sec_by_max_hp_ratio') ?? 0),
+    bb: Object.fromEntries(Object.entries(bb).filter(([, v]) => typeof v === 'number')) as Record<string, number>,
   };
 }
 
@@ -295,6 +303,29 @@ export interface SimOptions {
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
   Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack'>>;
 
+/**
+ * 医療以外の治療・回復を持つスキル
+ * - nextHeal：次の攻撃の代わりに周囲の味方1人を治療（グム）
+ * - areaHeal：周囲の味方全員を治療（サリア）
+ * - attackHeal：スキル中、攻撃のたびに周囲の自分以外の味方1人を治療（ブレミシャイン）
+ * - zone：投げた錬金ユニットの範囲で、敵に継続術ダメージ・味方を継続回復（ブリキ・引星ソーンズ）
+ * - auraHeal：スキル中、攻撃範囲内の味方全員を毎秒回復（スズラン）
+ * - selfHeal：発動時に自身のHPを回復（マドロック）
+ * - surtr：発動時にHPを全回復し、以降HPが徐々に減る（スルト）
+ */
+const SUPPORT_SKILL: Record<string, 'nextHeal' | 'areaHeal' | 'attackHeal' | 'zone' | 'auraHeal' | 'selfHeal' | 'surtr'> = {
+  char_196_sunbr: 'nextHeal',
+  char_202_demkni: 'areaHeal',
+  char_423_blemsh: 'attackHeal',
+  char_4151_tinman: 'zone',
+  char_1039_thorn2: 'zone',
+  char_358_lisa: 'auraHeal',
+  char_311_mudrok: 'selfHeal',
+  char_350_surtr: 'surtr',
+};
+/** 周囲の味方を治療する範囲（マス） */
+const SUPPORT_HEAL_RADIUS = 1.5;
+
 /** 遠距離の敵が攻撃する時に足を止める秒数 */
 const RANGED_ATTACK_STALL = 0.5;
 
@@ -381,6 +412,8 @@ interface Runtime {
   order: number;
   /** 堅守の反撃のクールダウン */
   reflectReadyAt: number;
+  /** スキルを発動した時刻 */
+  castAt: number;
   /** シラクーザの恐怖の発生の累積（期待値） */
   fearAcc: number;
   firstEndDone: boolean;
@@ -441,6 +474,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       alive: true,
       order: 0,
       reflectReadyAt: 0,
+      castAt: -1,
       firstEndDone: false,
       events: garrisonEvents(input),
       result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0, kills: 0, taken: 0, healed: 0, downAt: null },
@@ -679,8 +713,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   /** スキル中の最大HP上昇の付け外し */
   const setSkillHp = (u: Runtime, on: boolean) => {
-    if (!u.skill.hpPct || !u.alive) return;
-    const target = u.baseMaxHp * (1 + (on ? u.skill.hpPct : 0));
+    if ((!u.skill.hpPct && !u.skill.hpFlat) || !u.alive) return;
+    const target = u.baseMaxHp * (1 + (on ? u.skill.hpPct : 0)) + (on ? u.skill.hpFlat : 0);
     const diff = target - u.maxHp;
     u.maxHp = target;
     u.hp = Math.min(u.maxHp, Math.max(1, u.hp + Math.max(0, diff)));
@@ -709,10 +743,39 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const main = pickTargets(u, true)[0]?.[0];
       if (main) for (const e of enemies) if (e.alive && Math.hypot(e.x - main.x, e.y - main.y) <= spore.radius) neutralize(e, spore.duration);
     }
-    if (s.instant && def.damageType === 'heal') {
+    const support = field ? SUPPORT_SKILL[def.charId] : undefined;
+    const skillAtk = () => baseAtk(def, star, mods, outerAtkPct + s.atkPct);
+    u.castAt = t;
+    if (support === 'nextHeal') {
+      const target = injuredNear(u)[0];
+      if (target) healUnit(u, target, skillAtk() * (s.bb.heal_scale ?? 1));
+      endSkill(u);
+    } else if (support === 'areaHeal') {
+      const p = posOf(u);
+      for (const o of alliesNear(p.x, p.y, SUPPORT_HEAL_RADIUS)) healUnit(u, o, skillAtk() * (s.bb.heal_scale ?? 1));
+      endSkill(u);
+    } else if (support === 'zone') {
+      const main = pickTargets(u, true)[0]?.[0];
+      const p = main ? { x: main.x, y: main.y } : posOf(u);
+      zones.push({
+        owner: u,
+        x: p.x,
+        y: p.y,
+        r: Math.min(1.5, s.bb.projectile_range ?? 1.2),
+        until: t + (s.bb.projectile_delay_time ?? 10),
+        atk: skillAtk(),
+        heal: s.bb.hp_recovery_per_sec_ratio ?? s.bb.hp_recovery_per_sec_ratio_chr ?? 0,
+        dot: s.bb.atk_scale ?? 0,
+        groundOnly: def.charId === 'char_4151_tinman',
+      });
+      endSkill(u);
+    } else if (support === 'surtr') {
+      u.hp = u.maxHp;
+    } else if (s.instant && def.damageType === 'heal') {
       if (field) healAction(u, baseAtk(def, star, mods, outerAtkPct + s.atkPct), s.atkScale, true);
       endSkill(u);
     } else if (s.instant) {
+      if (support === 'selfHeal') healUnit(u, u, u.maxHp * (s.bb.hp_ratio ?? 0));
       const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
       for (const [e, m] of pickTargets(u, true)) for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m);
       endSkill(u);
@@ -851,6 +914,32 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return true;
   };
 
+  // ---- 医療以外の治療 ----
+  const posOf = (u: Runtime) => ({ x: cellX(u.input.pos ?? 0), y: cellY(u.input.pos ?? 0) });
+  /** 位置の周囲にいる味方（HP割合の低い順） */
+  const alliesNear = (x: number, y: number, r: number) =>
+    rt
+      .filter((o) => o.alive && o.input.pos !== undefined && Math.hypot(posOf(o).x - x, posOf(o).y - y) <= r)
+      .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
+  const injuredNear = (u: Runtime, r = SUPPORT_HEAL_RADIUS) => {
+    const p = posOf(u);
+    return alliesNear(p.x, p.y, r).filter((o) => o.hp < o.maxHp - 1e-6);
+  };
+  /** 錬金ユニットの効果範囲 */
+  const zones: { owner: Runtime; x: number; y: number; r: number; until: number; atk: number; heal: number; dot: number; groundOnly: boolean }[] = [];
+  const tickZones = () => {
+    for (const z of zones) {
+      if (t >= z.until || !z.owner.alive) continue;
+      for (const o of alliesNear(z.x, z.y, z.r)) healUnit(z.owner, o, z.atk * z.heal * dt);
+      if (z.dot > 0) {
+        for (const e of enemies) {
+          if (!e.alive || (z.groundOnly && e.input.spec.flying) || Math.hypot(e.x - z.x, e.y - z.y) > z.r) continue;
+          deal(z.owner, e, hitDamage(z.atk * z.dot, 'arts', e.defense, z.owner.input.mods, artsVuln(e)) * dt);
+        }
+      }
+    }
+  };
+
   /** 敵の攻撃：ブロックされていればブロックしている相手、遠距離は範囲内で最後に配置された相手（警報器を優先） */
   const enemyAttacks = () => {
     for (const e of enemies) {
@@ -958,7 +1047,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     t = step * dt;
     moveEnemies();
     if (enemies.every((e) => e.spawned && !e.alive)) break;
-    if (field) enemyAttacks();
+    if (field) {
+      enemyAttacks();
+      tickZones();
+    }
 
     for (const u of rt) {
       if (!u.alive) continue;
@@ -969,6 +1061,21 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         const on = u.skill.passive || u.skillLeft > 0 || u.ammoLeft > 0;
         u.def = u.baseDef * (1 + (on ? u.skill.defPct : 0));
         if (on && u.skill.regenPct) healUnit(u, u, u.maxHp * u.skill.regenPct * dt);
+        const support = field ? SUPPORT_SKILL[def.charId] : undefined;
+        if (on && support === 'auraHeal') {
+          const ratio = u.skill.bb['attack@atk_to_hp_recovery_ratio'] ?? 0;
+          const a = baseAtk(def, star, mods, u.skill.atkPct);
+          for (const o of alliesInRange(u, true)) healUnit(u, o, a * ratio * dt);
+        }
+        // スルト：HPが徐々に減る（60秒かけて毎秒最大HPの20%まで増える）
+        if (on && support === 'surtr' && u.castAt >= 0) {
+          const ratio = (u.skill.bb.hp_ratio ?? 0.2) * Math.min(1, (t - u.castAt) / (u.skill.bb.duration ?? 60));
+          if (ratio > 0) {
+            u.hp -= u.maxHp * ratio * dt;
+            if (u.hp <= 1e-6) unitDown(u);
+          }
+        }
+        if (!u.alive) continue;
       }
       const stats = unitState(def, star).stats;
       const s = u.skill;
@@ -981,7 +1088,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
       // スキル発動判定（攻撃役は攻撃範囲に敵がいる時だけ発動する）
       const skillActive = () => u.skillLeft > 0 || u.ammoLeft > 0;
-      if (!s.passive && !skillActive() && u.sp >= s.spCost && s.spCost > 0 && (heal ? !field || injuredInRange(u, true).length > 0 : targetsInRange(u, true).length > 0)) {
+      if (!s.passive && !skillActive() && u.sp >= s.spCost && s.spCost > 0 && (heal
+          ? !field || injuredInRange(u, true).length > 0
+          : field && (SUPPORT_SKILL[def.charId] === 'nextHeal' || SUPPORT_SKILL[def.charId] === 'areaHeal')
+            ? injuredNear(u).length > 0
+            : targetsInRange(u, true).length > 0)) {
         castSkill(u, outerAtkPct);
       }
 
@@ -1024,6 +1135,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           break;
         }
         for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m);
+        // ブレミシャイン：スキル中は攻撃のたびに周囲の自分以外の味方1人を治療
+        if (field && activeNow && SUPPORT_SKILL[def.charId] === 'attackHeal') {
+          const ally = injuredNear(u).find((o) => o !== u);
+          if (ally) healUnit(u, ally, atk * (s.bb.heal_scale ?? 0));
+        }
         u.result.hits += hits;
         u.attacks++;
         if (mods.extraShotProb) {

@@ -1,4 +1,5 @@
 import { allOwned, compactBench, gainRandom, gainUnit, putOnBench, rollChoices, withRng } from './acquire';
+import { notify } from './log';
 import { ownedBonds } from './alliance';
 import { ITEMS, ITEM_POOLS, NOT_IN_SHOP, findBuff, getItem, isConsumable, itemState } from './data/items';
 import { UNITS, getUnit } from './data/units';
@@ -50,17 +51,17 @@ function mergeItems(state: GameState, itemId: string): void {
   for (const { o, it } of equipped) {
     if (need <= 0) break;
     o.items = (o.items ?? []).filter((x) => x !== it);
-    state.log.push(`${getUnit(o.defId).name} の ${def.normal.name} と合成`);
+    notify(state, `${getUnit(o.defId).name} の ${def.normal.name} と合成`);
     need--;
   }
   keep.star = 2;
-  state.log.push(`${def.normal.name} を精鋭化！`);
+  notify(state, `${def.normal.name} を精鋭化！`);
 }
 
 /** 装備を獲得して控えに入れる（上限を超えても破棄しない） */
 export function gainItem(state: GameState, itemId: string, source?: string): void {
   putOnBench(state, { uid: state.nextUid++, itemId, star: 1 });
-  if (source) state.log.push(`${source}：${getItem(itemId).normal.name} を獲得`);
+  if (source) notify(state, `${source}：${getItem(itemId).normal.name} を獲得`);
   mergeItems(state, itemId);
   state.bench = compactBench(state.bench);
 }
@@ -144,13 +145,13 @@ export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit, di
       case 'equip_destory_gain_random_coin': {
         const gold = withRng(state, (rng) => n(b, 'min') + rng.int(n(b, 'max') - n(b, 'min') + 1));
         state.gold += gold;
-        state.log.push(`${st.name}：資金+${gold}`);
+        notify(state, `${st.name}：資金+${gold}`);
         break;
       }
       case 'use_equip_reward_char_chess_bond_layer': {
         const active = currentActive(state);
         for (const bond of ownedBonds(unit)) addStacks(state, bond, n(b, 'layer'), active);
-        state.log.push(`${st.name}：${name}の盟約の加算数+${n(b, 'layer')}`);
+        notify(state, `${st.name}：${name}の盟約の加算数+${n(b, 'layer')}`);
         break;
       }
       case 'use_equip_reward_random_char_chess_in_shop': {
@@ -160,20 +161,20 @@ export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit, di
           const pick = slots[withRng(state, (rng) => rng.int(slots.length))];
           state.shop[pick.s] = null;
           gainUnit(state, pick.id!);
-          state.log.push(`${st.name}：${getUnit(pick.id!).name} を獲得`);
+          notify(state, `${st.name}：${getUnit(pick.id!).name} を獲得`);
         }
         break;
       }
       case 'gain_coin_when_round_start':
         state.extraRoundGold += n(b, 'count');
-        state.log.push(`${st.name}：以降のラウンド開始時に資金+${n(b, 'count')}`);
+        notify(state, `${st.name}：以降のラウンド開始時に資金+${n(b, 'count')}`);
         break;
       case 'use_equip_reward_char_chess_with_same_bond':
         for (let i = 0; i < n(b, 'count'); i++) gainRandom(state, sameBondCandidates(state, unit), st.name);
         break;
       case 'use_equip_gain_coin_when_next_round_start':
         state.pendingGold += n(b, 'count');
-        state.log.push(`${st.name}：次のラウンドで資金+${n(b, 'count')}`);
+        notify(state, `${st.name}：次のラウンドで資金+${n(b, 'count')}`);
         break;
       case 'use_equip_reward_special_goods_char_chess': {
         const cands = sameBondCandidates(state, unit).map((c) => c.id);
@@ -193,14 +194,14 @@ export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit, di
         state.pool[unit.defId] += unit.star === 2 ? getUnit(unit.defId).mergeCount : 1;
         const options = rollChoices(state, tier).slice(0, 2);
         if (options.length) state.choices.push({ title: st.name, options });
-        state.log.push(`${st.name}：${name} が消滅`);
+        notify(state, `${st.name}：${name} が消滅`);
         break;
       }
       case 'use_equip_reward_char_chess': {
         const owned = allOwned(state).filter((o) => o.defId === unit.defId && o.star === 1).length;
         if (owned >= 2) {
           gainUnit(state, unit.defId);
-          state.log.push(`${st.name}：${name} を獲得`);
+          notify(state, `${st.name}：${name} を獲得`);
         } else {
           gainRandom(state, sameBondCandidates(state, unit, getUnit(unit.defId).tier), st.name);
         }
@@ -208,7 +209,7 @@ export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit, di
       }
       case 'equip_destory_deployment_cnt_change':
         state.deployCapOverride = n(b, 'count');
-        state.log.push(`${st.name}：最大配置人数が${n(b, 'count')}に`);
+        notify(state, `${st.name}：最大配置人数が${n(b, 'count')}に`);
         break;
     }
   }
@@ -223,7 +224,7 @@ export function itemRoundStart(state: GameState): void {
     o.items = (o.items ?? []).filter((i) => i !== holo);
     if (o.star === 1) {
       o.star = 2;
-      state.log.push(`ドクターのホログラム：${getUnit(o.defId).name} を精鋭化`);
+      notify(state, `ドクターのホログラム：${getUnit(o.defId).name} を精鋭化`);
     }
   }
 }
@@ -241,7 +242,7 @@ export function itemBattleEnd(state: GameState): void {
     state.pool[o.defId] += o.star === 2 ? def.mergeCount : 1;
     state.pool[next.id]--;
     o.items = (o.items ?? []).filter((i) => i !== cell);
-    state.log.push(`変異細胞：${def.name} が ${next.name} に変化`);
+    notify(state, `変異細胞：${def.name} が ${next.name} に変化`);
     o.defId = next.id;
     o.star = 1;
   }
@@ -269,7 +270,7 @@ export function itemOnGain(state: GameState): void {
     state.round_.cauldron++;
     const gold = Number(b?.count ?? 2);
     state.gold += gold;
-    state.log.push(`天師の祭器：資金+${gold}`);
+    notify(state, `天師の祭器：資金+${gold}`);
   }
 }
 
