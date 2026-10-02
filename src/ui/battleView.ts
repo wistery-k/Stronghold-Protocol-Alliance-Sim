@@ -113,10 +113,10 @@ function enemyBadges(e: EnemySpec) {
   const b = (label: string, title: string, cls = '') => out.push(h('span', { class: `badge ${cls}`, title }, label));
   if (e.boss) b('BOSS', 'ボス');
   if (e.flying) b('飛行', '飛行：ブロックできず、近距離オペレーターは攻撃できない', 'fly');
-  if (e.stealth) b('隠匿', '隠匿：ブロックされている間しか攻撃の対象にならない', 'sp');
+  if (e.stealth) b('隠匿', '隠匿：ブロックされている間しか攻撃の対象にならない（特殊能力無効化中は狙える）', 'sp');
   if (e.unblockable) b('ブロック不可', 'ブロックできない', 'sp');
   if (e.hitsToKill) b(`${e.hp}回`, `攻撃${e.hp}回で倒れる（ダメージ量は関係ない）`, 'sp');
-  if (e.refract) b(`屈折+${e.refract}`, `屈折：術耐性+${e.refract}`, 'sp');
+  if (e.refract) b(`屈折+${e.refract}`, `屈折：術耐性+${e.refract}（特殊能力無効化中は失う）`, 'sp');
   if (e.hitShield) b('盾', `最初の${e.hitShield}回の攻撃を無効にする`, 'sp');
   if (e.defReduce) b('防御低下', `攻撃を受けるたびに防御${e.defReduce.def}・術耐性${e.defReduce.res}（最大${e.defReduce.max}回）`, 'sp');
   if (e.revive) b('復活', `倒れると攻撃${e.revive.hits}回で倒せる状態になり、${e.revive.interval}秒以内に倒さないと復活する`, 'sp');

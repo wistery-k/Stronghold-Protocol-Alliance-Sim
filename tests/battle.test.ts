@@ -140,4 +140,13 @@ describe('敵グループ', () => {
   it('序盤2ラウンドは雑魚だけ', () => {
     for (const r of [1, 2]) expect(ROUNDS[r - 1].spawns.every((s) => s.role === 'normal')).toBe(true);
   });
+
+  it('特殊能力無効化（秘術法陣）で屈折の術耐性が消える', () => {
+    const spec = oneEnemy('test_refract', false, { hp: 1e9, def: 0, res: 0, refract: 70 });
+    const caster = byProf('caster');
+    const base: OwnedUnit = { uid: 1, defId: caster.id, star: 2, pos: 22, dir: 'down' };
+    const plain = run([base], spec).totalDamage;
+    const withItem = run([{ ...base, items: [{ uid: 9, itemId: '3_08', star: 1 }] }], spec).totalDamage;
+    expect(withItem).toBeGreaterThan(plain * 2);
+  });
 });

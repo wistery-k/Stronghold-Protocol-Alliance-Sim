@@ -278,6 +278,16 @@ export interface SimOptions {
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
   Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive'>>;
 
+/** 素質で攻撃した敵の特殊能力を無効化する秒数（通常・精鋭） */
+const TALENT_NEUTRALIZE: Record<string, [number, number]> = {
+  char_140_whitew: [1, 5], // ラップランド：精神摧毀
+};
+
+/** スキルで範囲の敵の特殊能力を無効化する（ポデンコ：胞子飛散） */
+const SKILL_NEUTRALIZE: Record<string, { radius: number; duration: number }> = {
+  char_258_podego: { radius: 1.2, duration: 5 },
+};
+
 interface EnemyInput {
   key: string;
   spec: EnemyInputSpec;
@@ -299,6 +309,8 @@ interface Enemy {
   shield: number;
   /** 防御低下の回数 */
   reduceStacks: number;
+  /** 特殊能力が無効になっている時刻まで */
+  neutralUntil: number;
   /** 復活待ち（攻撃回数で倒せる状態）なら復活する時刻 */
   reviveAt: number | null;
   revived: boolean;
@@ -329,6 +341,10 @@ interface Runtime {
   events: GarrisonEvent[];
   result: SimUnitResult;
   attacks: number;
+  /** 攻撃した敵の特殊能力を無効化する秒数 */
+  neutralize: number;
+  /** シラクーザの恐怖の発生の累積（期待値） */
+  fearAcc: number;
   firstEndDone: boolean;
   melee: boolean;
   /** ブロックできるマスにいるか */
@@ -376,6 +392,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       sargonBuffs: [],
       pulseTimer: g.kazimierzPulse?.interval ?? 0,
       attacks: 0,
+      fearAcc: 0,
+      neutralize: Math.max(input.mods.neutralize ?? 0, TALENT_NEUTRALIZE[input.def.charId]?.[input.star - 1] ?? 0),
       firstEndDone: false,
       events: garrisonEvents(input),
       result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0, kills: 0 },
@@ -389,6 +407,21 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   });
 
   const baseRes = (s: EnemyInputSpec) => Math.min(100, s.res + (s.refract ?? 0));
+
+  // ---- 特殊能力無効化：屈折・隠匿・盾・復活・分裂を一時的に失う ----
+  const neutral = (e: Enemy) => t < e.neutralUntil;
+  /** 屈折込みの現在の術耐性 */
+  const currentRes = (e: Enemy) => {
+    const s = e.input.spec;
+    const dr = s.defReduce ? s.defReduce.res * e.reduceStacks : 0;
+    return Math.max(0, (neutral(e) ? s.res : baseRes(s)) + dr);
+  };
+  const neutralize = (e: Enemy, seconds: number) => {
+    if (seconds <= 0 || !e.alive) return;
+    e.neutralUntil = Math.max(e.neutralUntil, t + seconds);
+    e.defense.res = currentRes(e);
+  };
+  const isStealthed = (e: Enemy) => !!e.input.spec.stealth && e.blockedBy === null && e.reviveAt === null && !neutral(e);
   const newEnemy = (input: EnemyInput, id: number): Enemy => ({
       id,
       input,
@@ -398,6 +431,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       reduceStacks: 0,
       reviveAt: null,
       revived: false,
+      neutralUntil: -1,
       defense: { def: input.spec.def, res: baseRes(input.spec), damageTaken: 1 },
       phases: [...(input.phases ?? [])].sort((a, b) => b.belowHpRatio - a.belowHpRatio),
       phaseIdx: 0,
@@ -447,7 +481,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     release(e);
     // 復活する敵：攻撃回数で倒せる状態になってその場に留まる
     const rv = e.input.spec.revive;
-    if (rv && !e.revived && e.reviveAt === null) {
+    if (rv && !e.revived && e.reviveAt === null && !neutral(e)) {
       e.reviveAt = t + rv.interval;
       e.hp = rv.hits;
       e.maxHp = rv.hits;
@@ -457,7 +491,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.reviveAt = null;
     // 倒れると別の敵が生まれる
     const c = e.input.child;
-    if (c && e.input.path) {
+    if (c && e.input.path && !neutral(e)) {
       for (let i = 0; i < c.count; i++) {
         const ne = newEnemy({ key: c.key, spec: c.spec, spawnAt: t, path: e.input.path }, enemies.length + 1);
         ne.spawned = true;
@@ -501,7 +535,18 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const { def, mods, uid } = u.input;
     if (!e.alive) return;
     // 攻撃を無効にする盾
-    if (e.shield > 0 && def.damageType !== 'heal') {
+    if (def.damageType !== 'heal') {
+      if (u.neutralize) neutralize(e, u.neutralize);
+      if (g.siracusa?.members.has(uid) && t < g.siracusa.procWindow && g.siracusa.fear > 0) {
+        // シラクーザLv2：確率で恐怖（期待値で、累積が1に達するたびに発生）
+        u.fearAcc += g.siracusa.procProb;
+        if (u.fearAcc >= 1) {
+          u.fearAcc -= 1;
+          neutralize(e, g.siracusa.fear);
+        }
+      }
+    }
+    if (e.shield > 0 && def.damageType !== 'heal' && !neutral(e)) {
       e.shield--;
       return;
     }
@@ -522,7 +567,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (dr && e.reduceStacks < dr.max) {
         e.reduceStacks++;
         e.defense.def = Math.max(0, e.input.spec.def + dr.def * e.reduceStacks);
-        e.defense.res = Math.max(0, baseRes(e.input.spec) + dr.res * e.reduceStacks);
+        e.defense.res = currentRes(e);
       }
     }
   };
@@ -537,8 +582,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (!e.alive) return false;
       if (!field) return true;
       if (e.input.spec.flying && u.melee) return false;
-      // 隠匿：ブロックされている間だけ狙える（復活待ちの間は狙える）
-      if (e.input.spec.stealth && e.blockedBy === null && e.reviveAt === null) return false;
+      // 隠匿：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
+      if (isStealthed(e)) return false;
       return !!range && range.has(enemyTile(e));
     });
     // ブロック中の敵を優先し、次に防衛地点に近い敵
@@ -560,7 +605,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const p = main[0][0];
       for (const e of enemies) {
         if (!e.alive || main.some(([m]) => m === e)) continue;
-        if (e.input.spec.stealth && e.blockedBy === null && e.reviveAt === null) continue;
+        if (isStealthed(e)) continue;
         if (Math.hypot(e.x - p.x, e.y - p.y) <= 1.0) main.push([e, 1]);
       }
     }
@@ -582,6 +627,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.result.skillCasts++;
     if (s.ammo > 0) u.ammoLeft = Math.round(s.ammo * (1 + (mods.ammoPct ?? 0)));
     else if (s.duration > 0) u.skillLeft = s.duration;
+    // ポデンコ（胞子飛散）：着弾地点の周囲の敵の特殊能力を無効化
+    const spore = SKILL_NEUTRALIZE[def.charId];
+    if (spore) {
+      const main = pickTargets(u, true)[0]?.[0];
+      if (main) for (const e of enemies) if (e.alive && Math.hypot(e.x - main.x, e.y - main.y) <= spore.radius) neutralize(e, spore.duration);
+    }
     if (s.instant) {
       const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
       for (const [e, m] of pickTargets(u, true)) for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m);
@@ -614,6 +665,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (!e.spawned && e.input.spawnAt <= t + 1e-9) {
         e.spawned = true;
         e.alive = true;
+      }
+      // 特殊能力無効化が切れたら屈折が戻る
+      if (e.alive && e.neutralUntil >= 0 && t >= e.neutralUntil) {
+        e.neutralUntil = -1;
+        e.defense.res = currentRes(e);
       }
       if (!e.alive || !e.input.path || e.blockedBy !== null) continue;
       // 復活待ち：その場に留まり、時間が来たら元のHPで復活する

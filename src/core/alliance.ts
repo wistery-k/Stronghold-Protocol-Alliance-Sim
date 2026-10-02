@@ -99,7 +99,7 @@ export interface BattleGlobals {
   /** サルゴン：スキル発動で所属者全員に時限バフ */
   sargon?: { members: Set<number>; aspd: number; atkPct: number; duration: number; maxStacks: number };
   /** シラクーザ：配置後の攻撃速度上昇と確定ダメージの発生 */
-  siracusa?: { members: Set<number>; aspd: number; duration: number; procProb: number; procDmg: number; procWindow: number };
+  siracusa?: { members: Set<number>; aspd: number; duration: number; procProb: number; procDmg: number; procWindow: number; fear: number };
   /** 秘術：術ダメージで被術ダメージ上昇を付与 */
   arcane?: { members: Set<number>; vuln: number; vulnLow: number; lowRatio: number; duration: number };
   /** ラテラーノLv2：弾薬消費でラテラーノ全員の攻撃力上昇 */
@@ -330,6 +330,8 @@ export function battleSetup(
       procProb: lv('siracusa') >= 2 ? v('siracusa', 'prob') : 0,
       procDmg: v('siracusa', 'base_damage') + v('siracusa', 'damage_per_stack') * sk('siracusa'),
       procWindow: duration + v('siracusa', 'end_duration'),
+      // 恐怖：特殊能力無効化として扱う
+      fear: lv('siracusa') >= 2 ? v('siracusa', 'fear') : 0,
     };
   }
   // カジミエーシュ：戦闘開始時に盤面の全員が配置される扱い
@@ -459,6 +461,9 @@ export function battleSetup(
             if (bonds.includes('victoria') && board.some((x) => (x.items ?? []).some((i) => i.itemId === '3_10'))) {
               apply([o.uid], { aspd: n('attack_speed') * (has('3_10') ? 2 : 1) });
             }
+            break;
+          case 'silence_attachment':
+            apply([o.uid], { neutralize: n('silence') });
             break;
           case 'act2autochess_equip_acarm121_ability':
             for (const side of sidesOf(board, o)) apply([side.uid], { aspd: n('attack_speed') });

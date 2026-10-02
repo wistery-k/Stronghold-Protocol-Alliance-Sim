@@ -146,6 +146,8 @@ export interface Modifier {
   extraShotScale?: number;
   /** 最初のスキル終了時に回復するSP（黄砂のコンパス） */
   firstSkillEndSp?: number;
+  /** 攻撃した敵の特殊能力を無効化する秒数（秘術法陣・ラップランドの素質） */
+  neutralize?: number;
 }
 
 export interface EnemyPhase {
