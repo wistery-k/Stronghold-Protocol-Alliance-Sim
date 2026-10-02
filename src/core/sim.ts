@@ -125,6 +125,10 @@ export interface SkillModel {
   blockAdd: number;
   /** 効果時間のない即時発動スキル（1回の大ダメージ） */
   instant: boolean;
+  /** スキル中の防御力・最大HPの上昇（割合）と毎秒の回復（最大HP比） */
+  defPct: number;
+  hpPct: number;
+  regenPct: number;
 }
 
 export function parseSkill(s: SkillData): SkillModel {
@@ -156,6 +160,9 @@ export function parseSkill(s: SkillData): SkillModel {
     maxTarget: Math.max(1, Math.round(get('max_target', 'attack@max_target') ?? 1)),
     blockAdd: Math.max(0, Math.round(get('block_cnt') ?? 0)),
     instant: !passive && duration <= 0 && ammo <= 0,
+    defPct: (get('def') ?? 0) < 10 ? get('def') ?? 0 : 0,
+    hpPct: get('max_hp') ?? 0,
+    regenPct: get('hp_recovery_per_sec_by_max_hp_ratio') ?? 0,
   };
 }
 
@@ -357,6 +364,9 @@ interface Runtime {
   neutralize: number;
   hp: number;
   maxHp: number;
+  /** 補正込みの基礎値（スキルの上昇前） */
+  baseMaxHp: number;
+  baseDef: number;
   def: number;
   res: number;
   alive: boolean;
@@ -417,6 +427,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       neutralize: Math.max(input.mods.neutralize ?? 0, TALENT_NEUTRALIZE[input.def.charId]?.[input.star - 1] ?? 0),
       hp: st.stats.hp * (1 + (input.mods.hpPct ?? 0)),
       maxHp: st.stats.hp * (1 + (input.mods.hpPct ?? 0)),
+      baseMaxHp: st.stats.hp * (1 + (input.mods.hpPct ?? 0)),
+      baseDef: st.stats.def * (1 + (input.mods.defPct ?? 0)),
       def: st.stats.def * (1 + (input.mods.defPct ?? 0)),
       res: Math.min(95, st.stats.res + (input.mods.resFlat ?? 0)),
       alive: true,
@@ -439,6 +451,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     .filter((u) => u.input.pos !== undefined)
     .sort((a, b) => cellX(a.input.pos!) - cellX(b.input.pos!) || cellY(a.input.pos!) - cellY(b.input.pos!))
     .forEach((u, i) => (u.order = i + 1));
+
+  // 常時発動のスキルの最大HP上昇
+  for (const u of rt) {
+    if (u.skill.passive && u.skill.hpPct) {
+      u.maxHp = u.baseMaxHp * (1 + u.skill.hpPct);
+      u.hp = u.maxHp;
+    }
+  }
 
   const baseRes = (s: EnemyInputSpec) => Math.min(100, s.res + (s.refract ?? 0));
 
@@ -649,7 +669,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return main;
   };
 
+  /** スキル中の最大HP上昇の付け外し */
+  const setSkillHp = (u: Runtime, on: boolean) => {
+    if (!u.skill.hpPct || !u.alive) return;
+    const target = u.baseMaxHp * (1 + (on ? u.skill.hpPct : 0));
+    const diff = target - u.maxHp;
+    u.maxHp = target;
+    u.hp = Math.min(u.maxHp, Math.max(1, u.hp + Math.max(0, diff)));
+  };
+
   const endSkill = (u: Runtime) => {
+    setSkillHp(u, false);
     u.sp += u.input.mods.spOnSkillEnd ?? 0;
     if (!u.firstEndDone) {
       u.firstEndDone = true;
@@ -664,6 +694,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.result.skillCasts++;
     if (s.ammo > 0) u.ammoLeft = Math.round(s.ammo * (1 + (mods.ammoPct ?? 0)));
     else if (s.duration > 0) u.skillLeft = s.duration;
+    if (u.skillLeft > 0 || u.ammoLeft > 0) setSkillHp(u, true);
     // ポデンコ（胞子飛散）：着弾地点の周囲の敵の特殊能力を無効化
     const spore = SKILL_NEUTRALIZE[def.charId];
     if (spore) {
@@ -913,6 +944,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (!u.alive) continue;
       const { def, mods, uid, star } = u.input;
       if (mods.regenPct) healUnit(u, u, u.maxHp * mods.regenPct * dt);
+      {
+        // スキル中の防御力上昇と自己回復
+        const on = u.skill.passive || u.skillLeft > 0 || u.ammoLeft > 0;
+        u.def = u.baseDef * (1 + (on ? u.skill.defPct : 0));
+        if (on && u.skill.regenPct) healUnit(u, u, u.maxHp * u.skill.regenPct * dt);
+      }
       const stats = unitState(def, star).stats;
       const s = u.skill;
 
