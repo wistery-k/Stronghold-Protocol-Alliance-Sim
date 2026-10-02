@@ -280,14 +280,18 @@ def main():
                     # 本家の出現地点は2つ（防衛地点と同じ行＝下、もう一方＝上）
                     start_row = route['startPosition']['row']
                     goal_row = route['endPosition']['row']
-                    spawns.append({
+                    entry_ = {
                         'enemy': key,
                         'role': SLOT_ROLES.get(key),
                         'count': a['count'],
                         'interval': a['interval'],
                         'delay': round(t1 + a['preDelay'], 2),
                         'spawn': 1 if start_row == goal_row else 0,
-                    })
+                    }
+                    # 枠は飛行用（飛行の経路）と地上用の2組。ラウンドの敵グループに合う組だけが使われる
+                    if entry_['role'] and route.get('motionMode') == 'FLY':
+                        entry_['flySlot'] = True
+                    spawns.append(entry_)
         rounds.append({
             'round': r,
             'levelId': entry['levelId'].split('/')[-1],

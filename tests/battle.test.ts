@@ -124,6 +124,16 @@ describe('マップ戦闘', () => {
 });
 
 describe('敵グループ', () => {
+  it('ラウンドの敵は、グループに合う枠（地上用か飛行用）だけを使い、強敵は3体まで', () => {
+    for (const type of ['SPECIAL', 'FLY'] as const) {
+      const entry = ENEMY_GROUPS[type].entries.findIndex((e) => !e.firstHalf);
+      const spec = roundSpec(13, { type, entry });
+      const strong = ENEMY_GROUPS[type].entries[entry].strong;
+      expect(spec.spawns.filter((x) => x.enemy === strong).reduce((a, x) => a + x.count, 0)).toBe(3);
+      expect(spec.spawns.every((x) => !x.role || !!x.flySlot === (type === 'FLY'))).toBe(true);
+    }
+  });
+
   it('主力部隊と6種のグループがある', () => {
     expect(Object.keys(ENEMY_GROUPS).sort()).toEqual(['DOT', 'ELEMENT', 'FLY', 'INVISIBLE', 'REFLECTION', 'SPECIAL', 'TIMES']);
   });

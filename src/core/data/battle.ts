@@ -59,6 +59,8 @@ export interface SpawnSpec {
   spawn: number;
   /** 懸賞の敵：倒すと得る資金 */
   bounty?: number;
+  /** 飛行用の枠（飛行の敵グループのラウンドだけ使う。それ以外のラウンドは地上用の枠を使う） */
+  flySlot?: boolean;
 }
 
 /** 敵グループの種類（主力部隊は常に出る。ほかの6種から3種がゲーム開始時に選ばれる） */
@@ -181,11 +183,34 @@ export function roundSpec(round: number, group?: RoundGroup | null): RoundSpec {
     const list = role === 'elite' ? entry.elite : entry.normal;
     return list[i % list.length];
   };
-  return {
-    ...base,
-    spawns: base.spawns.map((s, i) => (s.role ? { ...s, enemy: pick(s.role, i) } : s)),
-  };
+  // ステージには地上用と飛行用の2組の枠があり、グループに合う組だけを使う
+  const fly = group!.type === 'FLY';
+  const slots = base.spawns.filter((s) => !s.role || !!s.flySlot === fly);
+  // 強敵は1ラウンドに STRONG_PER_ROUND 体まで（出現の早い順）。超えた枠はエリートにする
+  let strongLeft = STRONG_PER_ROUND;
+  const order = slots.map((_, i) => i).sort((a, b) => slots[a].delay - slots[b].delay);
+  const roles = new Map<number, { strong: number; elite: number }>();
+  for (const i of order) {
+    const s = slots[i];
+    if (s.role !== 'strong') continue;
+    const strong = Math.min(s.count, strongLeft);
+    strongLeft -= strong;
+    roles.set(i, { strong, elite: s.count - strong });
+  }
+  const spawns: SpawnSpec[] = [];
+  slots.forEach((s, i) => {
+    if (!s.role) return spawns.push(s);
+    const r = roles.get(i);
+    if (!r) return spawns.push({ ...s, enemy: pick(s.role, i) });
+    // 強敵の枠を前半（強敵）と後半（エリート）に分ける
+    if (r.strong > 0) spawns.push({ ...s, count: r.strong, enemy: pick('strong', i) });
+    if (r.elite > 0) spawns.push({ ...s, count: r.elite, delay: s.delay + r.strong * s.interval, enemy: pick('elite', i) });
+  });
+  return { ...base, spawns };
 }
+
+/** 1ラウンドに出る強敵の上限（本家の出現数がデータに無いため、プレイ時の記憶に合わせた仮の値） */
+export const STRONG_PER_ROUND = 3;
 
 /** 攻撃範囲（右向き基準の [前方, 横] のオフセット） */
 export function rangeGrid(id: string | null | undefined): [number, number][] {
