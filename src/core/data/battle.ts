@@ -118,10 +118,10 @@ export const getBounty = (id: string | null | undefined) => BOUNTIES.find((b) =>
 export const BOUNTY_OFFER_ROUND = 3;
 export const BOUNTY_ROUNDS = [3, 4];
 
-/** 懸賞の敵を出現に加える（出現はステージ序盤、2つの出現マスを交互に） */
+/** 懸賞の敵を出現に加える（ステージ序盤に、下の出現地点から） */
 export function withBounty(spec: RoundSpec, bounty: BountyDef | undefined): RoundSpec {
   if (!bounty || !BOUNTY_ROUNDS.includes(spec.round)) return spec;
-  return { ...spec, spawns: [...spec.spawns, { enemy: bounty.enemy, count: 1, interval: 0, delay: 8, spawn: spec.round % 2, bounty: bounty.coin }] };
+  return { ...spec, spawns: [...spec.spawns, { enemy: bounty.enemy, count: 1, interval: 0, delay: 8, spawn: 1, bounty: bounty.coin }] };
 }
 /** ゲーム開始時に抽選される特殊敵の種類 */
 export const SPECIAL_GROUP_TYPES: EnemyGroupType[] = ['FLY', 'TIMES', 'ELEMENT', 'DOT', 'INVISIBLE', 'REFLECTION'];

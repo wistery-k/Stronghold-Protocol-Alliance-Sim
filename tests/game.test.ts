@@ -438,6 +438,8 @@ describe('戦術と懸賞', () => {
     const spec3 = roundSpecOf(s, 3);
     expect(spec3.spawns.some((x) => x.bounty)).toBe(true);
     expect(roundSpecOf(s, 4).spawns.some((x) => x.bounty)).toBe(true);
+    // 懸賞の敵は常に下の出現地点から
+    for (const r of [3, 4]) expect(roundSpecOf(s, r).spawns.filter((x) => x.bounty).every((x) => x.spawn === 1)).toBe(true);
     expect(roundSpecOf(s, 5).spawns.some((x) => x.bounty)).toBe(false);
   });
 
