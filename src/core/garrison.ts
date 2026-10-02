@@ -9,6 +9,7 @@ import { ALLIANCES, v } from './data/alliances';
 import { UNITS, getUnit, unitState } from './data/units';
 import type { GameState } from './game';
 import { isUnitEntry, type AllianceId, type GarrisonData, type OwnedUnit, type Tier } from './types';
+import { MAX_STACKS } from './rules';
 
 // 堅守特性のうち、準備フェーズ側（獲得時・準備フェーズ開始/終了時・売却時・更新時）の処理
 
@@ -25,7 +26,7 @@ export function currentActive(state: GameState): Set<AllianceId> {
 /** 加算数を増やし、加算数に応じた報酬（先見・奇跡）を処理する */
 export function addStacks(state: GameState, bond: AllianceId, n: number, active?: Set<AllianceId>): void {
   if (n <= 0) return;
-  state.stacks[bond] = (state.stacks[bond] ?? 0) + n;
+  state.stacks[bond] = Math.min(MAX_STACKS, (state.stacks[bond] ?? 0) + n);
   stackRewards(state, active ?? currentActive(state));
 }
 

@@ -76,7 +76,8 @@ export interface EnemyMeta {
 /** リプレイ用のコマ：敵ごとに [id, x*100, y*100, HP%] と、スキル中のユニット */
 export interface ReplayFrame {
   t: number;
-  e: [number, number, number, number][];
+  /** [id, x×100, y×100, HP%, 解放済みの囚人なら1] */
+  e: [number, number, number, number, number?][];
   s: number[];
   /** 所持コスト */
   c?: number;
@@ -437,7 +438,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -702,6 +703,9 @@ interface Enemy {
   stolenAtk: number;
   /** 素質の継続術ダメージ（攻撃者ごと） */
   dots: Map<Runtime, { until: number; dps: number }>;
+  /** 囚人：拘束中か、拘束中に攻撃した回数 */
+  confined: boolean;
+  confAttacks: number;
 }
 
 interface Runtime {
@@ -917,7 +921,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const currentRes = (e: Enemy) => {
     const s = e.input.spec;
     const dr = s.defReduce ? s.defReduce.res * e.reduceStacks : 0;
-    return Math.max(0, (neutral(e) ? s.res : baseRes(s)) + dr - (t < e.frozenUntil ? FROZEN_RES_DOWN : 0) - (t < (e.elemBurst.burning ?? -1) ? 20 : 0));
+    const lib = s.liberty && !e.confined ? s.liberty.res : 0;
+    return Math.max(0, (neutral(e) ? s.res : baseRes(s)) + dr + lib - (t < e.frozenUntil ? FROZEN_RES_DOWN : 0) - (t < (e.elemBurst.burning ?? -1) ? 20 : 0));
   };
   const neutralize = (e: Enemy, seconds: number) => {
     if (seconds <= 0 || !e.alive) return;
@@ -1031,7 +1036,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       elemSrc: {},
       erosionDef: 0,
       nymphDot: null,
-      defense: { def: input.spec.def, res: baseRes(input.spec), damageTaken: 1 },
+      defense: { def: input.spec.def + (input.spec.liberty?.confDef ?? 0), res: baseRes(input.spec), damageTaken: 1 },
       phases: [...(input.phases ?? [])].sort((a, b) => b.belowHpRatio - a.belowHpRatio),
       phaseIdx: 0,
       spawned: false,
@@ -1046,6 +1051,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       reedUntil: -1,
       stolenAtk: 0,
       dots: new Map(),
+      confined: !!input.spec.liberty,
+      confAttacks: 0,
     });
   const enemies: Enemy[] = enemyInputs.map((input, i) => newEnemy(input, i + 1)).sort((a, b) => a.input.spawnAt - b.input.spawnAt);
 
@@ -1456,10 +1463,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   let bandRevives = g.bandRevive ?? 0;
 
   /** 防御・術耐性・被ダメージ軽減を通したダメージ */
-  const mitigate = (u: Runtime, raw: number, arts: boolean) => {
-    // 灼燃の爆発中は術耐性-20、侵蝕の爆発で防御力が永久に下がる
+  const mitigate = (u: Runtime, raw: number, arts: boolean, defPen = 0) => {
+    // 灼燃の爆発中は術耐性-20、侵蝕の爆発で防御力が永久に下がる。defPen は攻撃側の防御無視（割合）
     const res = Math.max(0, u.res - (t < (u.elemBurst.burning ?? -1) ? 20 : 0));
-    const df = Math.max(0, u.def - u.erosionDef);
+    const df = Math.max(0, u.def - u.erosionDef) * (1 - defPen);
     const dmg = arts ? Math.max(raw * (1 - res / 100), raw * MIN_DAMAGE_RATIO) : Math.max(raw - df, raw * MIN_DAMAGE_RATIO);
     // ユーの素質：ブロック中は庇護30%
     const protect = ELEMENT_TALENT[u.input.def.charId]?.protectWhileBlocking && u.blocked.length ? ELEMENT_TALENT[u.input.def.charId]!.protectWhileBlocking! : 0;
@@ -1635,7 +1642,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     src.defense.damageTaken = sd.vuln;
   };
 
-  const hurt = (u: Runtime, raw: number, arts: boolean, src: Enemy) => {
+  const hurt = (u: Runtime, raw: number, arts: boolean, src: Enemy, defPen = 0) => {
     philaeCounter(u);
     if (talentOnHurt(u, arts, src)) return;
     // 聖約イグゼキュター：スキル中は近接攻撃を確率で回避し、弾薬を補充（期待値）
@@ -1652,7 +1659,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       u.mberryShield--;
       return;
     }
-    let dmg = mitigate(u, raw, arts) * talentTakenMult(u, arts);
+    let dmg = mitigate(u, raw, arts, defPen) * talentTakenMult(u, arts);
     const sd = g.stead;
     if (sd && sd.members.has(u.input.uid)) steadReflect(u, src);
     else if (sd) {
@@ -2405,14 +2412,38 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
 
+  // ---- 囚人の拘束と解放 ----
+  let freedAll = false;
+  const liberate = (e: Enemy) => {
+    const lib = e.input.spec.liberty;
+    if (!lib || !e.confined) return;
+    e.confined = false;
+    e.defense.def = Math.max(0, e.defense.def - lib.confDef);
+    e.defense.res = currentRes(e);
+    if (lib.freeAll && !freedAll) {
+      freedAll = true;
+      for (const o of enemies) if (o !== e && o.alive) liberate(o);
+    }
+  };
+
+  const enemyFrame = (e: Enemy): [number, number, number, number, number?] => {
+    const f: [number, number, number, number, number?] = [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)];
+    if (e.input.spec.liberty && !e.confined) f.push(1);
+    return f;
+  };
+
   const enemyAttacks = () => {
     for (const e of enemies) {
       const a = e.input.spec.attack;
       if (!a || !e.alive || e.reviveAt !== null) continue;
+      const lib = e.input.spec.liberty;
+      // 解放後の囚人はHPが回復する
+      if (lib?.regen && !e.confined) e.hp = Math.min(e.maxHp, e.hp + lib.regen * dt);
       if (isFrozen(e)) continue;
       if (e.atkTimer > 0) {
-        // 寒冷中は攻撃速度が下がる
-        e.atkTimer -= (t < e.coldUntil ? (dt * (100 - COLD_ATTACK_SPEED)) / 100 : dt) * tileEnemyAtkRate(e);
+        // 寒冷中は攻撃速度が下がる。拘束中の囚人も攻撃速度が下がる
+        const conf = lib && e.confined ? Math.max(0.1, (100 + lib.confAspd) / 100) : 1;
+        e.atkTimer -= (t < e.coldUntil ? (dt * (100 - COLD_ATTACK_SPEED)) / 100 : dt) * tileEnemyAtkRate(e) * conf;
         continue;
       }
       let target: Runtime | undefined;
@@ -2430,9 +2461,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
       if (!target || !target.alive) continue;
       if (a.kind === 'ranged') emit([3, e.id, target.input.uid, a.arts ? 1 : 0]);
-      hurt(target, enemyAtk(e, a.atk) * weakFactor(e), a.arts, e);
+      const free = lib && !e.confined;
+      hurt(target, enemyAtk(e, a.atk * (free ? 1 + lib.atk : 1)) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
       if (e.input.spec.element) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
       e.atkTimer = a.interval;
+      if (lib && e.confined && ++e.confAttacks >= lib.times) liberate(e);
       // 遠距離攻撃の間は一瞬足を止める
       if (a.kind === 'ranged' && e.blockedBy === null) e.stallUntil = t + RANGED_ATTACK_STALL;
     }
@@ -2775,7 +2808,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (opts.record && step % frameEvery === 0) {
       frames.push({
         t: Math.round(t * 100) / 100,
-        e: enemies.filter((e) => e.alive).map((e) => [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)]),
+        e: enemies.filter((e) => e.alive).map(enemyFrame),
         s: rt.filter((u) => u.alive && (u.skillLeft > 0 || u.ammoLeft > 0)).map((u) => u.input.uid),
         u: unitFrame(),
         c: Math.floor(cost),
@@ -2791,7 +2824,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   if (opts.record) {
     frames.push({
       t: Math.round(t * 100) / 100,
-      e: enemies.filter((e) => e.alive).map((e) => [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)]),
+      e: enemies.filter((e) => e.alive).map(enemyFrame),
       s: [],
       u: unitFrame(),
       c: Math.floor(cost),

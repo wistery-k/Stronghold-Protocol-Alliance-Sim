@@ -36,6 +36,12 @@ export interface EnemySpec {
   revive?: { hits: number; interval: number };
   /** 倒れると周囲に汚染秽蝕を残す（範囲内の味方は毎秒HPを失う。HP50%超で high、以下で low） */
   deathPollution?: { high: number; low: number; duration: number; radius: number };
+  /**
+   * 囚人：拘束中は攻撃速度 confAspd・防御力+confDef。times 回攻撃すると解放され、
+   * 攻撃力+atk（割合）、相手の防御力を defPen（割合）無視、術耐性+res、毎秒HP regen 回復。
+   * freeAll：最初に解放された時、場の他の敵もすべて解放する
+   */
+  liberty?: { times: number; confAspd: number; confDef: number; atk: number; defPen: number; res: number; regen: number; freeAll: boolean };
   /** 攻撃時に攻撃力×ratio の元素損傷を与える */
   element?: { type: ElementType; ratio: number };
   /** 攻撃。近接はブロックしている相手を、遠距離は範囲内の相手を攻撃する。無ければ攻撃しない */

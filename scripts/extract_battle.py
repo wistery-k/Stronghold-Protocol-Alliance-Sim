@@ -231,6 +231,19 @@ def main():
                 'duration': bb['polluteddie.projectile_life_time']['value'],
                 'radius': bb['polluteddie.projectile_range']['value'],
             }
+        # 囚人：拘束中は攻撃速度が下がり（一部は防御力が上がる）、一定回数攻撃すると解放されて強くなる
+        if 'confinement.times' in bb:
+            g = lambda k: bb[k]['value'] if k in bb else 0
+            e['liberty'] = {
+                'times': int(g('confinement.times')),
+                'confAspd': g('confinement.attack_speed'),
+                'confDef': g('confinement.def'),
+                'atk': g('liberty.atk'),
+                'defPen': g('liberty.def_penetrate'),
+                'res': g('liberty.magic_resistance'),
+                'regen': g('liberty.hp_recovery_per_sec'),
+                'freeAll': any('解放全场' in a for a in abilities),
+            }
         # 倒れると別の敵を生む
         if 'deadspawn.enemy_key' in bb:
             child = bb['deadspawn.enemy_key']['valueStr']

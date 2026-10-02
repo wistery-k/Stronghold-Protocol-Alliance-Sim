@@ -5,6 +5,8 @@ import type { Tier } from './types';
 // 無いもの（確率・プール枚数など）は妥当そうな値を定めている。
 
 export const MAX_ROUND = 15;
+/** 盟約加算数の上限 */
+export const MAX_STACKS = 999;
 export const START_LIFE = 20;
 /** 1ラウンドに失う耐久値の上限（本家データ costPlayerHpLimit） */
 export const MAX_LIFE_LOSS = 10;

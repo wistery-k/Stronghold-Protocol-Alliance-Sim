@@ -3,7 +3,8 @@ import { battleSetup, evaluateAlliances } from '../src/core/alliance';
 import { behindOf, frontOf, sameRow } from '../src/core/board';
 import { applyAction, createGame, levelUpCost, priceOf, roundSpecOf, type GameState } from '../src/core/game';
 import { UNITS, getUnit } from '../src/core/data/units';
-import { BENCH_SIZE, DEPLOY_CAP, roundIncome } from '../src/core/rules';
+import { BENCH_SIZE, DEPLOY_CAP, MAX_STACKS, roundIncome } from '../src/core/rules';
+import { addStacks } from '../src/core/garrison';
 import type { OwnedItem, OwnedUnit } from '../src/core/types';
 
 const id = (name: string) => UNITS.find((u) => u.name === name)!.id;
@@ -567,5 +568,15 @@ describe('スズランの堅守特性', () => {
     s = applyAction(s, { type: 'next' }).state;
     // マッターホルン +2、ノーシス +5（どちらも1回ずつ）
     expect((s.stacks.kjerag ?? 0) - before).toBe(7);
+  });
+});
+
+describe('盟約加算数', () => {
+  it('上限は999', () => {
+    const s = createGame(1, { mapId: 'legacy' });
+    addStacks(s, 'egir', 990);
+    addStacks(s, 'egir', 50);
+    expect(s.stacks.egir).toBe(MAX_STACKS);
+    expect(MAX_STACKS).toBe(999);
   });
 });

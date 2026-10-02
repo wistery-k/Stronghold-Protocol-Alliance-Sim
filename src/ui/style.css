@@ -1192,6 +1192,11 @@ aside {
   stroke-opacity: 1;
   stroke-width: 4;
 }
+.rp-enemy.freed .rp-enemy-body {
+  stroke: #ffb020;
+  stroke-opacity: 1;
+  stroke-width: 4;
+}
 .rp-hp-bg {
   fill: #000;
   opacity: 0.5;

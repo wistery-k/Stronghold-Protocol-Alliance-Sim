@@ -138,6 +138,20 @@ function enemyBadges(e: EnemySpec) {
     const p = e.deathPollution;
     b('汚染', `倒れると半径${p.radius}マスに汚染秽蝕を${p.duration}秒残す（範囲内の味方は毎秒HPを失う：HP50%超で${p.high}、以下で${p.low}）`, 'sp');
   }
+  if (e.liberty) {
+    const l = e.liberty;
+    const freed = [
+      `攻撃力+${Math.round(l.atk * 100)}%`,
+      l.defPen ? `相手の防御力を${Math.round(l.defPen * 100)}%無視` : '',
+      l.res ? `術耐性+${l.res}` : '',
+      l.regen ? `毎秒HP${l.regen}回復` : '',
+    ].filter(Boolean).join('、');
+    b(
+      '拘束',
+      `拘束中は攻撃速度${l.confAspd}${l.confDef ? `・防御力+${l.confDef}` : ''}。${l.times}回攻撃すると解放され、${freed}${l.freeAll ? '。最初の解放時に場の敵をすべて解放する' : ''}`,
+      'sp',
+    );
+  }
   if (e.deadSpawn) {
     const c = ENEMIES[e.deadSpawn.enemy];
     b('分裂', `倒れると${c?.name ?? '敵'}×${e.deadSpawn.count}が現れる${c?.hitsToKill ? `（攻撃${c.hp}回で倒れる・ブロック不可）` : ''}`, 'sp');
@@ -571,6 +585,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       const rad = enemyRadius(meta.get(e[0])!);
       n.bar.setAttribute('width', String(Math.max(0, (e[3] / 100) * rad * 2)));
       n.g.style.display = '';
+      n.g.classList.toggle('freed', e[4] === 1);
       seen.add(e[0]);
     }
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';

@@ -4606,6 +4606,16 @@
     "interval": 1.0,
     "range": 0,
     "arts": false
+   },
+   "liberty": {
+    "times": 4,
+    "confAspd": -50.0,
+    "confDef": 0,
+    "atk": 0.5,
+    "defPen": 0.8,
+    "res": 0,
+    "regen": 0,
+    "freeAll": false
    }
   },
   "enemy_1116_liprr": {
@@ -4625,6 +4635,16 @@
     "interval": 2.0,
     "range": 0,
     "arts": false
+   },
+   "liberty": {
+    "times": 4,
+    "confAspd": -50.0,
+    "confDef": 0,
+    "atk": 0.5,
+    "defPen": 0,
+    "res": 0,
+    "regen": 0,
+    "freeAll": false
    }
   },
   "enemy_1116_liprr_2": {
@@ -4644,6 +4664,16 @@
     "interval": 2.0,
     "range": 0,
     "arts": false
+   },
+   "liberty": {
+    "times": 4,
+    "confAspd": -50.0,
+    "confDef": 0,
+    "atk": 0.5,
+    "defPen": 0,
+    "res": 0,
+    "regen": 0,
+    "freeAll": false
    }
   },
   "enemy_1325_cbgpro_2": {
@@ -4720,6 +4750,16 @@
     "interval": 3.0,
     "range": 0,
     "arts": false
+   },
+   "liberty": {
+    "times": 4,
+    "confAspd": -50.0,
+    "confDef": 300.0,
+    "atk": 0.5,
+    "defPen": 0,
+    "res": 0,
+    "regen": 0,
+    "freeAll": true
    }
   },
   "enemy_1006_shield_3": {
@@ -4916,6 +4956,16 @@
     "interval": 3.0,
     "range": 0,
     "arts": false
+   },
+   "liberty": {
+    "times": 4,
+    "confAspd": -50.0,
+    "confDef": 300.0,
+    "atk": 0.5,
+    "defPen": 0,
+    "res": 0,
+    "regen": 0,
+    "freeAll": true
    }
   },
   "enemy_1119_vofsd": {
@@ -4935,6 +4985,16 @@
     "interval": 3.3,
     "range": 0,
     "arts": false
+   },
+   "liberty": {
+    "times": 4,
+    "confAspd": -50.0,
+    "confDef": 0,
+    "atk": 0.5,
+    "defPen": 0,
+    "res": 40.0,
+    "regen": 150.0,
+    "freeAll": false
    }
   },
   "enemy_1320_wdrrl_2": {

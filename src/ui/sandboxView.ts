@@ -3,7 +3,7 @@ import { ENEMIES, ENEMY_GROUPS, ROUNDS, groupName, roundEnemySummary, roundSpec,
 import { UNITS, getUnit } from '../core/data/units';
 import { activeAllianceIds } from '../core/alliance';
 import { buildSimInputs } from '../core/game';
-import { DEPLOY_CAP } from '../core/rules';
+import { DEPLOY_CAP, MAX_STACKS } from '../core/rules';
 import { battleTimeLimit, simulateBattle, type BattleResult } from '../core/sim';
 import type { AllianceId, OwnedUnit, Star } from '../core/types';
 import { alliancePanel, unitCard } from './components';
@@ -222,9 +222,9 @@ export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) =
               h('input', {
                 type: 'number',
                 min: 0,
-                max: 200,
+                max: MAX_STACKS,
                 value: sb.stacks[a.id] ?? 0,
-                onchange: (e: Event) => update((s) => { s.stacks[a.id] = Math.max(0, Number((e.target as HTMLInputElement).value) || 0); }),
+                onchange: (e: Event) => update((s) => { s.stacks[a.id] = Math.min(MAX_STACKS, Math.max(0, Number((e.target as HTMLInputElement).value) || 0)); }),
               }),
             ),
           ),

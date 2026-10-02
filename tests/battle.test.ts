@@ -371,6 +371,20 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.perUnit[0].taken).toBeGreaterThan(200);
   });
 
+  it('囚人は数回攻撃すると解放され、攻撃力が上がり防御力を無視する', () => {
+    const atk = { kind: 'melee' as const, atk: 400, interval: 1, range: 0, arts: false };
+    const liberty = { times: 4, confAspd: -50, confDef: 0, atk: 0.5, defPen: 0.8, res: 0, regen: 0, freeAll: false };
+    const board: OwnedUnit[] = [{ uid: 1, defId: byProf('defender').id, star: 2, pos: 34, dir: 'right' }];
+    const plain = run(board, oneEnemy('test_prisoner_plain', false, { speed: 3, attack: atk }));
+    const prisoner = run(board, oneEnemy('test_prisoner', false, { speed: 3, attack: atk, liberty }));
+    expect(prisoner.perUnit[0].taken).toBeGreaterThan(plain.perUnit[0].taken * 3);
+    // 解放されるまで（拘束中）は攻撃速度が下がる：同じ時間内の被ダメージは解放なしより少ない
+    const short = (s: RoundSpec) => ({ ...s, timeLimit: 5 });
+    const conf = run(board, short(oneEnemy('test_prisoner_conf', false, { speed: 3, attack: atk, liberty: { ...liberty, times: 99 } })));
+    const plain5 = run(board, short(oneEnemy('test_prisoner_plain', false, { speed: 3, attack: atk })));
+    expect(conf.perUnit[0].taken < plain5.perUnit[0].taken).toBe(true);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか
