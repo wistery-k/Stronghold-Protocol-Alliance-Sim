@@ -736,7 +736,7 @@ aside {
 .panel.shop.drop-over {
   outline-color: var(--ng);
 }
-.card[draggable='true'] {
+.card.draggable {
   cursor: grab;
 }
 .card-top .card-name {
@@ -1180,4 +1180,27 @@ aside {
 }
 .rp-unit.down {
   opacity: 0.25;
+}
+
+/* ドラッグ&ドロップ（ポインターイベント） */
+.card.draggable {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.drag-ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0.85;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.card.drag-source {
+  opacity: 0.35;
+}
+body.dragging,
+body.dragging * {
+  cursor: grabbing !important;
 }

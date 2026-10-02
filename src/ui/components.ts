@@ -5,13 +5,12 @@ import { isGarrisonImplemented, type AllianceStatus } from '../core/alliance';
 import { attackInterval, baseAtk } from '../core/sim';
 import type { AllianceId, Modifier, OwnedItem, OwnedUnit, Star } from '../core/types';
 import { fmt, h, pct } from './dom';
+import { makeDraggable, registerDropTarget } from './dnd';
 
 export function starBadge(star: Star) {
   return star === 2 ? h('span', { class: 'promoted', title: '精鋭' }, '精鋭') : null;
 }
 
-/** ドラッグ中のユニット uid を運ぶ MIME 型 */
-export const DRAG_MIME = 'application/x-sp-unit';
 
 export interface CardOptions {
   star?: Star;
@@ -47,7 +46,6 @@ export function unitCard(defId: string, opts: CardOptions = {}) {
       ondblclick: opts.onDblClick ? () => opts.onDblClick!() : undefined,
       onmouseenter: opts.onHover ? () => opts.onHover!(true) : undefined,
       onmouseleave: opts.onHover ? () => opts.onHover!(false) : undefined,
-      draggable: opts.dragUid !== undefined ? 'true' : undefined,
       title: `${d.name}（${PROFESSION_NAME[d.profession]}）\n${st.skill.name}：${st.skill.description}\n\n${st.garrisons.map((g) => g.description).join('\n')}`,
     },
     h(
@@ -71,38 +69,13 @@ export function unitCard(defId: string, opts: CardOptions = {}) {
       : null,
   );
   if (opts.onItemDrop) makeItemDropTarget(card, opts.onItemDrop);
-  if (opts.dragUid !== undefined) {
-    const uid = opts.dragUid;
-    card.addEventListener('dragstart', (e) => {
-      e.dataTransfer?.setData(DRAG_MIME, String(uid));
-      e.dataTransfer?.setData('text/plain', String(uid));
-      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-      document.body.classList.add('dragging');
-    });
-    card.addEventListener('dragend', () => document.body.classList.remove('dragging'));
-  }
+  if (opts.dragUid !== undefined) makeDraggable(card, 'unit', opts.dragUid);
   return card;
 }
 
-/** 要素をドロップ先にする。ユニットの uid を受け取る */
+/** 要素をドロップ先にする。ユニットの uid を受け取る（onItemDrop があれば装備も受け取る） */
 export function makeDropTarget<T extends HTMLElement>(el: T, onDrop: (uid: number) => void, onItemDrop?: (itemUid: number) => void): T {
-  if (onItemDrop) makeItemDropTarget(el, onItemDrop);
-  el.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-    el.classList.add('drop-over');
-  });
-  el.addEventListener('dragleave', (e) => {
-    if (!el.contains(e.relatedTarget as Node | null)) el.classList.remove('drop-over');
-  });
-  el.addEventListener('drop', (e) => {
-    e.preventDefault();
-    el.classList.remove('drop-over');
-    document.body.classList.remove('dragging');
-    const raw = e.dataTransfer?.getData(DRAG_MIME) || e.dataTransfer?.getData('text/plain');
-    const uid = Number(raw);
-    if (raw && Number.isFinite(uid)) onDrop(uid);
-  });
+  registerDropTarget(el, { unit: onDrop, ...(onItemDrop ? { item: onItemDrop } : {}) });
   return el;
 }
 
@@ -191,8 +164,6 @@ export function alliancePanel(statuses: AllianceStatus[], stacks: Partial<Record
 // 装備
 // ------------------------------------------------------------
 
-export const ITEM_MIME = 'application/x-sp-item';
-
 export function itemCard(
   itemId: string,
   opts: { star?: Star; price?: number; dragItemUid?: number; dim?: boolean; onClick?: () => void } = {},
@@ -206,7 +177,6 @@ export function itemCard(
       tabindex: 0,
       class: `card item tier-${def.tier}${opts.dim ? ' dim' : ''}${opts.star === 2 ? ' golden' : ''}`,
       onclick: opts.onClick ? () => opts.onClick!() : undefined,
-      draggable: opts.dragItemUid !== undefined ? 'true' : undefined,
       title: `${st.name}\n${st.description}`,
     },
     h(
@@ -217,37 +187,13 @@ export function itemCard(
     ),
     h('div', { class: 'item-desc' }, st.description),
   );
-  if (opts.dragItemUid !== undefined) {
-    const uid = opts.dragItemUid;
-    card.addEventListener('dragstart', (e) => {
-      e.dataTransfer?.setData(ITEM_MIME, String(uid));
-      if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-      document.body.classList.add('dragging');
-    });
-    card.addEventListener('dragend', () => document.body.classList.remove('dragging'));
-  }
+  if (opts.dragItemUid !== undefined) makeDraggable(card, 'item', opts.dragItemUid);
   return card;
 }
 
 /** 要素を装備のドロップ先にする（オペレーターへの装備など） */
 export function makeItemDropTarget<T extends HTMLElement>(el: T, onDrop: (itemUid: number) => void): T {
-  const isItem = (e: DragEvent) => !!e.dataTransfer?.types.includes(ITEM_MIME);
-  el.addEventListener('dragover', (e) => {
-    if (!isItem(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    el.classList.add('item-over');
-  });
-  el.addEventListener('dragleave', () => el.classList.remove('item-over'));
-  el.addEventListener('drop', (e) => {
-    if (!isItem(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    el.classList.remove('item-over');
-    document.body.classList.remove('dragging');
-    const uid = Number(e.dataTransfer?.getData(ITEM_MIME));
-    if (Number.isFinite(uid)) onDrop(uid);
-  });
+  registerDropTarget(el, { item: onDrop });
   return el;
 }
 
