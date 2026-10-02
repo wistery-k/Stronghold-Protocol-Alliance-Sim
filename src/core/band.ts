@@ -137,7 +137,7 @@ export function bandOnBuy(state: GameState, defId: string): void {
   }
 }
 
-/** 調達所を手動で更新した後（ドゥ・ヤオイエ・ペペの特殊更新、キアーベ） */
+/** 調達所を手動で更新した後（ドゥ・ヤオイェ・ペペの特殊更新、キアーベ） */
 export function bandAfterRefresh(state: GameState): void {
   const band = bandOf(state);
   if (band === 'duyaoy' && state.round_.refreshes <= 2) ensureBondInShop(state, 'yan', false);
