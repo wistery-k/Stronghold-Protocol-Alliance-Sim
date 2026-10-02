@@ -1,6 +1,7 @@
 import { ALLIANCES } from '../core/data/alliances';
 import { ENEMIES, getBounty, groupLabel, groupName, roundEnemySummary, roundSpec } from '../core/data/battle';
 import { getBand } from '../core/data/bands';
+import { getMap } from '../core/board';
 import { ENEMY_HP_SCALE } from '../core/rules';
 import { activeAllianceIds, evaluateAlliances, unitAlliances } from '../core/alliance';
 import { benchUnits } from '../core/garrison';
@@ -61,6 +62,7 @@ function topBar(state: GameState, extra: HTMLElement | null = null) {
     h('div', { class: 'stat' }, h('span', { class: 'label' }, 'ラウンド'), h('b', null, `${state.round}/${MAX_ROUND}`)),
     h('div', { class: `stat ${state.life <= 5 ? 'warn' : ''}` }, h('span', { class: 'label' }, '耐久値'), h('b', null, state.life)),
     bandStat(state),
+    h('div', { class: 'stat' }, h('span', { class: 'label' }, 'マップ'), h('b', null, getMap(state.mapId).name)),
     extra,
   );
 }

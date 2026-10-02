@@ -24,6 +24,11 @@
   --tile-spawn: #5a2b2f;
   --tile-goal: #23405e;
   --path: #ef6b6b;
+  --tile-floor: #262b33;
+  --tile-infection: #4b3550;
+  --tile-mire: #3d4a35;
+  --tile-smog: #3c4554;
+  --tile-deepsea: #26425e;
   color-scheme: dark;
 }
 
@@ -45,6 +50,11 @@
     --tile-wall: #5d6470;
     --tile-spawn: #f1c0c0;
     --tile-goal: #bcd4f0;
+    --tile-floor: #c4c8cf;
+    --tile-infection: #e3c9e8;
+    --tile-mire: #c9d6b8;
+    --tile-smog: #cfd6e2;
+    --tile-deepsea: #a9c6e6;
     --path: #d64545;
     color-scheme: light;
   }
@@ -999,6 +1009,11 @@ aside {
 .cell.t-wall { background: var(--tile-wall); }
 .cell.t-spawn { background: var(--tile-spawn); }
 .cell.t-goal { background: var(--tile-goal); }
+.cell.t-floor { background: var(--tile-floor); }
+.cell.t-infection, .lg.t-infection { background: var(--tile-infection); }
+.cell.t-mire, .lg.t-mire { background: var(--tile-mire); }
+.cell.t-smog, .lg.t-smog { background: var(--tile-smog); background-image: repeating-linear-gradient(90deg, transparent 0 6px, rgba(255, 255, 255, 0.08) 6px 8px); }
+.cell.t-deepsea, .lg.t-deepsea { background: var(--tile-deepsea); }
 .cell.path::before {
   content: '';
   position: absolute;

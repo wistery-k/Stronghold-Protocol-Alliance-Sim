@@ -1,4 +1,5 @@
 import { applyAction, createGame, type Action, type GameState } from './core/game';
+import { getMap, setActiveMap } from './core/board';
 import { h } from './ui/dom';
 import { gameView } from './ui/gameView';
 import { bandView } from './ui/bandView';
@@ -79,6 +80,8 @@ function startGame(band: BandId) {
 
 function render() {
   const root = document.getElementById('app')!;
+  // マップはゲームごと（サンドボックスは画面内で切り替える）
+  if (app.mode === 'game') setActiveMap(app.choosingBand ? createGame(app.pendingSeed).mapId : app.game.mapId);
   const scrollY = window.scrollY;
   const view =
     app.mode === 'game' && app.choosingBand
@@ -86,6 +89,7 @@ function render() {
           startGame,
           app.hasGame && app.game.phase !== 'gameover' && app.game.phase !== 'clear' ? () => { app.choosingBand = false; render(); } : null,
           createGame(app.pendingSeed).banned,
+          getMap(createGame(app.pendingSeed).mapId).name,
         )
       : app.mode === 'game'
       ? gameView({

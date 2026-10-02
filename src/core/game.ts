@@ -56,7 +56,7 @@ import {
 } from './items';
 import { getItem, itemState } from './data/items';
 import { ALLIANCES, ALLIANCE_IDS, CORE_IDS } from './data/alliances';
-import { autoCell, bestDirection, canPlace, normalizePositions, unitAt } from './board';
+import { MAPS, autoCell, bestDirection, canPlace, normalizePositions, setActiveMap, unitAt } from './board';
 import {
   BENCH_SIZE,
   CHOICE_LOCK_MESSAGE,
@@ -101,6 +101,8 @@ export interface GameState {
   version: 9;
   /** 選んだ戦術（null = なし） */
   band: BandId | null;
+  /** マップ（ゲーム開始時に抽選。古いセーブデータには無い） */
+  mapId?: string;
   bandState: BandState;
   /** 懸賞：提示中の候補と、選んだ懸賞（3〜4ラウンドに出現） */
   bounty: { offer: string[] | null; picked: string | null };
@@ -184,6 +186,8 @@ export interface GameOptions {
   ban?: 'random' | 'none';
   /** 戦術 */
   band?: BandId | null;
+  /** マップ（省略時は抽選） */
+  mapId?: string;
 }
 
 /** ラウンドの敵グループ（シードとラウンドで決まる） */
@@ -205,7 +209,11 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
   const pool: Record<string, number> = {};
   for (const u of UNITS) pool[u.id] = POOL_COPIES[u.tier];
   const band = opts.band ?? null;
+  // マップはショップとは別系統の乱数で抽選する
+  const mapId = opts.mapId ?? MAPS[new Rng(seed ^ 0x3a9b1c55).int(MAPS.length)].id;
+  setActiveMap(mapId);
   const state: GameState = {
+    mapId,
     version: 9,
     band,
     bandState: newBandState(),
@@ -342,6 +350,7 @@ export function applyAction(prev: GameState, action: Action): ActionResult {
 }
 
 function applyActionInner(prev: GameState, action: Action): ActionResult {
+  setActiveMap(prev.mapId);
   const state = structuredClone(prev);
   const fail = (error: string): ActionResult => ({ state: prev, error });
   const inPrep = state.phase === 'prep';

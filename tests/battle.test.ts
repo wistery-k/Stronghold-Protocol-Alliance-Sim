@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENEMY_PATHS, GOAL, SPAWNS, canPlace, tileAt } from '../src/core/board';
+import { ENEMY_PATHS, GOAL, MAPS, SPAWNS, canPlace, setActiveMap, tileAt } from '../src/core/board';
 import { ENEMIES, ENEMY_GROUPS, ROUNDS, pickRoundGroup, roundSpec, type EnemySpec, type RoundSpec } from '../src/core/data/battle';
 import { UNITS } from '../src/core/data/units';
 import { buildSimInputs, createGame, roundGroupOf } from '../src/core/game';
@@ -10,16 +10,31 @@ const byProf = (p: string) => UNITS.find((u) => u.profession === p && u.tier <= 
 
 /** テスト用：倒れない敵を1体だけ出すラウンド */
 function oneEnemy(key: string, flying: boolean, over: Partial<EnemySpec> = {}): RoundSpec {
+  // 位置を決め打ちしたテストは以前の仮マップで行う（他のテストのゲーム生成でマップが変わるため）
+  setActiveMap('legacy');
   ENEMIES[key] = { name: key, hp: 1e9, def: 5000, res: 100, speed: 1, blockCnt: 1, flying, boss: false, elite: false, lifeReduce: 1, ...over };
   return { round: 1, levelId: 'test', timeLimit: 30, moveMultiplier: 0.5, spawns: [{ enemy: key, count: 1, interval: 0, delay: 0, spawn: 1 }] };
 }
 
 function run(board: OwnedUnit[], spec: RoundSpec) {
+  setActiveMap('legacy');
   const { inputs, globals } = buildSimInputs(board, [], {});
   return simulateBattle(inputs, spec, { globals, record: true });
 }
 
 describe('マップ', () => {
+  it('本家の8マップはどれも出現地点が2つで、防衛地点まで経路がある', () => {
+    for (const m of MAPS) {
+      setActiveMap(m.id);
+      expect(SPAWNS.length).toBe(2);
+      for (const p of ENEMY_PATHS) {
+        expect(p[0]).toBe(SPAWNS[ENEMY_PATHS.indexOf(p)]);
+        expect(p[p.length - 1]).toBe(GOAL);
+      }
+    }
+    setActiveMap('legacy');
+  });
+
   it('出現マスから防衛マスまでの経路がある', () => {
     expect(SPAWNS.length).toBe(2);
     for (const p of ENEMY_PATHS) {

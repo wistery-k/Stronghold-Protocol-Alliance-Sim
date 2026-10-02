@@ -13,24 +13,63 @@ export const DIRECTION_NAME: Record<Direction, string> = { up: '上', right: '�
 //   「左右一直線上」は向きに関係なく絶対方角の横一列（同じ y）。
 
 /**
- * マップ。1: 地上（全員配置可・敵が通る）2: 敵の出現地点 3: 地上（全員配置可・敵は通らない）
- * 4: 壁 5: 高台（遠距離のみ配置可）6: 防衛地点（敵の目的地。到達されると耐久値が減る）
+ * マップ（9列×4行）。本家の盟約（後期）の配置エリア（act1autochess_m01〜m04・act2autochess_m01〜m04）。
+ * 1: 地上（全員配置可・敵が通る） 2: 敵の出現地点 3: 地上（全員配置可・敵は通らない） 4: 配置不可
+ * 5: 高台（遠距離のみ配置可） 6: 防衛地点 7: 通路（配置不可・敵が通る）
+ * 特殊な地上（全員配置可・敵が通る）: X 活性源石 M 沼地 G 排気格子 D 深水区
  */
-export const MAP_LAYOUT = ['444555112', '445553134', '455533134', '611111112'];
+export interface MapDef {
+  id: string;
+  name: string;
+  layout: string[];
+}
 
-export type TileType = 'ground' | 'spawn' | 'safe' | 'wall' | 'high' | 'goal';
-const TILE_CODE: Record<string, TileType> = { '1': 'ground', '2': 'spawn', '3': 'safe', '4': 'wall', '5': 'high', '6': 'goal' };
+export const MAPS: MapDef[] = [
+  { id: 'm1', name: 'マップ1', layout: ['431111172', '431333177', '431333177', '611444112'] },
+  { id: 'm2', name: 'マップ2', layout: ['411111172', '413311177', '413314477', '611114412'] },
+  { id: 'm3', name: 'マップ3', layout: ['444311172', '444313377', '477113377', '611111112'] },
+  { id: 'm4', name: 'マップ4（活性源石）', layout: ['431444172', '4311X1177', '4311X1177', '611444112'] },
+  { id: 'm5', name: 'マップ5（高台）', layout: ['445111372', '445141377', '445141377', '611141112'] },
+  { id: 'm6', name: 'マップ6（沼地）', layout: ['44445M172', '44453M377', '44533M377', '611111112'] },
+  { id: 'm7', name: 'マップ7（排気格子）', layout: ['4311G1172', '431333377', '4313G1177', '611114412'] },
+  { id: 'm8', name: 'マップ8（深水区）', layout: ['4311D1172', '4311D3377', '4313D3377', '611311112'] },
+];
+/** テスト・古いセーブデータ用の以前の仮マップ */
+export const LEGACY_MAP: MapDef = { id: 'legacy', name: '旧マップ', layout: ['444555112', '445553134', '455533134', '611111112'] };
+export const getMap = (id: string | null | undefined): MapDef => MAPS.find((m) => m.id === id) ?? LEGACY_MAP;
+
+export type TileType = 'ground' | 'spawn' | 'safe' | 'wall' | 'high' | 'goal' | 'floor' | 'infection' | 'mire' | 'smog' | 'deepsea';
+const TILE_CODE: Record<string, TileType> = {
+  '1': 'ground',
+  '2': 'spawn',
+  '3': 'safe',
+  '4': 'wall',
+  '5': 'high',
+  '6': 'goal',
+  '7': 'floor',
+  X: 'infection',
+  M: 'mire',
+  G: 'smog',
+  D: 'deepsea',
+};
 export const TILE_NAME: Record<TileType, string> = {
   ground: '地上マス',
   spawn: '敵の出現地点',
   safe: '地上マス（敵は通らない）',
-  wall: '壁',
+  wall: '配置できないマス',
   high: '高台マス（遠距離のみ）',
   goal: '防衛地点',
+  floor: '通路（配置できない・敵が通る）',
+  infection: '活性源石：配置した味方と通る敵は攻撃力+20%・攻撃速度+20、毎秒HPを70失う',
+  mire: '沼地：配置した味方は攻撃速度-30、通る敵は移動速度・攻撃速度が下がる',
+  smog: '排気格子：配置した味方は敵の遠距離攻撃の対象にならない',
+  deepsea: '深水区：通る敵は移動速度・攻撃速度が下がり、毎秒HPを失う',
 };
+/** 地上として扱う（配置でき、敵が通り、ブロックできる）特殊なマス */
+const SPECIAL_GROUND: TileType[] = ['infection', 'mire', 'smog', 'deepsea'];
 
-export const BOARD_COLS = MAP_LAYOUT[0].length;
-export const BOARD_ROWS = MAP_LAYOUT.length;
+export const BOARD_COLS = 9;
+export const BOARD_ROWS = 4;
 export const BOARD_CELLS = BOARD_COLS * BOARD_ROWS;
 
 export const cellX = (pos: number) => pos % BOARD_COLS;
@@ -38,12 +77,22 @@ export const cellY = (pos: number) => Math.floor(pos / BOARD_COLS);
 export const cellPos = (x: number, y: number) => y * BOARD_COLS + x;
 const inside = (x: number, y: number) => x >= 0 && x < BOARD_COLS && y >= 0 && y < BOARD_ROWS;
 
+/** 使用中のマップ（ゲームごとに setActiveMap で切り替える） */
+export let ACTIVE_MAP: MapDef = LEGACY_MAP;
+export let MAP_LAYOUT: string[] = LEGACY_MAP.layout;
+
 export function tileAt(pos: number): TileType {
   return TILE_CODE[MAP_LAYOUT[cellY(pos)][cellX(pos)]];
 }
 
+/** 地上（特殊なマスを含む） */
+export const isGroundTile = (t: TileType) => t === 'ground' || SPECIAL_GROUND.includes(t);
+
 /** 敵が通れるマス */
-export const enemyPassable = (pos: number) => ['ground', 'spawn', 'goal'].includes(tileAt(pos));
+export const enemyPassable = (pos: number) => {
+  const t = tileAt(pos);
+  return isGroundTile(t) || t === 'spawn' || t === 'goal' || t === 'floor';
+};
 
 /** 近距離職（地上マスにしか置けない職分ではなく、高台に置けない職分） */
 export function isMelee(defId: string): boolean {
@@ -54,20 +103,23 @@ export function isMelee(defId: string): boolean {
 export function canPlace(pos: number, defId: string): boolean {
   if (pos < 0 || pos >= BOARD_CELLS) return false;
   const t = tileAt(pos);
-  if (t === 'ground' || t === 'safe') return true;
+  if (isGroundTile(t) || t === 'safe') return true;
   if (t === 'high') return !isMelee(defId);
   return false;
 }
 
 /** そのマスに置いたオペレーターが敵をブロックできるか（敵が通る地上マス） */
-export const canBlockAt = (pos: number) => tileAt(pos) === 'ground';
+export const canBlockAt = (pos: number) => isGroundTile(tileAt(pos));
+
+/** 経路マスの評価：通る経路の数（合流後のマスは2）。同点なら出現地点寄り（早く攻撃できる）を優先 */
+const PATH_WEIGHT = new Map<number, number>();
+/** 防衛地点への近さ（0〜1） */
+const GOAL_NEAR = new Map<number, number>();
 
 export const SPAWNS: number[] = [];
 export let GOAL = 0;
-for (let p = 0; p < BOARD_CELLS; p++) {
-  if (tileAt(p) === 'spawn') SPAWNS.push(p);
-  if (tileAt(p) === 'goal') GOAL = p;
-}
+export let ENEMY_PATHS: number[][] = [];
+export let PATH_TILES = new Set<number>();
 
 /** 出現地点から防衛地点までの経路（マスの並び） */
 function findPath(from: number): number[] {
@@ -91,8 +143,31 @@ function findPath(from: number): number[] {
   return path;
 }
 
-export const ENEMY_PATHS: number[][] = SPAWNS.map(findPath);
-export const PATH_TILES = new Set(ENEMY_PATHS.flat());
+/** 使用するマップを切り替える（出現地点・経路を計算し直す） */
+export function setActiveMap(id: string | null | undefined): void {
+  const map = getMap(id);
+  if (map === ACTIVE_MAP && ENEMY_PATHS.length) return;
+  ACTIVE_MAP = map;
+  MAP_LAYOUT = map.layout;
+  SPAWNS.length = 0;
+  for (let p = 0; p < BOARD_CELLS; p++) {
+    if (tileAt(p) === 'spawn') SPAWNS.push(p);
+    if (tileAt(p) === 'goal') GOAL = p;
+  }
+  // 出現地点は上（0）→下（1）の順
+  SPAWNS.sort((a, b) => cellY(a) - cellY(b));
+  ENEMY_PATHS = SPAWNS.map(findPath);
+  PATH_TILES = new Set(ENEMY_PATHS.flat());
+  PATH_WEIGHT.clear();
+  GOAL_NEAR.clear();
+  for (const path of ENEMY_PATHS) {
+    path.forEach((p, i) => {
+      if (p === GOAL) return;
+      PATH_WEIGHT.set(p, (PATH_WEIGHT.get(p) ?? 0) + 1);
+      GOAL_NEAR.set(p, Math.max(GOAL_NEAR.get(p) ?? 0, i / path.length));
+    });
+  }
+}
 
 /** 攻撃範囲のオフセット（右向き基準の [前方, 横]）を向きに合わせてマス座標に変換 */
 export function rotateOffset(dir: Direction, col: number, row: number): [number, number] {
@@ -126,17 +201,6 @@ export function unitRangeCells(o: OwnedUnit, skill = false): number[] {
   return rangeCells(o.pos, o.dir ?? DEFAULT_DIRECTION, rangeGrid(skill && ids.skillRange ? ids.skillRange : ids.range));
 }
 
-/** 経路マスの評価：通る経路の数（合流後のマスは2）。同点なら出現地点寄り（早く攻撃できる）を優先 */
-const PATH_WEIGHT = new Map<number, number>();
-/** 防衛地点への近さ（0〜1） */
-const GOAL_NEAR = new Map<number, number>();
-for (const path of ENEMY_PATHS) {
-  path.forEach((p, i) => {
-    if (p === GOAL) return;
-    PATH_WEIGHT.set(p, (PATH_WEIGHT.get(p) ?? 0) + 1);
-    GOAL_NEAR.set(p, Math.max(GOAL_NEAR.get(p) ?? 0, i / path.length));
-  });
-}
 
 function coverage(pos: number, dir: Direction, grid: [number, number][]): number {
   return rangeCells(pos, dir, grid).reduce((sum, p) => sum + (PATH_WEIGHT.get(p) ?? 0) - 0.05 * (GOAL_NEAR.get(p) ?? 0), 0);
@@ -271,3 +335,5 @@ export function egirDevour(board: OwnedUnit[], egirMembers: Set<number>, damage 
   }
   return { atkGain, dead, stacks };
 }
+
+setActiveMap(LEGACY_MAP.id);

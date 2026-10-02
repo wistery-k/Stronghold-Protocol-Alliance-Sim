@@ -15,6 +15,9 @@ export function talentBB(def: UnitDef, star: 1 | 2, i: number): Record<string, n
   return out;
 }
 
+/** 地面マス（高台・配置不可のマス以外） */
+const isLowland = (pos: number) => !['wall', 'high'].includes(tileAt(pos));
+
 /** 【アビサルハンター】 */
 export const ABYSSAL = new Set(['char_263_skadi', 'char_143_ghost', 'char_474_glady', 'char_1012_skadi2', 'char_1023_ghost2', 'char_4145_ulpia']);
 
@@ -75,14 +78,14 @@ export function applyTalentMods(
         break;
       case 'char_4013_kjera': {
         // イェラ：攻撃範囲内に地面マスが3つ以上なら攻撃力上昇が大きい
-        const ground = [...inRange(o)].filter((c) => tileAt(c) === 'ground').length;
+        const ground = [...inRange(o)].filter((c) => isLowland(c)).length;
         apply(self, { atkPct: ground > (t0.cnt ?? 2) ? t0['kjera_t_1[high].atk'] : t0.atk });
         break;
       }
       case 'char_431_ashlok': {
         // アッシュロック：隣接4マスがすべて地面マスなら攻撃力上昇が大きい
         const adj = o.pos === undefined ? [] : [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dx, dy]) => [cellX(o.pos!) + dx, cellY(o.pos!) + dy]);
-        const allGround = adj.length === 4 && adj.every(([x, y]) => x >= 0 && y >= 0 && x < 9 && y < 4 && tileAt(y * 9 + x) === 'ground');
+        const allGround = adj.length === 4 && adj.every(([x, y]) => x >= 0 && y >= 0 && x < 9 && y < 4 && isLowland(y * 9 + x));
         apply(self, { atkPct: allGround ? t0['ashlok_t_1.atk'] : t0.atk });
         break;
       }

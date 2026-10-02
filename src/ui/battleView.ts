@@ -12,7 +12,10 @@ import {
   canPlace,
   cellX,
   cellY,
+  isGroundTile,
+  MAP_LAYOUT,
   tileAt,
+  type TileType,
   unitRangeCells,
 } from '../core/board';
 import { ENEMIES, groupLabel, roundEnemySummary, type EnemySpec, type RoundGroup, type RoundSpec } from '../core/data/battle';
@@ -55,6 +58,7 @@ export function mapGrid(
       tile === 'spawn' ? h('span', { class: 'tile-label' }, '出現') : null,
       tile === 'goal' ? h('span', { class: 'tile-label' }, '防衛') : null,
       tile === 'high' && !o ? h('span', { class: 'tile-label faint' }, '高台') : null,
+      SPECIAL_LABEL[tile] && !o ? h('span', { class: 'tile-label faint' }, SPECIAL_LABEL[tile]) : null,
     );
     if (o) {
       const dir = o.dir ?? DEFAULT_DIRECTION;
@@ -83,7 +87,7 @@ export function mapGrid(
         ),
       );
     }
-    if (tile === 'ground' || tile === 'safe' || tile === 'high') makeDropTarget(cell, (uid) => opts.onDropCell(pos, uid));
+    if (isGroundTile(tile) || tile === 'safe' || tile === 'high') makeDropTarget(cell, (uid) => opts.onDropCell(pos, uid));
     cells.push(cell);
   }
   return h(
@@ -95,12 +99,19 @@ export function mapGrid(
       h('span', { class: 'lg t-ground' }, '地上'),
       h('span', { class: 'lg t-safe' }, '地上（敵は通らない）'),
       h('span', { class: 'lg t-high' }, '高台（遠距離のみ）'),
+      ...(['infection', 'mire', 'smog', 'deepsea'] as const)
+        .filter((tl) => MAP_LAYOUT.some((row) => row.includes(SPECIAL_CODE[tl])))
+        .map((tl) => h('span', { class: `lg t-${tl}`, title: TILE_NAME[tl] }, SPECIAL_LABEL[tl]!)),
       h('span', { class: 'lg path' }, '敵の経路'),
       h('span', null, '辺クリックで向き変更・マウスを乗せると攻撃範囲'),
     ),
     h('div', { class: 'map-scroll' }, h('div', { class: 'board-grid map', style: `grid-template-columns: repeat(${BOARD_COLS}, minmax(0, 1fr))` }, cells)),
   );
 }
+
+/** 特殊なマスの短い名前とマップの記号 */
+const SPECIAL_LABEL: Partial<Record<TileType, string>> = { infection: '源石', mire: '沼地', smog: '格子', deepsea: '深水', floor: '' };
+const SPECIAL_CODE = { infection: 'X', mire: 'M', smog: 'G', deepsea: 'D' } as const;
 
 /** そのマスに置けるかの説明（ドラッグ中の案内用） */
 export function placeHint(defId: string, pos: number): string | null {
@@ -309,6 +320,11 @@ const TILE_FILL: Record<string, string> = {
   wall: 'var(--tile-wall)',
   spawn: 'var(--tile-spawn)',
   goal: 'var(--tile-goal)',
+  floor: 'var(--tile-floor)',
+  infection: 'var(--tile-infection)',
+  mire: 'var(--tile-mire)',
+  smog: 'var(--tile-smog)',
+  deepsea: 'var(--tile-deepsea)',
 };
 
 /** 敵を表す円の半径（最大HPが大きいほど大きい） */

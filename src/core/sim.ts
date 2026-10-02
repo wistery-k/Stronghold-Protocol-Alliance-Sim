@@ -1,5 +1,5 @@
 import { bondKey, type BattleGlobals } from './alliance';
-import { ENEMY_PATHS, canBlockAt, cellPos, cellX, cellY, rangeCells, DEFAULT_DIRECTION } from './board';
+import { ENEMY_PATHS, canBlockAt, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
 import { ENEMIES, rangeGrid, unitRangeIds, type ElementType, type EnemySpec, type RoundSpec } from './data/battle';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE, ENEMY_SPEED_SCALE } from './rules';
 import { unitState } from './data/units';
@@ -1096,7 +1096,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
 
-  const killEnemy = (e: Enemy, by: Runtime) => {
+  const killEnemy = (e: Enemy, by: Runtime | null) => {
     release(e);
     // 復活する敵：攻撃回数で倒せる状態になってその場に留まる
     const rv = e.input.spec.revive;
@@ -1127,6 +1127,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         enemies.push(ne);
       }
     }
+    // マスの効果（深水区・活性源石）で倒れた時は撃破者がいない
+    if (!by) return;
     by.result.kills++;
     talentOnKill(e, by);
     // 突撃兵：敵を倒すとコスト+1
@@ -2368,7 +2370,40 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     );
   /** 敵の攻撃力（素質の弱体化） */
   const enemyAtk = (e: Enemy, atk: number) =>
-    Math.max(0, atk * (t < e.bubbleUntil ? 1 + (holders('char_381_bubble')[0]?.tb[0].atk ?? -0.08) : 1) * (t < e.reedUntil ? 0.8 : 1) - e.stolenAtk);
+    Math.max(0, atk * (enemyGroundTile(e) === 'infection' ? 1 + INFECTION.atk : 1) * (t < e.bubbleUntil ? 1 + (holders('char_381_bubble')[0]?.tb[0].atk ?? -0.08) : 1) * (t < e.reedUntil ? 0.8 : 1) - e.stolenAtk);
+
+  // ------------------------------------------------------------
+  // マップの特殊なマス
+  // ------------------------------------------------------------
+  /** 活性源石：攻撃力+20%・攻撃速度+20、毎秒HP-70（味方・敵とも） */
+  const INFECTION = { atk: 0.2, aspd: 20, dps: 70 };
+  /** 沼地：味方の攻撃速度-30、敵の移動速度・攻撃速度が下がる。深水区：敵の移動速度・攻撃速度が下がり、毎秒HPを失う */
+  const MIRE = { aspd: -30, enemySpeed: 0.6, enemyAtkRate: 0.7 };
+  const DEEPSEA = { enemySpeed: 0.6, enemyAtkRate: 0.7, dps: 100 };
+  const unitTile = (u: Runtime) => (field && u.input.pos !== undefined ? tileAt(u.input.pos) : null);
+  const enemyGroundTile = (e: Enemy) => (field && !e.input.spec.flying && e.spawned ? tileAt(enemyTile(e)) : null);
+  const tileAtkPct = (u: Runtime) => (unitTile(u) === 'infection' ? INFECTION.atk : 0);
+  const tileAspd = (u: Runtime) => (unitTile(u) === 'infection' ? INFECTION.aspd : unitTile(u) === 'mire' ? MIRE.aspd : 0);
+  const tileEnemySpeed = (e: Enemy) => {
+    const tl = enemyGroundTile(e);
+    return tl === 'mire' ? MIRE.enemySpeed : tl === 'deepsea' ? DEEPSEA.enemySpeed : 1;
+  };
+  const tileEnemyAtkRate = (e: Enemy) => {
+    const tl = enemyGroundTile(e);
+    return tl === 'infection' ? 1 + INFECTION.aspd / 100 : tl === 'mire' ? MIRE.enemyAtkRate : tl === 'deepsea' ? DEEPSEA.enemyAtkRate : 1;
+  };
+  const tickTiles = () => {
+    if (!field) return;
+    for (const u of rt) if (u.alive && unitTile(u) === 'infection') takeDamage(u, INFECTION.dps * dt);
+    for (const e of enemies) {
+      if (!e.alive || e.reviveAt !== null) continue;
+      const tl = enemyGroundTile(e);
+      const dps = tl === 'infection' ? INFECTION.dps : tl === 'deepsea' ? DEEPSEA.dps : 0;
+      if (!dps) continue;
+      e.hp -= dps * dt;
+      if (e.hp <= 1e-6) killEnemy(e, null);
+    }
+  };
 
   const enemyAttacks = () => {
     for (const e of enemies) {
@@ -2377,7 +2412,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (isFrozen(e)) continue;
       if (e.atkTimer > 0) {
         // 寒冷中は攻撃速度が下がる
-        e.atkTimer -= t < e.coldUntil ? (dt * (100 - COLD_ATTACK_SPEED)) / 100 : dt;
+        e.atkTimer -= (t < e.coldUntil ? (dt * (100 - COLD_ATTACK_SPEED)) / 100 : dt) * tileEnemyAtkRate(e);
         continue;
       }
       let target: Runtime | undefined;
@@ -2386,6 +2421,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         for (const u of rt) {
           if (!u.alive || u.input.pos === undefined) continue;
           if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
+          // 排気格子の上の味方は遠距離攻撃の対象にならない
+          if (unitTile(u) === 'smog') continue;
           const tu = u.input.mods.taunt ?? 0;
           const tt = target?.input.mods.taunt ?? 0;
           if (!target || tu > tt || (tu === tt && u.order > target.order)) target = u;
@@ -2435,7 +2472,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.defense.res = currentRes(e);
       }
       const path = e.input.path;
-      const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) : 1);
+      const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) * tileEnemySpeed(e) : 1);
       const curTile = path[Math.min(Math.round(e.d), path.length - 1)];
       const nd = e.d + speed * dt;
       const nextTile = path[Math.min(Math.round(nd), path.length - 1)];
@@ -2495,6 +2532,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       tickCold();
       tickElements();
       tickTalents();
+      tickTiles();
       enemyAttacks();
       tickZones();
       tickPollution();
@@ -2543,7 +2581,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         (swire ? u.swireStacks * swire.atkPerStack : 0) +
         u.talentStacks * (ELEMENT_TALENT[def.charId]?.atkPerApoptosisBurst?.atk ?? 0) +
         u.qalaisaStacks * (g.qalaisa?.atk ?? 0) +
-        talentAtkPct(u);
+        talentAtkPct(u) +
+        tileAtkPct(u);
       // 琳琅スワイヤー：コインを使って「シャンパン爆弾」（範囲内の敵に物理ダメージ）
       if (swire && field) {
         u.bombTimer -= dt;
@@ -2582,7 +2621,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         (g.sargon ? sargonCount * g.sargon.aspd : 0) +
         Math.min(u.attacks, mods.aspdPerAttackMax ?? 0) * (mods.aspdPerAttack ?? 0) +
         (g.siracusa?.members.has(uid) && t < g.siracusa.duration ? g.siracusa.aspd : 0) +
-        talentAspd(u);
+        talentAspd(u) +
+        tileAspd(u);
       const interval = attackInterval(stats.interval, aspd, activeNow && !s.passive ? s.intervalAdd : 0);
       const scale = activeNow && !s.instant && !s.passive ? s.atkScale : 1;
       const hits = activeNow && !s.instant ? s.hits : 1;

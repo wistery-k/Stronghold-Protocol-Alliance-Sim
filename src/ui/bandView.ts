@@ -6,13 +6,14 @@ import { h } from './dom';
 // ゲーム開始時の戦術選択
 
 /** このゲームでBANされる盟約（核心・追加） */
-function banPanel(banned: AllianceId[]): HTMLElement {
+function banPanel(banned: AllianceId[], mapName: string): HTMLElement {
   const core = banned.filter((b) => CORE_IDS.includes(b as never));
   const extra = banned.filter((b) => !CORE_IDS.includes(b as never));
   const chips = (ids: AllianceId[]) => ids.map((b) => h('span', { class: 'ban-chip' }, ALLIANCES[b].name));
   return h(
     'div',
     { class: 'band-ban' },
+    mapName ? h('div', { class: 'ban-row' }, h('b', null, 'マップ'), h('span', null, mapName)) : null,
     h('b', null, 'このゲームの盟約BAN'),
     banned.length
       ? [
@@ -23,7 +24,7 @@ function banPanel(banned: AllianceId[]): HTMLElement {
   );
 }
 
-export function bandView(onPick: (id: BandId) => void, onCancel: (() => void) | null, banned: AllianceId[] = []): HTMLElement {
+export function bandView(onPick: (id: BandId) => void, onCancel: (() => void) | null, banned: AllianceId[] = [], mapName = ''): HTMLElement {
   const random = () => {
     const pool = BANDS.filter((b) => b.impl !== 'none');
     onPick(pool[Math.floor(Math.random() * pool.length)].id);
@@ -46,7 +47,7 @@ export function bandView(onPick: (id: BandId) => void, onCancel: (() => void) | 
           onCancel ? h('button', { class: 'btn ghost', onclick: onCancel }, 'キャンセル') : null,
         ),
       ),
-      banPanel(banned),
+      banPanel(banned, mapName),
       h(
         'div',
         { class: 'band-list' },
