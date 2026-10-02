@@ -15,6 +15,8 @@ const app = {
   game: saved ?? createGame(),
   /** 戦術の選択中（保存されたゲームが無い時と「新しいゲーム」の時） */
   choosingBand: !saved,
+  /** 戦術選択中のゲームのシード（BANはシードで決まるので、選択画面で先に見せる） */
+  pendingSeed: Math.floor(Math.random() * 2 ** 31),
   /** 遊べるゲームがある（戦術選択をキャンセルできる） */
   hasGame: !!saved,
   sandbox: createSandbox(),
@@ -61,12 +63,13 @@ function dispatch(a: Action) {
 }
 
 function newGame() {
+  app.pendingSeed = Math.floor(Math.random() * 2 ** 31);
   app.choosingBand = true;
   render();
 }
 
 function startGame(band: BandId) {
-  app.game = createGame(undefined, { band });
+  app.game = createGame(app.pendingSeed, { band });
   app.choosingBand = false;
   app.hasGame = true;
   app.selectedUid = null;
@@ -79,7 +82,11 @@ function render() {
   const scrollY = window.scrollY;
   const view =
     app.mode === 'game' && app.choosingBand
-      ? bandView(startGame, app.hasGame && app.game.phase !== 'gameover' && app.game.phase !== 'clear' ? () => { app.choosingBand = false; render(); } : null)
+      ? bandView(
+          startGame,
+          app.hasGame && app.game.phase !== 'gameover' && app.game.phase !== 'clear' ? () => { app.choosingBand = false; render(); } : null,
+          createGame(app.pendingSeed).banned,
+        )
       : app.mode === 'game'
       ? gameView({
           state: app.game,

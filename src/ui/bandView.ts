@@ -1,9 +1,29 @@
 import { BANDS, type BandId } from '../core/data/bands';
+import { ALLIANCES, CORE_IDS } from '../core/data/alliances';
+import type { AllianceId } from '../core/types';
 import { h } from './dom';
 
 // ゲーム開始時の戦術選択
 
-export function bandView(onPick: (id: BandId) => void, onCancel: (() => void) | null): HTMLElement {
+/** このゲームでBANされる盟約（核心・追加） */
+function banPanel(banned: AllianceId[]): HTMLElement {
+  const core = banned.filter((b) => CORE_IDS.includes(b as never));
+  const extra = banned.filter((b) => !CORE_IDS.includes(b as never));
+  const chips = (ids: AllianceId[]) => ids.map((b) => h('span', { class: 'ban-chip' }, ALLIANCES[b].name));
+  return h(
+    'div',
+    { class: 'band-ban' },
+    h('b', null, 'このゲームの盟約BAN'),
+    banned.length
+      ? [
+          h('div', { class: 'ban-row' }, h('span', { class: 'muted small' }, '核心'), chips(core)),
+          h('div', { class: 'ban-row' }, h('span', { class: 'muted small' }, '追加'), chips(extra)),
+        ]
+      : h('span', { class: 'muted small' }, 'なし'),
+  );
+}
+
+export function bandView(onPick: (id: BandId) => void, onCancel: (() => void) | null, banned: AllianceId[] = []): HTMLElement {
   const random = () => {
     const pool = BANDS.filter((b) => b.impl !== 'none');
     onPick(pool[Math.floor(Math.random() * pool.length)].id);
@@ -26,6 +46,7 @@ export function bandView(onPick: (id: BandId) => void, onCancel: (() => void) | 
           onCancel ? h('button', { class: 'btn ghost', onclick: onCancel }, 'キャンセル') : null,
         ),
       ),
+      banPanel(banned),
       h(
         'div',
         { class: 'band-list' },
