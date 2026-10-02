@@ -114,6 +114,8 @@ export interface BattleGlobals {
   egirRevive?: { members: Set<number>; count: number };
   /** 不屈：地上オペレーターが倒れた時、確率で再配置（Lv2で全員のSP回復） */
   indom?: { prob: number; sp: number };
+  /** イェラグ：所属者の与ダメージ（寒冷・凍結した敵には ex）。Lv2で定期的に寒風 */
+  kjerag?: { members: Set<number>; base: number; ex: number; storm: { interval: number; duration: number } | null };
 }
 
 export interface BattleOptions {
@@ -234,7 +236,14 @@ export function isGarrisonImplemented(g: GarrisonData): boolean {
       if (give) return !!GIVEN_GARRISONS[give] && isGarrisonImplemented(GIVEN_GARRISONS[give]);
       return (
         ['by_count', 'by_charcount_samerow'].includes(String(g.blackboard.bond_add_type)) &&
-        ['act1autochess_gar_event_useskill', 'act1autochess_gar_event_selfkillenemy', 'act1autochess_gar_event_consume_ammo', 'act2autochess_gar_event_onstart'].includes(
+        [
+          'act1autochess_gar_event_useskill',
+          'act1autochess_gar_event_selfkillenemy',
+          'act1autochess_gar_event_consume_ammo',
+          'act2autochess_gar_event_onstart',
+          'act1autochess_gar_event_selfdead',
+          'act1autochess_gar_event_enemy_abflag_inrange',
+        ].includes(
           key ?? '',
         )
       );
@@ -317,8 +326,21 @@ export function battleSetup(
       maxStacks: v('sargon', 'max_buff_stack_cnt'),
     };
   }
-  // イェラグ（寒冷・凍結の追加倍率は未再現）
-  if (lv('kjerag') >= 1) apply(members('kjerag'), { damageMult: v('kjerag', 'base_damage_scale') });
+  // イェラグ：寒冷・凍結した敵への与ダメージ上昇と寒風（戦闘中に判定）
+  if (lv('kjerag') >= 1) {
+    globals.kjerag = {
+      members: members('kjerag'),
+      base: v('kjerag', 'base_damage_scale'),
+      ex: v('kjerag', 'base_ex_damage_scale') + v('kjerag', 'ex_damage_scale_per_stack') * sk('kjerag'),
+      storm:
+        lv('kjerag') >= 2
+          ? {
+              interval: v('kjerag', 'bond_eff_kjerag[storm].interval'),
+              duration: v('kjerag', 'bond_eff_kjerag[storm].base_time') + v('kjerag', 'bond_eff_kjerag[storm].time_per_stack') * sk('kjerag'),
+            }
+          : null,
+    };
+  }
   // ラテラーノ
   if (lv('laterano') >= 1) {
     apply(members('laterano'), { ammoPct: v('laterano', 'base_ammo_percent') + v('laterano', 'ammo_percent_per_stack') * sk('laterano') });
@@ -503,6 +525,12 @@ export function battleSetup(
             if (bonds.includes('victoria') && board.some((x) => (x.items ?? []).some((i) => i.itemId === '3_10'))) {
               apply([o.uid], { aspd: n('attack_speed') * (has('3_10') ? 2 : 1) });
             }
+            break;
+          case 'act1vautochess_equip_acarm003_global_buff':
+            apply([o.uid], { coldProb: n('prob'), coldDur: n('cold') });
+            break;
+          case 'act2autochess_equip_acarm102_ability':
+            if (bonds.includes('kjerag')) apply([o.uid], { coldDot: has('5_02') ? n('atk_scale_ex') : n('atk_scale') });
             break;
           case 'silence_attachment':
             apply([o.uid], { neutralize: n('silence') });

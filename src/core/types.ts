@@ -168,6 +168,11 @@ export interface Modifier {
   regenPct?: number;
   /** 再配置時間（割合、加算。-0.3 で30%短縮） */
   respawnPct?: number;
+  /** 攻撃時に確率で寒冷を付与（イェラグの不融氷） */
+  coldProb?: number;
+  coldDur?: number;
+  /** 攻撃範囲内の寒冷・凍結した敵に毎秒攻撃力のこの割合の術ダメージ（イェラガンドの涙） */
+  coldDot?: number;
 }
 
 export interface EnemyPhase {

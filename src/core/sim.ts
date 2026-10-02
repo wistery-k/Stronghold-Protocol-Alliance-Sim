@@ -105,6 +105,9 @@ export interface BattleResult {
   /** 残っている敵の合計HP（0.5秒ごと） */
   timeline: { t: number; hp: number; alive: number }[];
   stackGains: Partial<Record<AllianceId, number>>;
+  /** 寒冷・凍結にした回数 */
+  colds: number;
+  freezes: number;
   enemies: EnemyMeta[];
   frames?: ReplayFrame[];
 }
@@ -142,6 +145,20 @@ export interface SkillModel {
   regenPct: number;
   /** blackboard の生の値（スキルごとの特殊な処理用） */
   bb: Record<string, number>;
+  /** 配置時に自動で発動し、効果時間が減っていくスキル（ウタゲ・グラベル） */
+  onDeploy: boolean;
+  /** 配置時にHPがこの割合減る（ウタゲ） */
+  deployHpLoss: number;
+  /** 配置時に最大HPのこの割合のバリア（グラベル） */
+  barrier: number;
+  /** スキル中は通常攻撃が術ダメージ */
+  artsAttack: boolean;
+  /** スキル中、攻撃範囲内の敵の防御力・術耐性を下げる（割合。プラマニクス） */
+  enemyDef: number;
+  enemyRes: number;
+  /** 寒冷：命中した敵に付与（cold 秒、確率 coldProb） */
+  cold: number;
+  coldProb: number;
   /** コストの獲得：発動時・スキル中の合計（徐々に）・攻撃ごと */
   costOnCast: number;
   costOverTime: number;
@@ -154,14 +171,21 @@ export function parseSkill(s: SkillData): SkillModel {
     for (const k of keys) if (bb[k] !== undefined) return bb[k];
     return undefined;
   };
-  const passive = s.skillType === 'PASSIVE';
+  // 「範囲内の敵全員の防御力-」：防御・術耐性の値は敵に掛かる
+  const enemyAura = /範囲内の敵全員の(防御力|術耐性)-/.test(s.description);
+  const onDeploy = s.skillType === 'PASSIVE' && s.description.startsWith('配置後') && bb.duration !== undefined;
+  const passive = s.skillType === 'PASSIVE' && !onDeploy;
   const charge = s.spType === 'INCREASE_WITH_TIME' ? 'time' : s.spType === 'INCREASE_WHEN_ATTACK' ? 'attack' : 'none';
   const atk = get('atk', 'attack@atk') ?? 0;
   const timesRaw = get('times', 'attack@times');
   const hits = timesRaw !== undefined && Number.isInteger(timesRaw) && timesRaw >= 2 ? timesRaw : 1;
   const ammo = s.durationType === 'AMMO' ? get('attack@trigger_time', 'trigger_time', 'ammo', 'cnt', 'attack@cnt') ?? 0 : 0;
   // 「退場まで効果継続」のスキル（スルト）は長い効果時間として扱う。それ以外の duration < 0 は即時発動
-  const duration = s.duration < 0 && s.durationType !== 'AMMO' && s.description.includes('退場まで効果継続') ? 9999 : Math.max(0, s.duration);
+  const duration = onDeploy
+    ? Number(bb.duration)
+    : s.duration < 0 && s.durationType !== 'AMMO' && s.description.includes('退場まで効果継続')
+      ? 9999
+      : Math.max(0, s.duration);
   return {
     charge,
     passive,
@@ -177,13 +201,21 @@ export function parseSkill(s: SkillData): SkillModel {
     hits,
     maxTarget: Math.max(1, Math.round(get('max_target', 'attack@max_target') ?? 1)),
     blockAdd: Math.max(0, Math.round(get('block_cnt') ?? 0)),
-    instant: !passive && duration <= 0 && ammo <= 0,
-    defPct: (get('def') ?? 0) < 10 ? get('def') ?? 0 : 0,
+    instant: !passive && !onDeploy && duration <= 0 && ammo <= 0,
+    defPct: !enemyAura && (get('def') ?? 0) < 10 ? get('def') ?? 0 : 0,
     hpPct: (get('max_hp') ?? 0) < 10 ? get('max_hp') ?? 0 : 0,
     hpFlat: (get('max_hp') ?? 0) >= 10 ? get('max_hp') ?? 0 : 0,
     // 負の値は敵への効果（回復量低下など）なので使わない
     regenPct: Math.max(0, get('hp_recovery_per_sec_by_max_hp_ratio') ?? 0),
     bb: Object.fromEntries(Object.entries(bb).filter(([, v]) => typeof v === 'number')) as Record<string, number>,
+    onDeploy,
+    enemyDef: enemyAura ? Number(bb.def ?? 0) : 0,
+    enemyRes: enemyAura ? Number(bb.magic_resistance ?? 0) : 0,
+    deployHpLoss: onDeploy && /HPが\d+%減少/.test(s.description) ? Number(bb.hp_ratio ?? 0) : 0,
+    barrier: onDeploy && s.description.includes('バリア') ? Number(bb.hp_ratio ?? 0) : 0,
+    artsAttack: s.description.includes('通常攻撃が術ダメージを与える'),
+    cold: Number(get('cold', 'attack@cold') ?? 0),
+    coldProb: Number(get('attack@prob') ?? 1),
     costOnCast: Number(/(?<!たびに)所持コスト\+(\d+)/.exec(s.description)?.[1] ?? 0),
     costOverTime: Number(/所持コストが徐々に増加（合計(\d+)）/.exec(s.description)?.[1] ?? 0),
     costPerAttack: /攻撃するたびに所持コスト\+1/.test(s.description) ? 1 : 0,
@@ -253,12 +285,15 @@ const ALL_IN_RANGE_SUB = new Set(['stalker']);
 // ------------------------------------------------------------
 
 interface GarrisonEvent {
-  kind: 'useskill' | 'kill' | 'ammo';
+  kind: 'useskill' | 'kill' | 'ammo' | 'dead' | 'freeze';
   bonds: AllianceId[] | 'maxstack';
   count: number;
   max: number;
   every: number;
   gained: number;
+  /** 確率（期待値で、累積が1に達するたびに発生） */
+  prob: number;
+  acc: number;
 }
 
 function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
@@ -269,7 +304,18 @@ function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
     if (g.event !== 'IN_BATTLE' || g.effect !== 'ADD_BOND') continue;
     const bb = g.blackboard;
     const key = bb.key as string | undefined;
-    const kind = key === 'act1autochess_gar_event_useskill' ? 'useskill' : key === 'act1autochess_gar_event_selfkillenemy' ? 'kill' : key === 'act1autochess_gar_event_consume_ammo' ? 'ammo' : null;
+    const kind =
+      key === 'act1autochess_gar_event_useskill'
+        ? 'useskill'
+        : key === 'act1autochess_gar_event_selfkillenemy'
+          ? 'kill'
+          : key === 'act1autochess_gar_event_consume_ammo'
+            ? 'ammo'
+            : key === 'act1autochess_gar_event_selfdead'
+              ? 'dead'
+              : key === 'act1autochess_gar_event_enemy_abflag_inrange' && Number(bb.check_ab_flag) === 16
+                ? 'freeze'
+                : null;
     if (!kind) continue;
     if (bb.conditionkey === 'character_same_row' && rowCount < Number(bb.check_count ?? 0)) continue;
     let count: number;
@@ -292,6 +338,8 @@ function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
       max: Number(bb.max_add_count_per_battle ?? Infinity),
       every: Number(kind === 'kill' ? (bb.check_cnt ?? 1) : (bb.consume_count ?? 1)),
       gained: 0,
+      prob: Number(bb.prob ?? 1),
+      acc: 0,
     });
   }
   return out;
@@ -352,6 +400,11 @@ const SWIRE: Record<string, { maxCoins: [number, number]; maxStacks: [number, nu
   char_1033_swire2: { maxCoins: [3, 4], maxStacks: [8, 9], atkPerStack: 0.04, saveHp: [0.7, 0.8] },
 };
 
+/** 寒冷：敵の攻撃速度低下。寒冷中に再び寒冷になると凍結（動けず攻撃できず、術耐性低下） */
+const COLD_ATTACK_SPEED = 30;
+const FREEZE_DURATION = 3;
+const FROZEN_RES_DOWN = 15;
+
 /** 遠距離の敵が攻撃する時に足を止める秒数 */
 const RANGED_ATTACK_STALL = 0.5;
 
@@ -394,6 +447,9 @@ interface Enemy {
   vulnUntil: number;
   /** 遠距離攻撃のモーションで足を止めている時刻まで */
   stallUntil: number;
+  /** 寒冷・凍結の終わる時刻 */
+  coldUntil: number;
+  frozenUntil: number;
   /** 復活待ち（攻撃回数で倒せる状態）なら復活する時刻 */
   reviveAt: number | null;
   revived: boolean;
@@ -440,6 +496,12 @@ interface Runtime {
   reflectReadyAt: number;
   /** スキルを発動した時刻 */
   castAt: number;
+  /** バリア（残量・減る速さ） */
+  barrier: number;
+  barrierDecay: number;
+  /** 確率の寒冷付与の累積（期待値） */
+  coldAcc: number;
+  coldDotTimer: number;
   /** 再配置できる時刻（撤退中のみ）と再配置時間 */
   redeployAt: number | null;
   respawn: number;
@@ -471,6 +533,8 @@ interface EngineResult {
   stackGains: Partial<Record<AllianceId, number>>;
   frames: ReplayFrame[];
   killTime: number | null;
+  colds: number;
+  freezes: number;
 }
 
 function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: number, field: boolean, opts: SimOptions): EngineResult {
@@ -511,6 +575,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       order: 0,
       reflectReadyAt: 0,
       castAt: -1,
+      barrier: 0,
+      barrierDecay: 0,
+      coldAcc: 0,
+      coldDotTimer: 1,
       redeployAt: null,
       respawn: Math.max(1, st.stats.respawn * Math.max(0.1, 1 + (input.mods.respawnPct ?? 0))),
       merchantTimer: 0,
@@ -553,7 +621,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const currentRes = (e: Enemy) => {
     const s = e.input.spec;
     const dr = s.defReduce ? s.defReduce.res * e.reduceStacks : 0;
-    return Math.max(0, (neutral(e) ? s.res : baseRes(s)) + dr);
+    return Math.max(0, (neutral(e) ? s.res : baseRes(s)) + dr - (t < e.frozenUntil ? FROZEN_RES_DOWN : 0));
   };
   const neutralize = (e: Enemy, seconds: number) => {
     if (seconds <= 0 || !e.alive) return;
@@ -561,6 +629,89 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.defense.res = currentRes(e);
   };
   const isStealthed = (e: Enemy) => !!e.input.spec.stealth && e.blockedBy === null && e.reviveAt === null && !neutral(e);
+
+  /** スキルによる防御力・術耐性低下を反映した敵の防御 */
+  const effDefense = (e: Enemy): DefenseState => {
+    let dDef = 0;
+    let dRes = 0;
+    const tile = enemyTile(e);
+    for (const u of rt) {
+      const s = u.skill;
+      if (!u.alive || (!s.enemyDef && !s.enemyRes) || !(u.skillLeft > 0 || u.ammoLeft > 0) || !u.rangeSkill?.has(tile)) continue;
+      dDef = Math.min(dDef, s.enemyDef);
+      dRes = Math.min(dRes, s.enemyRes);
+    }
+    if (!dDef && !dRes) return e.defense;
+    return { ...e.defense, def: e.defense.def * (1 + dDef), res: e.defense.res * (1 + dRes) };
+  };
+
+  // ---- 寒冷・凍結 ----
+  const isFrozen = (e: Enemy) => t < e.frozenUntil;
+  const isChilled = (e: Enemy) => t < e.coldUntil || isFrozen(e);
+  /** 確率の効果（期待値で、累積が1に達するたびに発生） */
+  const chance = (u: Runtime, prob: number, f: () => void) => {
+    if (prob >= 1) return f();
+    u.coldAcc += prob;
+    if (u.coldAcc >= 1) {
+      u.coldAcc -= 1;
+      f();
+    }
+  };
+  /** 凍結した時：範囲内の敵の凍結で加算数を得る特性 */
+  const onFreeze = (e: Enemy) => {
+    const tile = enemyTile(e);
+    for (const u of rt) {
+      if (!u.alive || !u.rangeNormal?.has(tile)) continue;
+      for (const ev of u.events) {
+        if (ev.kind !== 'freeze') continue;
+        ev.acc += ev.prob;
+        while (ev.acc >= 1) {
+          ev.acc -= 1;
+          gainStacks(ev);
+        }
+      }
+    }
+  };
+  const applyCold = (e: Enemy, seconds: number) => {
+    if (!e.alive || seconds <= 0 || isFrozen(e)) return;
+    if (t < e.coldUntil) {
+      // 寒冷中に再び寒冷になると凍結
+      e.coldUntil = -1;
+      e.frozenUntil = t + FREEZE_DURATION;
+      e.defense.res = currentRes(e);
+      freezes++;
+      onFreeze(e);
+      return;
+    }
+    e.coldUntil = t + seconds;
+    colds++;
+  };
+  let stormTimer = g.kjerag?.storm?.interval ?? 0;
+  let freezes = 0;
+  let colds = 0;
+  /** イェラグLv2の寒風と、イェラガンドの涙の継続ダメージ */
+  const tickCold = () => {
+    const storm = g.kjerag?.storm;
+    if (storm) {
+      stormTimer -= dt;
+      if (stormTimer <= 0) {
+        stormTimer += storm.interval;
+        for (const e of enemies) if (e.alive && e.spawned) applyCold(e, storm.duration);
+      }
+    }
+    for (const u of rt) {
+      const dot = u.input.mods.coldDot;
+      if (!dot || !u.alive) continue;
+      u.coldDotTimer -= dt;
+      if (u.coldDotTimer > 0) continue;
+      u.coldDotTimer += 1;
+      const atk = baseAtk(u.input.def, u.input.star, u.input.mods);
+      for (const e of enemies) {
+        if (!e.alive || !isChilled(e) || !u.rangeNormal?.has(enemyTile(e))) continue;
+        deal(u, e, hitDamage(atk * dot, 'arts', effDefense(e), u.input.mods, artsVuln(e)));
+      }
+    }
+  };
   const newEnemy = (input: EnemyInput, id: number): Enemy => ({
       id,
       input,
@@ -574,6 +725,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       atkTimer: 0,
       vulnUntil: -1,
       stallUntil: -1,
+      coldUntil: -1,
+      frozenUntil: -1,
       defense: { def: input.spec.def, res: baseRes(input.spec), damageTaken: 1 },
       phases: [...(input.phases ?? [])].sort((a, b) => b.belowHpRatio - a.belowHpRatio),
       phaseIdx: 0,
@@ -699,14 +852,21 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       return;
     }
     const raw = atk * scale;
-    const type = bestType(def.damageType, raw, e.defense, mods);
-    const dmg = hitDamage(raw, type, e.defense, mods, type === 'arts' ? artsVuln(e) : 0) * flagFactor(mods, t);
+    const skillOn = u.skillLeft > 0 || u.ammoLeft > 0;
+    const defense = effDefense(e);
+    const type = u.skill.artsAttack && skillOn && def.damageType !== 'heal' ? 'arts' : bestType(def.damageType, raw, defense, mods);
+    // イェラグ：所属者の与ダメージ上昇（寒冷・凍結した敵にはさらに上昇）
+    const kj = g.kjerag?.members.has(uid) ? (isChilled(e) ? g.kjerag.ex : g.kjerag.base) : 1;
+    const dmg = hitDamage(raw, type, defense, mods, type === 'arts' ? artsVuln(e) : 0) * flagFactor(mods, t) * kj;
     deal(u, e, dmg);
     if (type !== 'heal' && mods.lifeOnHit) healUnit(u, u, u.maxHp * mods.lifeOnHit);
     if (type !== 'heal') {
       if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken);
       if (g.siracusa?.members.has(uid) && t < g.siracusa.procWindow) deal(u, e, g.siracusa.procProb * g.siracusa.procDmg * e.defense.damageTaken);
       if (type === 'arts' && g.arcane?.members.has(uid) && dmg > 0) e.arcaneUntil = t + g.arcane.duration;
+      // 寒冷の付与（スキル中の攻撃・装備）
+      if (skillOn && u.skill.cold > 0) chance(u, u.skill.coldProb, () => applyCold(e, u.skill.cold));
+      if (mods.coldProb && mods.coldDur) chance(u, mods.coldProb, () => applyCold(e, mods.coldDur!));
       // 攻撃を受けるたびに防御・術耐性が下がる
       const dr = e.input.spec.defReduce;
       if (dr && e.reduceStacks < dr.max) {
@@ -729,6 +889,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (e.input.spec.flying && u.melee) return false;
       // 隠匿：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
       if (isStealthed(e)) return false;
+      // 近距離は、範囲外でもブロックしている敵を攻撃できる
+      if (u.melee && e.blockedBy === u.input.uid) return true;
       return !!range && range.has(enemyTile(e));
     });
     // ブロック中の敵を優先し、次に防衛地点に近い敵
@@ -824,7 +986,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     } else if (s.instant) {
       if (support === 'selfHeal') healUnit(u, u, u.maxHp * (s.bb.hp_ratio ?? 0));
       const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
-      for (const [e, m] of pickTargets(u, true)) for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m);
+      for (const [e, m] of pickTargets(u, true)) {
+        for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m);
+        if (s.cold > 0) applyCold(e, s.cold);
+      }
       endSkill(u);
     }
     if (g.sargon?.members.has(uid)) {
@@ -902,6 +1067,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         return;
       }
     }
+    for (const ev of u.events) if (ev.kind === 'dead') gainStacks(ev);
     leaveField(u);
   };
 
@@ -926,7 +1092,23 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // 後から配置されたので、遠距離の敵に一番狙われやすくなる
     u.order = ++orderCounter;
     u.result.redeploys++;
+    onDeployed(u);
   };
+  /** 配置時に発動するスキル（ウタゲ：HP減少と効果時間、グラベル：バリア） */
+  const onDeployed = (u: Runtime) => {
+    const s = u.skill;
+    if (!s.onDeploy) return;
+    u.skillLeft = s.duration;
+    u.castAt = t;
+    u.result.skillCasts++;
+    if (s.deployHpLoss) u.hp = Math.max(1, u.hp * (1 - s.deployHpLoss));
+    if (s.barrier) {
+      u.barrier = u.maxHp * s.barrier;
+      u.barrierDecay = u.barrier / Math.max(1, s.duration);
+    }
+  };
+  if (field) for (const u of rt) onDeployed(u);
+
   const tickCost = () => {
     cost = Math.min(MAX_COST, cost + dt / COST_INTERVAL);
     // 再配置：タイマーが0になり、コストが足りていれば配置する（待っている順に）
@@ -958,8 +1140,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const takeDamage = (u: Runtime, amount: number) => {
     if (!u.alive || amount <= 0) return;
-    u.hp -= amount;
     u.result.taken += amount;
+    // バリアが先に受ける
+    if (u.barrier > 0) {
+      const absorbed = Math.min(u.barrier, amount);
+      u.barrier -= absorbed;
+      amount -= absorbed;
+      if (amount <= 0) return;
+    }
+    u.hp -= amount;
     if (u.hp <= 1e-6) unitDown(u);
   };
 
@@ -968,7 +1157,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const sd = g.stead;
     if (!sd || !u.alive || !src.alive || t < u.reflectReadyAt) return;
     u.reflectReadyAt = t + sd.cooldown;
-    deal(u, src, hitDamage(sd.reflect, 'arts', src.defense, {}));
+    deal(u, src, hitDamage(sd.reflect, 'arts', effDefense(src), {}));
     src.vulnUntil = t + sd.vulnDuration;
     src.defense.damageTaken = sd.vuln;
   };
@@ -1047,7 +1236,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (z.dot > 0) {
         for (const e of enemies) {
           if (!e.alive || (z.groundOnly && e.input.spec.flying) || Math.hypot(e.x - z.x, e.y - z.y) > z.r) continue;
-          deal(z.owner, e, hitDamage(z.atk * z.dot, 'arts', e.defense, z.owner.input.mods, artsVuln(e)) * dt);
+          deal(z.owner, e, hitDamage(z.atk * z.dot, 'arts', effDefense(e), z.owner.input.mods, artsVuln(e)) * dt);
         }
       }
     }
@@ -1058,8 +1247,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     for (const e of enemies) {
       const a = e.input.spec.attack;
       if (!a || !e.alive || e.reviveAt !== null) continue;
+      if (isFrozen(e)) continue;
       if (e.atkTimer > 0) {
-        e.atkTimer -= dt;
+        // 寒冷中は攻撃速度が下がる
+        e.atkTimer -= t < e.coldUntil ? (dt * (100 - COLD_ATTACK_SPEED)) / 100 : dt;
         continue;
       }
       let target: Runtime | undefined;
@@ -1108,6 +1299,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         } else continue;
       }
       if (t < e.stallUntil) continue;
+      if (e.frozenUntil >= 0) {
+        if (t < e.frozenUntil) continue;
+        // 凍結が解けたら術耐性が戻る
+        e.frozenUntil = -1;
+        e.defense.res = currentRes(e);
+      }
       const path = e.input.path;
       const speed = e.input.spec.speed * moveMultiplier;
       const curTile = path[Math.min(Math.round(e.d), path.length - 1)];
@@ -1149,9 +1346,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           const left = Math.max(0, u.redeployAt - t);
           return [u.input.uid, -1, Math.round((1 - left / u.respawn) * 100), 4, Math.round(left * 10)];
         }
-        if (s.passive || s.spCost <= 0) return [u.input.uid, hp, 0, 3, 0];
         if (u.ammoLeft > 0) return [u.input.uid, hp, 100, 2, u.ammoLeft];
-        if (u.skillLeft > 0) return [u.input.uid, hp, Math.round((u.skillLeft / Math.max(0.01, s.duration)) * 100), 1, Math.round(u.skillLeft * 10)];
+        if (u.skillLeft > 0 && u.skillLeft < 9000) return [u.input.uid, hp, Math.round((u.skillLeft / Math.max(0.01, s.duration)) * 100), 1, Math.round(u.skillLeft * 10)];
+        if (s.passive || s.spCost <= 0 || u.skillLeft > 0) return [u.input.uid, hp, 0, 3, 0];
         return [u.input.uid, hp, Math.min(100, Math.round((u.sp / s.spCost) * 100)), 0, 0];
       });
 
@@ -1166,8 +1363,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (enemies.every((e) => e.spawned && !e.alive)) break;
     if (field) {
       tickCost();
+      tickCold();
       enemyAttacks();
       tickZones();
+      for (const u of rt) if (u.barrier > 0) u.barrier = Math.max(0, u.barrier - u.barrierDecay * dt);
     }
 
     for (const u of rt) {
@@ -1277,7 +1476,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u.attacks++;
         if (mods.extraShotProb) {
           const e = targets[0][0];
-          deal(u, e, mods.extraShotProb * hitDamage(atk * (mods.extraShotScale ?? 1), 'physical', e.defense, mods));
+          deal(u, e, mods.extraShotProb * hitDamage(atk * (mods.extraShotScale ?? 1), 'physical', effDefense(e), mods));
         }
         u.atkTimer += interval;
         if (u.ammoLeft > 0) {
@@ -1348,7 +1547,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       c: Math.floor(cost),
     });
   }
-  return { t, enemies, units: rt, timeline, phaseLog, stackGains, frames, killTime };
+  return { t, enemies, units: rt, timeline, phaseLog, stackGains, frames, killTime, colds, freezes };
 }
 
 // ------------------------------------------------------------
@@ -1446,6 +1645,8 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     perUnit,
     timeline: r.timeline,
     stackGains: r.stackGains,
+    colds: r.colds,
+    freezes: r.freezes,
     enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying, maxHp: e.input.spec.hp })),
     frames: opts.record ? r.frames : undefined,
   };

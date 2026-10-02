@@ -235,3 +235,37 @@ describe('コストと再配置', () => {
     expect(15).toBeGreaterThan(Math.max(...costs));
   });
 });
+
+describe('寒冷・凍結とスキルの細部', () => {
+  const unit = (name: string) => UNITS.find((u) => u.name === name)!;
+
+  it('イェラグ6人の寒風と寒冷の重ねがけで凍結し、凍結で加算数を得る特性が働く', () => {
+    const names = ['マッターホルン', 'シルバーアッシュ', 'スノーハンター', 'プラマニクス', 'イェラ', 'ノーシス'];
+    const pos = [31, 32, 22, 23, 21, 20];
+    const board: OwnedUnit[] = names.map((n, i) => ({ uid: i + 1, defId: unit(n).id, star: 2, pos: pos[i], dir: i < 2 ? 'right' : 'down' }));
+    // スノーハンターに「イェラグの不融氷」（攻撃時に確率で寒冷）
+    board[2].items = [{ uid: 99, itemId: '5_02', star: 2 }];
+    const { inputs, globals, statuses } = buildSimInputs(board, [], {});
+    const active = new Set(statuses.filter((s) => s.level > 0).map((s) => s.id));
+    const r = simulateBattle(inputs, roundSpec(5), { globals, activeAlliances: active, stacks: {} });
+    expect(r.colds).toBeGreaterThan(0);
+    expect(r.freezes).toBeGreaterThan(0);
+    expect(r.stackGains.kjerag ?? 0).toBeGreaterThan(0);
+  });
+
+  it('ウタゲのスキルは配置時に発動し、HPが減って効果時間が減っていく', () => {
+    const spec = oneEnemy('test_dummy2', false, { speed: 0.01 });
+    const r = run([{ uid: 1, defId: unit('ウタゲ').id, star: 1, pos: 34, dir: 'right' }], spec);
+    expect(r.perUnit[0].skillCasts).toBe(1);
+    const first = r.frames![0].u![0];
+    expect(first[1]).toBe(50); // HP50%
+    expect(first[3]).toBe(1); // スキル中
+  });
+
+  it('近距離はブロックしている敵を、攻撃範囲外でも攻撃する', () => {
+    const spec = oneEnemy('test_behind', false, { hp: 1e9, def: 0, res: 0 });
+    // 左（防衛マス側）を向いて置くと、右から来てブロックした敵は範囲外
+    const r = run([{ uid: 1, defId: unit('ウタゲ').id, star: 1, pos: 31, dir: 'left' }], spec);
+    expect(r.perUnit[0].damage).toBeGreaterThan(0);
+  });
+});
