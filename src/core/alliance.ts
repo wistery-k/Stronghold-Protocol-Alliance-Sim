@@ -117,6 +117,8 @@ export interface BattleGlobals {
   indom?: { prob: number; sp: number };
   /** イェラグ：所属者の与ダメージ（寒冷・凍結した敵には ex）。Lv2で定期的に寒風 */
   kjerag?: { members: Set<number>; base: number; ex: number; storm: { interval: number; duration: number } | null };
+  /** 俊敏：スキル終了時にSPが回復する確率 */
+  swiftProb?: number;
   /** 戦術【命結の秘】：最初に倒れた数名が即座に復活 */
   bandRevive?: number;
   /** 戦術【屍喰らいの蝶】：味方が倒れるたびに残りの味方の攻撃力上昇 */
@@ -396,8 +398,9 @@ export function battleSetup(
   // 俊敏：確率でSP回復 → 期待値で扱う
   if (lv('swift') >= 1) {
     const p = Math.min(1, v('swift', 'base_prob') + v('swift', 'prob_per_stack') * sk('swift'));
-    apply(members('swift'), { spOnSkillEnd: p * v('swift', 'normal_sp') });
-    if (sk('swift') >= v('swift', 'power_bond_stack_cnt')) apply(all, { spOnSkillEnd: p * v('swift', 'power_sp') });
+    globals.swiftProb = p;
+    apply(members('swift'), { spOnSkillEnd: v('swift', 'normal_sp') });
+    if (sk('swift') >= v('swift', 'power_bond_stack_cnt')) apply(all, { spOnSkillEnd: v('swift', 'power_sp') });
   }
   // 器用：所属者と周囲4マス（40層で8マス）
   if (lv('skillful') >= 1) {

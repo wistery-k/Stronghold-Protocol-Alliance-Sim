@@ -315,6 +315,8 @@ function peakPerformance(bb: Record<string, number>): [number, number][] {
   }
   return out.sort((a, b) => b[0] - a[0]);
 }
+/** 俊敏でSPが回復した後、スキルを再発動できるまでの時間（秒） */
+const SWIFT_RECAST_DELAY = 1;
 /** 連鎖術師：跳躍できる距離（マス） */
 const CHAIN_JUMP_RADIUS = 1.5;
 /** シヴィライト・エテルナ：S3の鼓舞とHPの再配分、素質「微塵」で特性の効果1.5倍 */
@@ -655,6 +657,9 @@ interface Runtime {
   huntAmmo: number;
   /** 回避の確率の累積（期待値） */
   evadeAcc: number;
+  /** 俊敏の確率の累積と、次にスキルを発動できる時刻 */
+  swiftAcc: number;
+  recastAt: number;
   /** 鼓舞（攻撃力の固定値加算）とその期限 */
   inspireAtk: number;
   inspireUntil: number;
@@ -764,6 +769,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
       evadeAcc: 0,
+      swiftAcc: 0,
+      recastAt: -1,
       inspireAtk: 0,
       inspireUntil: -1,
       redistTimer: 0,
@@ -1196,7 +1203,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (pick) pick.sp += g.humus.sp;
     }
     u.philaeBoost = false;
-    u.sp += u.input.mods.spOnSkillEnd ?? 0;
+    // 俊敏：スキル終了時に確率でSP回復（期待値：累積が1に達するたびに発生）。
+    // スキルの動作時間を再現していないので、発生後しばらくは再発動しない
+    const swiftSp = u.input.mods.spOnSkillEnd ?? 0;
+    if (swiftSp > 0 && (g.swiftProb ?? 0) > 0) {
+      u.swiftAcc += Math.min(1, g.swiftProb!);
+      if (u.swiftAcc >= 1) {
+        u.swiftAcc -= 1;
+        u.sp += swiftSp;
+        u.recastAt = t + SWIFT_RECAST_DELAY;
+      }
+    }
     if (!u.firstEndDone) {
       u.firstEndDone = true;
       u.sp += u.input.mods.firstSkillEndSp ?? 0;
@@ -1965,7 +1982,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
       // スキル発動判定（攻撃役は攻撃範囲に敵がいる時だけ発動する）
       const skillActive = () => u.skillLeft > 0 || u.ammoLeft > 0;
-      if (!s.passive && !skillActive() && u.sp >= s.spCost && s.spCost > 0 && !opBursting(u, 'apoptosis') && (heal
+      if (!s.passive && !skillActive() && t >= u.recastAt && u.sp >= s.spCost && s.spCost > 0 && !opBursting(u, 'apoptosis') && (heal
           ? !field || injuredInRange(u, true).length > 0
           : field && (SUPPORT_SKILL[def.charId] === 'nextHeal' || SUPPORT_SKILL[def.charId] === 'areaHeal')
             ? injuredNear(u).length > 0

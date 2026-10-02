@@ -209,7 +209,7 @@ function modifierText(m: Modifier): string[] {
   if (m.damagePct) out.push(`与ダメ+${pct(m.damagePct)}`);
   if (m.damageMult && m.damageMult !== 1) out.push(`与ダメ×${Math.round(m.damageMult * 100) / 100}`);
   if (m.trueDmgPct) out.push(`確定追加${pct(m.trueDmgPct)}`);
-  if (m.spOnSkillEnd) out.push(`スキル終了時SP+${Math.round(m.spOnSkillEnd * 10) / 10}（期待値）`);
+  if (m.spOnSkillEnd) out.push(`スキル終了時に確率でSP+${Math.round(m.spOnSkillEnd * 10) / 10}（【俊敏】）`);
   if (m.ammoPct) out.push(`弾薬+${pct(m.ammoPct)}`);
   if (m.weakDamage) out.push('弱点ダメージ');
   if (m.hpPct) out.push(`最大HP${m.hpPct > 0 ? '+' : ''}${pct(m.hpPct)}`);

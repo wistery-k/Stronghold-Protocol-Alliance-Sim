@@ -381,4 +381,19 @@ describe('寒冷・凍結とスキルの細部', () => {
     // 特性（攻撃力の10%/秒）のままなら2.5万程度。S3で75%/秒になる
     expect(r.perUnit[0].healed).toBeGreaterThan(40000);
   });
+  it('俊敏でSPが回復しても、1秒は再発動しない（瞬間発動のスキルが毎フレーム出ない）', () => {
+    const spec = oneEnemy('test_swift', false, { speed: 0.05 });
+    spec.timeLimit = 30;
+    const board: OwnedUnit[] = [
+      { uid: 1, defId: unit('レオンハルト').id, star: 2, pos: 22, dir: 'down' },
+      { uid: 2, defId: unit('ティッピ').id, star: 2, pos: 23, dir: 'down' },
+    ];
+    const { inputs, globals, statuses } = buildSimInputs(board, [], { swift: 300 });
+    const active = new Set(statuses.filter((x) => x.level > 0).map((x) => x.id));
+    expect(globals.swiftProb).toBe(1);
+    const r = simulateBattle(inputs, spec, { globals, activeAlliances: active, stacks: { swift: 300 } });
+    const leon = r.perUnit.find((u) => u.uid === 1)!;
+    expect(leon.skillCasts).toBeGreaterThan(5);
+    expect(leon.skillCasts <= r.elapsed + 2).toBe(true);
+  });
 });
