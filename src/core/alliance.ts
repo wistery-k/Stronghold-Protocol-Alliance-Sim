@@ -532,6 +532,9 @@ export function battleSetup(
           case 'act2autochess_equip_acarm102_ability':
             if (bonds.includes('kjerag')) apply([o.uid], { coldDot: has('5_02') ? n('atk_scale_ex') : n('atk_scale') });
             break;
+          case 'act1autochess_equip_acarm042_global_buff':
+            apply([o.uid], { burnOnArts: n('damage_scale') });
+            break;
           case 'silence_attachment':
             apply([o.uid], { neutralize: n('silence') });
             break;

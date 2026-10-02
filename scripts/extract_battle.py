@@ -50,6 +50,14 @@ GROUP_NAMES = {
     'REFLECTION': '屈折',
 }
 
+# 元素損傷の種類（図鑑の説明のタグ → シミュレーターの名前）
+ELEMENT_TAGS = {
+    'ba.dt.burning': 'burning',
+    'ba.dt.neural': 'neural',
+    'ba.dt.erosion': 'erosion',
+    'ba.dt.apoptosis': 'apoptosis',
+}
+
 # isInFirstHalf の敵が出るラウンド（険境の act1autochess_01〜07）
 FIRST_HALF_ROUNDS = 7
 
@@ -176,6 +184,11 @@ def main():
                 'range': (radius if radius > 0 else 2.5) if apply_way == 'RANGED' else 0,
                 'arts': dtypes[0] == 'MAGIC',
             }
+        # 元素損傷：攻撃時に攻撃力×比率の元素損傷を与える（種類は図鑑の説明から）
+        etype = next((ELEMENT_TAGS[tag] for a in abilities for tag in ELEMENT_TAGS if tag in a), None)
+        eratio = next((b['value'] for k, b in bb.items() if k.endswith('attack@ep_damage_ratio')), None)
+        if etype and eratio and 'attack' in e:
+            e['element'] = {'type': etype, 'ratio': eratio}
         # 隠匿（ブロックされるまで狙えない）
         if abilities and abilities[0].startswith('<$ba.invisible>'):
             e['stealth'] = True

@@ -271,6 +271,7 @@ export function battleSummary(r: BattleResult, units: ReplayUnit[]) {
       h('div', null, h('span', { class: 'muted small' }, '撃破'), h('b', null, `${r.killed}/${r.total}`)),
       h('div', null, h('span', { class: 'muted small' }, '総ダメージ'), h('b', null, fmt(r.totalDamage))),
       h('div', null, h('span', { class: 'muted small' }, '平均DPS'), h('b', null, fmt(r.totalDamage / Math.max(1, r.elapsed)))),
+      r.opBursts || r.enBursts ? h('div', null, h('span', { class: 'muted small', title: '元素損傷が爆発した回数（味方/敵）' }, '元素爆発 味方/敵'), h('b', null, `${r.opBursts ?? 0}/${r.enBursts ?? 0}回`)) : null,
       r.colds || r.freezes ? h('div', null, h('span', { class: 'muted small' }, '寒冷/凍結'), h('b', null, `${r.colds ?? 0}/${r.freezes ?? 0}回`)) : null,
       h('div', null, h('span', { class: 'muted small' }, '撤退'), h('b', { class: downCount(r) ? 'ng' : '' }, `${downCount(r)}人`)),
       r.bossRemaining > 0 ? h('div', null, h('span', { class: 'muted small' }, 'ボス残りHP'), h('b', { class: 'ng' }, pct(r.bossRemaining))) : null,
@@ -429,12 +430,12 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       unitNodes.get(uid)?.classList.toggle('down', v < 0);
       const sp = unitSp.get(uid);
       if (!sp || !st) continue;
-      const [, , gauge, mode, val] = st;
+      const [, , gauge, mode, val, ammo] = st;
       sp.bar.setAttribute('width', String(mode === 3 || (v < 0 && mode !== 4) ? 0 : ((S - 28) * gauge) / 100));
       sp.bar.classList.toggle('active', mode === 1 || mode === 2);
       sp.bar.classList.toggle('waiting', mode === 4);
       sp.label.textContent =
-        mode === 4 ? (val > 0 ? `再配置${Math.ceil(val / 10)}` : 'コスト待ち') : v < 0 ? '' : mode === 1 ? `${(val / 10).toFixed(0)}秒` : mode === 2 ? `弾${val}` : '';
+        mode === 4 ? (val > 0 ? `再配置${Math.ceil(val / 10)}` : 'コスト待ち') : v < 0 ? '' : mode === 1 ? `${(val / 10).toFixed(0)}秒` : mode === 2 ? `弾${val}` : ammo !== undefined && ammo !== null ? `弾${ammo}` : '';
       sp.label.classList.toggle('waiting', mode === 4);
     }
     timeLabel.textContent = `${t.toFixed(1)}秒`;

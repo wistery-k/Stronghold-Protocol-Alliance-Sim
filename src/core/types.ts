@@ -173,6 +173,8 @@ export interface Modifier {
   coldDur?: number;
   /** 攻撃範囲内の寒冷・凍結した敵に毎秒攻撃力のこの割合の術ダメージ（イェラガンドの涙） */
   coldDot?: number;
+  /** 与えた術ダメージのこの割合の灼燃損傷を与える（ヴィクトリアの鉄鎚・灼熱） */
+  burnOnArts?: number;
 }
 
 export interface EnemyPhase {

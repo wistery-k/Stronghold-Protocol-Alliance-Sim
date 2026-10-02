@@ -1,6 +1,6 @@
 import { bondKey, type BattleGlobals } from './alliance';
 import { ENEMY_PATHS, canBlockAt, cellPos, cellX, cellY, rangeCells, DEFAULT_DIRECTION } from './board';
-import { ENEMIES, rangeGrid, unitRangeIds, type EnemySpec, type RoundSpec } from './data/battle';
+import { ENEMIES, rangeGrid, unitRangeIds, type ElementType, type EnemySpec, type RoundSpec } from './data/battle';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE, ENEMY_SPEED_SCALE } from './rules';
 import { unitState } from './data/units';
 import type { AllianceId, DamageType, Direction, EnemyDef, EnemyPhase, GarrisonData, Modifier, SkillData, Star, UnitDef } from './types';
@@ -82,7 +82,7 @@ export interface ReplayFrame {
    * 状態 0: SP溜め中（ゲージ=SP%）、1: スキル中（ゲージ=残り時間%、値=残り秒×10）、2: 弾薬スキル中（値=残り弾数）、3: スキルなし・常時、
    * 4: 再配置待ち（ゲージ=経過%、値=残り秒×10。0ならコスト待ち）
    */
-  u?: [number, number, number, number, number][];
+  u?: [number, number, number, number, number, number?][];
 }
 
 export interface BattleResult {
@@ -108,6 +108,9 @@ export interface BattleResult {
   /** 寒冷・凍結にした回数 */
   colds: number;
   freezes: number;
+  /** 元素損傷が爆発した回数（味方・敵） */
+  opBursts: number;
+  enBursts: number;
   enemies: EnemyMeta[];
   frames?: ReplayFrame[];
 }
@@ -362,7 +365,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -402,8 +405,72 @@ const SWIRE: Record<string, { maxCoins: [number, number]; maxStacks: [number, nu
 
 /** 寒冷：敵の攻撃速度低下。寒冷中に再び寒冷になると凍結（動けず攻撃できず、術耐性低下） */
 const COLD_ATTACK_SPEED = 30;
-const FREEZE_DURATION = 3;
 const FROZEN_RES_DOWN = 15;
+
+/** 元素損傷：上限と爆発（味方：上限1000、敵：通常・エリート1000、ボス2000） */
+const OP_ELEMENT_MAX = 1000;
+const EN_ELEMENT_MAX = 1000;
+const EN_ELEMENT_MAX_BOSS = 2000;
+const OP_BURST_DURATION: Record<ElementType, number> = { neural: 10, erosion: 10, burning: 10, apoptosis: 15 };
+const EN_BURST_DURATION: Record<ElementType, number> = { neural: 10, erosion: 8, burning: 10, apoptosis: 15 };
+const EN_BURST_DAMAGE: Record<ElementType, number> = { neural: 6000, erosion: 5000, burning: 7000, apoptosis: 0 };
+/** 行医：治療時に攻撃力のこの割合ぶん元素損傷を回復 */
+const WANDER_ELEMENT_HEAL = 0.5;
+
+/** 元素損傷に関わる素質 */
+interface ElementTalent {
+  /** 受ける元素損傷の減少 */
+  elementResist?: number;
+  /** 攻撃範囲内の味方が受ける元素損傷の減少（常時／蓄積が半分を超えている時） */
+  auraElementResist?: number;
+  auraElementResistHalf?: number;
+  /** 凋亡損傷を受けた時のSP回復 */
+  spOnApoptosis?: number;
+  /** 攻撃範囲内の敵に毎秒攻撃力のこの割合の凋亡損傷、範囲内の敵が受ける凋亡損傷の倍率 */
+  auraApoptosis?: number;
+  auraApoptosisTaken?: number;
+  /** 敵の灼燃の爆発時：元素ダメージ（攻撃力倍率）と自身のHP回復 */
+  onBurnBurst?: { scale: number; heal: number };
+  /** 凋亡の爆発中の敵を攻撃すると毎秒攻撃力のこの割合の元素ダメージ */
+  nymphDot?: number;
+  /** 範囲内で凋亡が爆発するたびに攻撃力上昇 */
+  atkPerApoptosisBurst?: { atk: number; max: number };
+  /** ブロック中：庇護（被ダメージ減少）と、ブロック中の敵への毎秒の術ダメージ・灼燃損傷 */
+  protectWhileBlocking?: number;
+  blockedDot?: { arts: number; burn: number };
+  /** 4人以上配置されている時、毎秒最大HPのこの割合のHPと元素損傷を回復 */
+  regenWithAllies?: number;
+  /** スキル中、他の味方の術ダメージに灼燃損傷を加える */
+  yuSkill?: boolean;
+}
+const ELEMENT_TALENT: Record<string, ElementTalent> = {
+  char_4148_philae: { elementResist: 0.12, spOnApoptosis: 2 },
+  char_4114_harold: { auraElementResistHalf: 0.18 },
+  char_1016_agoat2: { auraElementResist: 0.12 },
+  char_245_cello: { auraApoptosis: 0.1, auraApoptosisTaken: 1.22 },
+  char_1040_blaze2: { onBurnBurst: { scale: 3.8, heal: 0.15 } },
+  char_4146_nymph: { nymphDot: 0.4, atkPerApoptosisBurst: { atk: 0.02, max: 12 } },
+  char_2026_yu: { protectWhileBlocking: 0.3, blockedDot: { arts: 0.4, burn: 0.12 }, regenWithAllies: 0.02, yuSkill: true },
+};
+/** 元素損傷を与える即時スキル */
+const ELEMENT_SKILL: Record<string, 'virtuosa' | 'nymph'> = {
+  char_245_cello: 'virtuosa',
+  char_4146_nymph: 'nymph',
+};
+/** スキルでのみ攻撃するオペレーター */
+const SKILL_ONLY_ATTACK = new Set(['char_245_cello']);
+/** フィラエ：スキル中は攻撃せず、攻撃を受けると周囲の地上の敵に反撃 */
+const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius: 1.5 } };
+
+/** 狩人：最大弾数、攻撃時の攻撃力倍率、攻撃をやめてから装填が始まるまでと1発の装填時間（秒） */
+const HUNTER_AMMO = 8;
+const HUNTER_ATK_SCALE = 1.2;
+const HUNTER_RELOAD_DELAY = 1;
+const HUNTER_RELOAD_INTERVAL = 1;
+/** スノーハンターの素質（裂雲一撃：スキル発動時に攻撃力の185%の物理ダメージと寒冷3秒） */
+const SNOW_HUNTER: Record<string, { talentScale: number; talentCold: number }> = {
+  char_4211_snhunt: { talentScale: 1.85, talentCold: 3 },
+};
 
 /** 遠距離の敵が攻撃する時に足を止める秒数 */
 const RANGED_ATTACK_STALL = 0.5;
@@ -450,6 +517,15 @@ interface Enemy {
   /** 寒冷・凍結の終わる時刻 */
   coldUntil: number;
   frozenUntil: number;
+  /** 元素損傷の蓄積と、爆発の終わる時刻 */
+  elem: Partial<Record<ElementType, number>>;
+  elemBurst: Partial<Record<ElementType, number>>;
+  /** 爆発させたオペレーター（継続ダメージの帰属） */
+  elemSrc: Partial<Record<ElementType, Runtime>>;
+  /** 侵蝕の爆発で永久に下がった防御力 */
+  erosionDef: number;
+  /** ニンフの素質：凋亡の爆発中に毎秒受ける元素ダメージ */
+  nymphDot: { src: Runtime; dps: number } | null;
   /** 復活待ち（攻撃回数で倒せる状態）なら復活する時刻 */
   reviveAt: number | null;
   revived: boolean;
@@ -496,6 +572,17 @@ interface Runtime {
   reflectReadyAt: number;
   /** スキルを発動した時刻 */
   castAt: number;
+  /** 元素損傷の蓄積と爆発の終わる時刻、爆発の影響 */
+  elem: Partial<Record<ElementType, number>>;
+  elemBurst: Partial<Record<ElementType, number>>;
+  erosionDef: number;
+  /** 素質・スキルの層（ニンフ：凋亡の爆発ごとの攻撃力、フィラエ：元素損傷を受けた時の攻撃力） */
+  talentStacks: number;
+  philaeBoost: boolean;
+  counterReadyAt: number;
+  /** 狩人：弾数とリロード */
+  huntAmmo: number;
+  lastAttackAt: number;
   /** バリア（残量・減る速さ） */
   barrier: number;
   barrierDecay: number;
@@ -535,6 +622,8 @@ interface EngineResult {
   killTime: number | null;
   colds: number;
   freezes: number;
+  opBursts: number;
+  enBursts: number;
 }
 
 function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: number, field: boolean, opts: SimOptions): EngineResult {
@@ -575,6 +664,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       order: 0,
       reflectReadyAt: 0,
       castAt: -1,
+      elem: {},
+      elemBurst: {},
+      erosionDef: 0,
+      talentStacks: 0,
+      philaeBoost: false,
+      counterReadyAt: 0,
+      huntAmmo: HUNTER_AMMO,
+      lastAttackAt: -99,
       barrier: 0,
       barrierDecay: 0,
       coldAcc: 0,
@@ -621,7 +718,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const currentRes = (e: Enemy) => {
     const s = e.input.spec;
     const dr = s.defReduce ? s.defReduce.res * e.reduceStacks : 0;
-    return Math.max(0, (neutral(e) ? s.res : baseRes(s)) + dr - (t < e.frozenUntil ? FROZEN_RES_DOWN : 0));
+    return Math.max(0, (neutral(e) ? s.res : baseRes(s)) + dr - (t < e.frozenUntil ? FROZEN_RES_DOWN : 0) - (t < (e.elemBurst.burning ?? -1) ? 20 : 0));
   };
   const neutralize = (e: Enemy, seconds: number) => {
     if (seconds <= 0 || !e.alive) return;
@@ -675,9 +772,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const applyCold = (e: Enemy, seconds: number) => {
     if (!e.alive || seconds <= 0 || isFrozen(e)) return;
     if (t < e.coldUntil) {
-      // 寒冷中に再び寒冷になると凍結
+      // 寒冷中に再び寒冷になると凍結。凍結時間は、残っていた寒冷と今回の寒冷の長い方
+      const remaining = e.coldUntil - t;
       e.coldUntil = -1;
-      e.frozenUntil = t + FREEZE_DURATION;
+      e.frozenUntil = t + Math.max(remaining, seconds);
       e.defense.res = currentRes(e);
       freezes++;
       onFreeze(e);
@@ -688,6 +786,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
   let stormTimer = g.kjerag?.storm?.interval ?? 0;
   let freezes = 0;
+  let opBursts = 0;
+  let enBursts = 0;
   let colds = 0;
   /** イェラグLv2の寒風と、イェラガンドの涙の継続ダメージ */
   const tickCold = () => {
@@ -727,6 +827,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       stallUntil: -1,
       coldUntil: -1,
       frozenUntil: -1,
+      elem: {},
+      elemBurst: {},
+      elemSrc: {},
+      erosionDef: 0,
+      nymphDot: null,
       defense: { def: input.spec.def, res: baseRes(input.spec), damageTaken: 1 },
       phases: [...(input.phases ?? [])].sort((a, b) => b.belowHpRatio - a.belowHpRatio),
       phaseIdx: 0,
@@ -864,6 +969,20 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken);
       if (g.siracusa?.members.has(uid) && t < g.siracusa.procWindow) deal(u, e, g.siracusa.procProb * g.siracusa.procDmg * e.defense.damageTaken);
       if (type === 'arts' && g.arcane?.members.has(uid) && dmg > 0) e.arcaneUntil = t + g.arcane.duration;
+      // 元素損傷：ヴィクトリアの鉄鎚・灼熱（術ダメージの一部を灼燃損傷に）
+      if (type === 'arts' && mods.burnOnArts && dmg > 0) addEnElement(e, 'burning', dmg * mods.burnOnArts, u);
+      // ユーのスキル中：他の味方の術ダメージにユーの攻撃力の一部の灼燃損傷が加わる
+      if (type === 'arts' && dmg > 0) {
+        for (const y of rt) {
+          if (y === u || !y.alive || y.skillLeft <= 0 || !ELEMENT_TALENT[y.input.def.charId]?.yuSkill) continue;
+          addEnElement(e, 'burning', baseAtk(y.input.def, y.input.star, y.input.mods) * (y.skill.bb.ep_damage_ratio ?? 0), y);
+        }
+      }
+      // 熾炎ブレイズのスキル中：灼燃の爆発中の敵に追加で元素ダメージ
+      if (skillOn && ELEMENT_TALENT[def.charId]?.onBurnBurst && enBursting(e, 'burning')) deal(u, e, atk * (u.skill.bb['attack@atk_scale'] ?? 0));
+      // ニンフの素質：凋亡の爆発中の敵を攻撃すると、爆発が終わるまで毎秒元素ダメージ
+      const nymphTal = ELEMENT_TALENT[def.charId]?.nymphDot;
+      if (nymphTal && enBursting(e, 'apoptosis')) e.nymphDot = { src: u, dps: atk * nymphTal };
       // 寒冷の付与（スキル中の攻撃・装備）
       if (skillOn && u.skill.cold > 0) chance(u, u.skill.coldProb, () => applyCold(e, u.skill.cold));
       if (mods.coldProb && mods.coldDur) chance(u, mods.coldProb, () => applyCold(e, mods.coldDur!));
@@ -871,7 +990,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const dr = e.input.spec.defReduce;
       if (dr && e.reduceStacks < dr.max) {
         e.reduceStacks++;
-        e.defense.def = Math.max(0, e.input.spec.def + dr.def * e.reduceStacks);
+        e.defense.def = Math.max(0, e.input.spec.def + dr.def * e.reduceStacks - e.erosionDef);
         e.defense.res = currentRes(e);
       }
     }
@@ -930,6 +1049,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const endSkill = (u: Runtime) => {
     setSkillHp(u, false);
+    u.philaeBoost = false;
     u.sp += u.input.mods.spOnSkillEnd ?? 0;
     if (!u.firstEndDone) {
       u.firstEndDone = true;
@@ -983,6 +1103,42 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     } else if (s.instant && def.damageType === 'heal') {
       if (field) healAction(u, baseAtk(def, star, mods, outerAtkPct + s.atkPct), s.atkScale, true);
       endSkill(u);
+    } else if (s.instant && field && ELEMENT_SKILL[def.charId]) {
+      const kind = ELEMENT_SKILL[def.charId];
+      const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
+      const cands = pickTargets(u, true).map(([e]) => e);
+      if (kind === 'virtuosa') {
+        // 凋亡の爆発中でない敵1体に術ダメージと凋亡損傷
+        const target = cands.find((e) => !enBursting(e, 'apoptosis')) ?? cands[0];
+        if (target) {
+          strike(u, target, atk, s.bb.atk_scale ?? 1);
+          addEnElement(target, 'apoptosis', atk * (s.bb.ep_damage_ratio ?? 0), u);
+        }
+      } else if (kind === 'nymph') {
+        // 対象と周囲の敵に術ダメージ、与えたダメージの一部を凋亡損傷に
+        const main = cands[0];
+        if (main) {
+          for (const e of enemies) {
+            if (!e.alive || Math.hypot(e.x - main.x, e.y - main.y) > (s.bb.projectile_range ?? 1.5)) continue;
+            const before = e.hp;
+            strike(u, e, atk, s.bb.atk_scale ?? 1);
+            addEnElement(e, 'apoptosis', Math.max(0, before - e.hp) * (s.bb.ep_damage_ratio ?? 0), u);
+          }
+        }
+      }
+      endSkill(u);
+    } else if (s.instant && SNOW_HUNTER[def.charId]) {
+      // スノーハンター：特殊弾の2連撃（移動していない敵には倍率上昇）＋素質で裂雲獣の一撃と寒冷
+      const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
+      const target = pickTargets(u, true)[0]?.[0];
+      if (target) {
+        const still = target.blockedBy !== null || isFrozen(target);
+        const sc = still ? (s.bb.atk_scale_2 ?? 1) : (s.bb.atk_scale_1 ?? 1);
+        for (let h = 0; h < 2; h++) strike(u, target, atk, sc);
+        strike(u, target, atk, SNOW_HUNTER[def.charId].talentScale);
+        applyCold(target, SNOW_HUNTER[def.charId].talentCold);
+      }
+      endSkill(u);
     } else if (s.instant) {
       if (support === 'selfHeal') healUnit(u, u, u.maxHp * (s.bb.hp_ratio ?? 0));
       const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
@@ -1011,6 +1167,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       (u) =>
         u.blocker &&
         u.alive &&
+        !stunned(u) &&
         u.input.pos === tile &&
         u.blocked.reduce((s, b) => s + b.input.spec.blockCnt, 0) + e.input.spec.blockCnt <= u.block + (u.skillLeft > 0 || u.ammoLeft > 0 ? u.skill.blockAdd : 0),
     );
@@ -1023,8 +1180,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   /** 防御・術耐性・被ダメージ軽減を通したダメージ */
   const mitigate = (u: Runtime, raw: number, arts: boolean) => {
-    const dmg = arts ? Math.max(raw * (1 - u.res / 100), raw * MIN_DAMAGE_RATIO) : Math.max(raw - u.def, raw * MIN_DAMAGE_RATIO);
-    return dmg * Math.max(0, 1 - (u.input.mods.damageReduce ?? 0));
+    // 灼燃の爆発中は術耐性-20、侵蝕の爆発で防御力が永久に下がる
+    const res = Math.max(0, u.res - (t < (u.elemBurst.burning ?? -1) ? 20 : 0));
+    const df = Math.max(0, u.def - u.erosionDef);
+    const dmg = arts ? Math.max(raw * (1 - res / 100), raw * MIN_DAMAGE_RATIO) : Math.max(raw - df, raw * MIN_DAMAGE_RATIO);
+    // ユーの素質：ブロック中は庇護30%
+    const protect = ELEMENT_TALENT[u.input.def.charId]?.protectWhileBlocking && u.blocked.length ? ELEMENT_TALENT[u.input.def.charId]!.protectWhileBlocking! : 0;
+    return dmg * Math.max(0, 1 - (u.input.mods.damageReduce ?? 0)) * (1 - protect);
   };
 
   /** 戦場から外れる（倒れた・コスト不足で撤退）。再配置タイマーが動き出す */
@@ -1163,6 +1325,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
 
   const hurt = (u: Runtime, raw: number, arts: boolean, src: Enemy) => {
+    philaeCounter(u);
     let dmg = mitigate(u, raw, arts);
     const sd = g.stead;
     if (sd && sd.members.has(u.input.uid)) steadReflect(u, src);
@@ -1192,10 +1355,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const range = skillActive ? u.rangeSkill : u.rangeNormal;
     return rt.filter((o) => o.alive && o.input.pos !== undefined && !!range?.has(o.input.pos));
   };
-  const injuredInRange = (u: Runtime, skillActive: boolean) =>
-    alliesInRange(u, skillActive)
-      .filter((o) => o.hp < o.maxHp - 1e-6)
-      .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
+  const elemTotal = (o: Runtime) => (Object.values(o.elem) as number[]).reduce((s2, v) => s2 + v, 0);
+  const injuredInRange = (u: Runtime, skillActive: boolean) => {
+    // 行医：元素損傷を受けた味方も治療する（元素損傷の多い順を優先）
+    const wander = u.input.def.subProfession === 'wandermedic';
+    return alliesInRange(u, skillActive)
+      .filter((o) => o.hp < o.maxHp - 1e-6 || (wander && elemTotal(o) > 0))
+      .sort((a, b) => (wander ? elemTotal(b) - elemTotal(a) : 0) || a.hp / a.maxHp - b.hp / b.maxHp);
+  };
 
   /** 医療の1回の治療行動 */
   const healAction = (u: Runtime, atk: number, scale: number, skillActive: boolean): boolean => {
@@ -1212,8 +1379,181 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // 療養師：遠くの対象は治療量80%
       const far = sub === 'healer' && u.input.pos !== undefined && o.input.pos !== undefined && Math.hypot(cellX(o.input.pos) - cellX(u.input.pos), cellY(o.input.pos) - cellY(u.input.pos)) > 1.5;
       healUnit(u, o, atk * scale * (far ? 0.8 : 1));
+      // 行医：攻撃力の50%ぶん元素損傷も回復（ハロルドのスキル：蓄積が半分を超える相手には倍率上昇）
+      if (sub === 'wandermedic') {
+        const boost = skillActive && u.skill.bb.trait_scale && elemMax(o) > OP_ELEMENT_MAX / 2 ? u.skill.bb.trait_scale : 1;
+        healElement(o, atk * WANDER_ELEMENT_HEAL * boost * scale);
+      }
     }
     return true;
+  };
+
+  // ------------------------------------------------------------
+  // 元素損傷
+  // ------------------------------------------------------------
+  const elemMax = (o: Runtime) => Math.max(0, ...(Object.values(o.elem) as number[]));
+  const opBursting = (o: Runtime, type: ElementType) => t < (o.elemBurst[type] ?? -1);
+  const stunned = (o: Runtime) => t < (o.elemBurst.neural ?? -1);
+  /** 元素損傷の回復（多い種類から） */
+  const healElement = (o: Runtime, amount: number) => {
+    for (const type of (Object.keys(o.elem) as ElementType[]).sort((a, b) => (o.elem[b] ?? 0) - (o.elem[a] ?? 0))) {
+      if (amount <= 0) break;
+      if (opBursting(o, type)) continue;
+      const v = o.elem[type] ?? 0;
+      const d = Math.min(v, amount);
+      o.elem[type] = v - d;
+      amount -= d;
+    }
+  };
+  /** 味方が受ける元素損傷の倍率（素質・周囲の効果） */
+  const opElementTaken = (o: Runtime) => {
+    let m = 1 - (ELEMENT_TALENT[o.input.def.charId]?.elementResist ?? 0);
+    for (const h of rt) {
+      const tal = ELEMENT_TALENT[h.input.def.charId];
+      if (!h.alive || !tal || o.input.pos === undefined || !h.rangeNormal?.has(o.input.pos)) continue;
+      if (tal.auraElementResist) m *= 1 - tal.auraElementResist;
+      if (tal.auraElementResistHalf && elemMax(o) > OP_ELEMENT_MAX / 2) m *= 1 - tal.auraElementResistHalf;
+    }
+    return m;
+  };
+  const addOpElement = (o: Runtime, type: ElementType, amount: number) => {
+    if (!o.alive || amount <= 0 || opBursting(o, type)) return;
+    amount *= opElementTaken(o);
+    const tal = ELEMENT_TALENT[o.input.def.charId];
+    // フィラエ：凋亡損傷を受けるとSP回復、スキル中に元素損傷を受けると攻撃力上昇
+    if (tal?.spOnApoptosis && type === 'apoptosis') o.sp += tal.spOnApoptosis;
+    if (PHILAE[o.input.def.charId] && o.skillLeft > 0) o.philaeBoost = true;
+    o.elem[type] = (o.elem[type] ?? 0) + amount;
+    if ((o.elem[type] ?? 0) < OP_ELEMENT_MAX) return;
+    // 爆発
+    o.elemBurst[type] = t + OP_BURST_DURATION[type];
+    opBursts++;
+    if (type === 'neural') {
+      takeDamage(o, 1000);
+      for (const e of o.blocked) e.blockedBy = null;
+      o.blocked = [];
+    } else if (type === 'erosion') {
+      o.erosionDef += 100;
+      takeDamage(o, mitigate(o, 800, false));
+    } else if (type === 'burning') {
+      takeDamage(o, mitigate(o, 1200, true));
+    }
+  };
+
+  /** 凋亡の爆発で付く虚弱（攻撃力-50%から徐々に回復） */
+  const weakFactor = (e: Enemy) => {
+    const until = e.elemBurst.apoptosis ?? -1;
+    if (t >= until) return 1;
+    return 1 - 0.5 * ((until - t) / EN_BURST_DURATION.apoptosis);
+  };
+  const enBursting = (e: Enemy, type: ElementType) => t < (e.elemBurst[type] ?? -1);
+  const addEnElement = (e: Enemy, type: ElementType, amount: number, src: Runtime) => {
+    if (!e.alive || amount <= 0 || enBursting(e, type)) return;
+    // ヴィルトゥオーサの素質：範囲内の敵が受ける凋亡損傷が上昇
+    if (type === 'apoptosis') {
+      const tile = enemyTile(e);
+      for (const u of rt) {
+        const tal = ELEMENT_TALENT[u.input.def.charId];
+        if (u.alive && tal?.auraApoptosisTaken && u.rangeNormal?.has(tile)) amount *= tal.auraApoptosisTaken;
+      }
+    }
+    e.elem[type] = (e.elem[type] ?? 0) + amount;
+    // 上限：通常・エリートは1000、ボス（領袖）は2000
+    if ((e.elem[type] ?? 0) < (e.input.spec.boss ? EN_ELEMENT_MAX_BOSS : EN_ELEMENT_MAX)) return;
+    // 爆発
+    e.elem[type] = 0;
+    e.elemBurst[type] = t + EN_BURST_DURATION[type];
+    e.elemSrc[type] = src;
+    enBursts++;
+    deal(src, e, EN_BURST_DAMAGE[type]);
+    if (type === 'erosion') {
+      e.erosionDef += 120;
+      e.defense.def = Math.max(0, e.defense.def - 120);
+    }
+    if (type === 'burning') e.defense.res = currentRes(e);
+    onEnemyBurst(e, type);
+  };
+  /** 敵の元素損傷が爆発した時の素質（熾炎ブレイズ・ニンフ） */
+  const onEnemyBurst = (e: Enemy, type: ElementType) => {
+    const tile = enemyTile(e);
+    for (const u of rt) {
+      if (!u.alive) continue;
+      const tal = ELEMENT_TALENT[u.input.def.charId];
+      if (!tal) continue;
+      if (type === 'burning' && tal.onBurnBurst) {
+        // 熾炎ブレイズ：灼燃の爆発時に元素ダメージとHP回復、スキル中は弾薬+2
+        deal(u, e, baseAtk(u.input.def, u.input.star, u.input.mods) * tal.onBurnBurst.scale);
+        healUnit(u, u, u.maxHp * tal.onBurnBurst.heal);
+        if (u.ammoLeft > 0) u.ammoLeft += u.skill.bb.ammo_recover ?? 0;
+      }
+      if (type === 'apoptosis' && tal.atkPerApoptosisBurst && u.rangeNormal?.has(tile)) {
+        u.talentStacks = Math.min(tal.atkPerApoptosisBurst.max, u.talentStacks + 1);
+      }
+    }
+  };
+  /** フィラエ：スキル中に攻撃を受けると周囲の地上の敵に反撃（2秒に1回） */
+  const philaeCounter = (u: Runtime) => {
+    const ph = PHILAE[u.input.def.charId];
+    if (!ph || u.skillLeft <= 0 || t < u.counterReadyAt || u.input.pos === undefined) return;
+    u.counterReadyAt = t + (u.skill.bb.aoe_cd ?? 2);
+    const p = posOf(u);
+    const atk = baseAtk(u.input.def, u.input.star, u.input.mods, u.skill.atkPct * (u.philaeBoost ? 1 : 0));
+    for (const e of enemies) {
+      if (!e.alive || e.input.spec.flying || Math.hypot(e.x - p.x, e.y - p.y) > ph.radius) continue;
+      strike(u, e, atk, u.skill.bb.atk_scale ?? 1);
+      addEnElement(e, 'apoptosis', atk * (u.skill.bb.ep_damage_ratio ?? 0), u);
+    }
+  };
+  /** 元素損傷の継続効果（毎フレーム） */
+  const tickElements = () => {
+    for (const o of rt) {
+      if (!o.alive) continue;
+      for (const type of Object.keys(o.elemBurst) as ElementType[]) {
+        const until = o.elemBurst[type] ?? -1;
+        if (t < until) {
+          // 爆発中は蓄積が徐々に0へ
+          o.elem[type] = Math.max(0, (o.elem[type] ?? 0) - (OP_ELEMENT_MAX / OP_BURST_DURATION[type]) * dt);
+          if (type === 'apoptosis') {
+            o.sp = Math.max(0, o.sp - dt);
+            takeDamage(o, mitigate(o, 100, true) * dt);
+          }
+        } else if (until >= 0) {
+          o.elemBurst[type] = -1;
+          o.elem[type] = 0;
+        }
+      }
+      // ユーの素質：4人以上配置されていればHPと元素損傷を毎秒回復
+      const tal = ELEMENT_TALENT[o.input.def.charId];
+      if (tal?.regenWithAllies && rt.filter((x) => x.alive).length >= 4) {
+        healUnit(o, o, o.maxHp * tal.regenWithAllies * dt);
+        healElement(o, o.maxHp * tal.regenWithAllies * dt);
+      }
+      // ユーの素質：ブロック中の敵に毎秒術ダメージと灼燃損傷
+      if (tal?.blockedDot && o.blocked.length) {
+        const atk = baseAtk(o.input.def, o.input.star, o.input.mods);
+        for (const e of [...o.blocked]) {
+          deal(o, e, hitDamage(atk * tal.blockedDot.arts, 'arts', effDefense(e), o.input.mods) * dt);
+          addEnElement(e, 'burning', atk * tal.blockedDot.burn * dt, o);
+        }
+      }
+      // ヴィルトゥオーサの素質：攻撃範囲内の敵に毎秒凋亡損傷
+      if (tal?.auraApoptosis) {
+        const atk = baseAtk(o.input.def, o.input.star, o.input.mods);
+        for (const e of enemies) if (e.alive && o.rangeNormal?.has(enemyTile(e))) addEnElement(e, 'apoptosis', atk * tal.auraApoptosis * dt, o);
+      }
+    }
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      // 凋亡の爆発中は毎秒800の元素ダメージ
+      if (enBursting(e, 'apoptosis') && e.elemSrc.apoptosis) deal(e.elemSrc.apoptosis, e, 800 * dt);
+      if (e.nymphDot && enBursting(e, 'apoptosis')) deal(e.nymphDot.src, e, e.nymphDot.dps * dt);
+      else e.nymphDot = null;
+      // 灼燃の爆発が終わったら術耐性が戻る
+      if (e.elemBurst.burning !== undefined && e.elemBurst.burning >= 0 && t >= e.elemBurst.burning) {
+        e.elemBurst.burning = -1;
+        e.defense.res = currentRes(e);
+      }
+    }
   };
 
   // ---- 医療以外の治療 ----
@@ -1265,7 +1605,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         }
       }
       if (!target || !target.alive) continue;
-      hurt(target, a.atk, a.arts, e);
+      hurt(target, a.atk * weakFactor(e), a.arts, e);
+      if (e.input.spec.element) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
       e.atkTimer = a.interval;
       // 遠距離攻撃の間は一瞬足を止める
       if (a.kind === 'ranged' && e.blockedBy === null) e.stallUntil = t + RANGED_ATTACK_STALL;
@@ -1336,7 +1677,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const moveMultiplier = opts.moveMultiplier ?? 0.5;
 
-  const unitFrame = (): [number, number, number, number, number][] =>
+  const unitFrame = (): [number, number, number, number, number, number?][] =>
     rt
       .filter((u) => u.input.pos !== undefined)
       .map((u) => {
@@ -1349,7 +1690,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         if (u.ammoLeft > 0) return [u.input.uid, hp, 100, 2, u.ammoLeft];
         if (u.skillLeft > 0 && u.skillLeft < 9000) return [u.input.uid, hp, Math.round((u.skillLeft / Math.max(0.01, s.duration)) * 100), 1, Math.round(u.skillLeft * 10)];
         if (s.passive || s.spCost <= 0 || u.skillLeft > 0) return [u.input.uid, hp, 0, 3, 0];
-        return [u.input.uid, hp, Math.min(100, Math.round((u.sp / s.spCost) * 100)), 0, 0];
+        return [u.input.uid, hp, Math.min(100, Math.round((u.sp / s.spCost) * 100)), 0, 0, u.input.def.subProfession === 'hunter' ? Math.floor(u.huntAmmo) : undefined];
       });
 
   const steps = Math.round(timeLimit / dt);
@@ -1364,6 +1705,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (field) {
       tickCost();
       tickCold();
+      tickElements();
       enemyAttacks();
       tickZones();
       for (const u of rt) if (u.barrier > 0) u.barrier = Math.max(0, u.barrier - u.barrierDecay * dt);
@@ -1395,6 +1737,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         }
         if (!u.alive) continue;
       }
+      // 神経の爆発：スタン中は何もできない
+      if (stunned(u)) continue;
       const stats = unitState(def, star).stats;
       const s = u.skill;
 
@@ -1402,7 +1746,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const lateranoAtk = g.laterano?.members.has(uid) ? Math.min(lateranoAmmo * g.laterano.atkPerAmmo, g.laterano.maxAtk) : 0;
       const castAtk = Math.min(u.result.skillCasts, mods.atkPerCastMax ?? 0) * (mods.atkPerCast ?? 0);
       const swire = SWIRE[def.charId];
-      const outerAtkPct = (g.sargon ? sargonCount * g.sargon.atkPct : 0) + lateranoAtk + castAtk + (swire ? u.swireStacks * swire.atkPerStack : 0);
+      const outerAtkPct =
+        (g.sargon ? sargonCount * g.sargon.atkPct : 0) +
+        lateranoAtk +
+        castAtk +
+        (swire ? u.swireStacks * swire.atkPerStack : 0) +
+        u.talentStacks * (ELEMENT_TALENT[def.charId]?.atkPerApoptosisBurst?.atk ?? 0);
       // 琳琅スワイヤー：コインを使って「シャンパン爆弾」（範囲内の敵に物理ダメージ）
       if (swire && field) {
         u.bombTimer -= dt;
@@ -1419,7 +1768,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
       // スキル発動判定（攻撃役は攻撃範囲に敵がいる時だけ発動する）
       const skillActive = () => u.skillLeft > 0 || u.ammoLeft > 0;
-      if (!s.passive && !skillActive() && u.sp >= s.spCost && s.spCost > 0 && (heal
+      if (!s.passive && !skillActive() && u.sp >= s.spCost && s.spCost > 0 && !opBursting(u, 'apoptosis') && (heal
           ? !field || injuredInRange(u, true).length > 0
           : field && (SUPPORT_SKILL[def.charId] === 'nextHeal' || SUPPORT_SKILL[def.charId] === 'areaHeal')
             ? injuredNear(u).length > 0
@@ -1428,7 +1777,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
 
       const activeNow = s.passive || skillActive();
-      const atk = baseAtk(def, star, mods, outerAtkPct + (activeNow ? s.atkPct : 0));
+      const atk = baseAtk(def, star, mods, outerAtkPct + (activeNow && (!PHILAE[def.charId] || u.philaeBoost) ? s.atkPct : 0));
       const aspd =
         stats.aspd +
         (mods.aspd ?? 0) +
@@ -1440,7 +1789,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const scale = activeNow && !s.instant && !s.passive ? s.atkScale : 1;
       const hits = activeNow && !s.instant ? s.hits : 1;
       // 陣法術師はスキル中しか攻撃しない
-      const canAttack = !heal && !(def.subProfession === 'phalanx' && !activeNow);
+      // ヴィルトゥオーサはスキルでのみ攻撃、フィラエはスキル中は攻撃しない
+      const canAttack =
+        !heal && !(def.subProfession === 'phalanx' && !activeNow) && !(field && SKILL_ONLY_ATTACK.has(def.charId)) && !(PHILAE[def.charId] && u.skillLeft > 0);
 
       // 医療：治療行動（吟遊者は範囲内の全員を毎秒攻撃力の10%回復）
       if (heal && field) {
@@ -1458,14 +1809,30 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         }
       }
 
+      // 狩人：攻撃しない間は弾を装填する
+      const hunter = def.subProfession === 'hunter';
+      if (hunter && t - u.lastAttackAt >= HUNTER_RELOAD_DELAY && u.huntAmmo < HUNTER_AMMO) {
+        u.huntAmmo = Math.min(HUNTER_AMMO, u.huntAmmo + dt / HUNTER_RELOAD_INTERVAL);
+      }
+
       // 通常攻撃
       while (canAttack && u.atkTimer <= 1e-9) {
+        // 狩人は弾がないと攻撃できない
+        if (hunter && u.huntAmmo < 1) {
+          u.atkTimer = 0;
+          break;
+        }
         const targets = pickTargets(u, activeNow);
         if (!targets.length) {
           u.atkTimer = 0;
           break;
         }
-        for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m);
+        if (hunter) {
+          u.huntAmmo -= 1;
+          u.lastAttackAt = t;
+        }
+        // 狩人は弾を消費して攻撃力120%
+        for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1));
         // ブレミシャイン：スキル中は攻撃のたびに周囲の自分以外の味方1人を治療
         if (field && activeNow && SUPPORT_SKILL[def.charId] === 'attackHeal') {
           const ally = injuredNear(u).find((o) => o !== u);
@@ -1547,7 +1914,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       c: Math.floor(cost),
     });
   }
-  return { t, enemies, units: rt, timeline, phaseLog, stackGains, frames, killTime, colds, freezes };
+  return { t, enemies, units: rt, timeline, phaseLog, stackGains, frames, killTime, colds, freezes, opBursts, enBursts };
 }
 
 // ------------------------------------------------------------
@@ -1647,6 +2014,8 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     stackGains: r.stackGains,
     colds: r.colds,
     freezes: r.freezes,
+    opBursts: r.opBursts,
+    enBursts: r.enBursts,
     enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying, maxHp: e.input.spec.hp })),
     frames: opts.record ? r.frames : undefined,
   };

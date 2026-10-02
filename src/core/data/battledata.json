@@ -3413,6 +3413,10 @@
     "interval": 2.5,
     "range": 2.2,
     "arts": true
+   },
+   "element": {
+    "type": "erosion",
+    "ratio": 0.8
    }
   },
   "enemy_1158_divman": {
@@ -3470,6 +3474,10 @@
     "interval": 2.0,
     "range": 1.8,
     "arts": true
+   },
+   "element": {
+    "type": "burning",
+    "ratio": 1.0
    }
   },
   "enemy_1305_mhslim": {
@@ -3489,6 +3497,10 @@
     "interval": 2.0,
     "range": 1.8,
     "arts": true
+   },
+   "element": {
+    "type": "burning",
+    "ratio": 1.0
    }
   },
   "enemy_2025_syufo": {
@@ -3520,6 +3532,10 @@
     "interval": 2.0,
     "range": 0,
     "arts": false
+   },
+   "element": {
+    "type": "erosion",
+    "ratio": 0.2
    }
   },
   "enemy_1161_tidmag_2": {
@@ -3539,6 +3555,10 @@
     "interval": 2.5,
     "range": 2.2,
     "arts": true
+   },
+   "element": {
+    "type": "erosion",
+    "ratio": 0.8
    }
   },
   "enemy_1160_hvyslr_2": {
@@ -3596,6 +3616,10 @@
     "interval": 2.0,
     "range": 0,
     "arts": false
+   },
+   "element": {
+    "type": "neural",
+    "ratio": 0.15
    }
   },
   "enemy_1148_dssbr_2": {
@@ -3615,6 +3639,10 @@
     "interval": 2.0,
     "range": 0,
     "arts": false
+   },
+   "element": {
+    "type": "neural",
+    "ratio": 0.15
    }
   },
   "enemy_1275_dwlock_2": {
@@ -3634,6 +3662,10 @@
     "interval": 4.0,
     "range": 2.5,
     "arts": true
+   },
+   "element": {
+    "type": "apoptosis",
+    "ratio": 0.25
    }
   },
   "enemy_1229_darmy": {
@@ -3653,6 +3685,10 @@
     "interval": 2.5,
     "range": 0,
     "arts": true
+   },
+   "element": {
+    "type": "apoptosis",
+    "ratio": 0.37
    }
   },
   "enemy_1229_darmy_2": {
@@ -3672,6 +3708,10 @@
     "interval": 2.5,
     "range": 0,
     "arts": true
+   },
+   "element": {
+    "type": "apoptosis",
+    "ratio": 0.37
    }
   },
   "enemy_9007_acelem": {
@@ -4971,6 +5011,10 @@
     "interval": 3.5,
     "range": 0,
     "arts": true
+   },
+   "element": {
+    "type": "burning",
+    "ratio": 0.25
    }
   },
   "enemy_10065_ftzlc": {

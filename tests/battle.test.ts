@@ -241,13 +241,13 @@ describe('寒冷・凍結とスキルの細部', () => {
 
   it('イェラグ6人の寒風と寒冷の重ねがけで凍結し、凍結で加算数を得る特性が働く', () => {
     const names = ['マッターホルン', 'シルバーアッシュ', 'スノーハンター', 'プラマニクス', 'イェラ', 'ノーシス'];
-    const pos = [31, 32, 22, 23, 21, 20];
+    const pos = [33, 34, 22, 23, 24, 25];
     const board: OwnedUnit[] = names.map((n, i) => ({ uid: i + 1, defId: unit(n).id, star: 2, pos: pos[i], dir: i < 2 ? 'right' : 'down' }));
     // スノーハンターに「イェラグの不融氷」（攻撃時に確率で寒冷）
     board[2].items = [{ uid: 99, itemId: '5_02', star: 2 }];
     const { inputs, globals, statuses } = buildSimInputs(board, [], {});
     const active = new Set(statuses.filter((s) => s.level > 0).map((s) => s.id));
-    const r = simulateBattle(inputs, roundSpec(5), { globals, activeAlliances: active, stacks: {} });
+    const r = simulateBattle(inputs, roundSpec(7), { globals, activeAlliances: active, stacks: {} });
     expect(r.colds).toBeGreaterThan(0);
     expect(r.freezes).toBeGreaterThan(0);
     expect(r.stackGains.kjerag ?? 0).toBeGreaterThan(0);
@@ -267,5 +267,32 @@ describe('寒冷・凍結とスキルの細部', () => {
     // 左（防衛マス側）を向いて置くと、右から来てブロックした敵は範囲外
     const r = run([{ uid: 1, defId: unit('ウタゲ').id, star: 1, pos: 31, dir: 'left' }], spec);
     expect(r.perUnit[0].damage).toBeGreaterThan(0);
+  });
+  it('狩人は弾が尽きると攻撃できず、攻撃しない間に装填する', () => {
+    const spec = oneEnemy('test_hunt', false, { speed: 0.01, def: 0, res: 0 });
+    spec.timeLimit = 60;
+    const r = run([{ uid: 1, defId: unit('スノーハンター').id, star: 1, pos: 22, dir: 'down' }], spec);
+    const ammo = r.frames!.map((f) => f.u![0][5] as number);
+    expect(ammo[0]).toBe(8);
+    expect(Math.min(...ammo)).toBe(0);
+    // 弾切れのあとも装填して撃ち続ける
+    const firstEmpty = ammo.indexOf(0);
+    expect(ammo.slice(firstEmpty).some((a) => a > 0)).toBe(true);
+  });
+
+  it('敵の神経損傷が溜まると味方が元素爆発する', () => {
+    const spec = oneEnemy('test_neural', false, {
+      attack: { kind: 'melee', atk: 600, interval: 1, range: 0, arts: false },
+      element: { type: 'neural', ratio: 1 },
+    });
+    const r = run([{ uid: 1, defId: UNITS.find((u) => u.profession === 'defender')!.id, star: 3, pos: 31, dir: 'right' }], spec);
+    expect(r.opBursts).toBeGreaterThan(0);
+  });
+
+  it('ヴィルトゥオーサのスキルで敵が凋亡の元素爆発を起こす', () => {
+    const spec = oneEnemy('test_virt', false, { speed: 0.3, def: 0, res: 0 });
+    spec.timeLimit = 60;
+    const r = run([{ uid: 1, defId: unit('ヴィルトゥオーサ').id, star: 2, pos: 22, dir: 'down' }], spec);
+    expect(r.enBursts).toBeGreaterThan(0);
   });
 });
