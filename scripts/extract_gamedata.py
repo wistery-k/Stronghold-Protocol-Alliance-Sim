@@ -258,7 +258,7 @@ def interp_attrs(char: dict, phase: int, level: int) -> dict:
     else:
         t = (level - a['level']) / (b['level'] - a['level'])
     out = {}
-    for k in ('maxHp', 'atk', 'def', 'magicResistance', 'baseAttackTime', 'blockCnt', 'cost', 'attackSpeed'):
+    for k in ('maxHp', 'atk', 'def', 'magicResistance', 'baseAttackTime', 'blockCnt', 'cost', 'attackSpeed', 'respawnTime'):
         va, vb = a['data'][k], b['data'][k]
         out[k] = va + (vb - va) * t if k in ('maxHp', 'atk', 'def') else va
     for k in ('maxHp', 'atk', 'def'):
@@ -314,6 +314,37 @@ def render_desc(tmpl: str, bb: dict) -> str:
         return fmt_value(-v if neg else v, fmt)
 
     return re.sub(r'\{([-\w@\[\].]+)(?::([0-9.%]+))?\}', rep, text)
+
+
+PHASE_NUM = {'PHASE_0': 0, 'PHASE_1': 1, 'PHASE_2': 2}
+
+
+def build_talents(ch, ch_ja, st):
+    """素質：その昇進・レベルで解放されている最も上の候補（潜在0）。日本語の説明があればそれを使う"""
+    out = []
+    phase = PHASE_NUM[st['evolvePhase']]
+    for i, t in enumerate(ch.get('talents') or []):
+        def pick(cands):
+            ok = [
+                c for c in (cands or [])
+                if PHASE_NUM[c['unlockCondition']['phase']] < phase
+                or (PHASE_NUM[c['unlockCondition']['phase']] == phase and c['unlockCondition']['level'] <= st['charLevel'])
+            ]
+            ok = [c for c in ok if c.get('requiredPotentialRank', 0) == 0] or ok
+            return ok[-1] if ok else None
+        c = pick(t.get('candidates'))
+        if not c:
+            continue
+        ja_t = ((ch_ja or {}).get('talents') or [])
+        cj = pick(ja_t[i].get('candidates')) if i < len(ja_t) else None
+        name = (cj or {}).get('name') or c.get('name') or ''
+        desc = strip_tags((cj or {}).get('description') or c.get('description') or '')
+        out.append({
+            'name': name,
+            'description': desc,
+            'blackboard': {x['key']: (x['valueStr'] if x['valueStr'] is not None else x['value']) for x in c.get('blackboard') or []},
+        })
+    return out
 
 
 def build_skill(skill_cn: dict, skill_ja, level: int) -> dict:
@@ -395,6 +426,7 @@ def main():
                 'stats': build_stats(ch, st, equips, shop['defaultUniEquipId']),
                 'skill': build_skill(skills_cn[skill_ref], skills_ja.get(skill_ref), st['skillLevel']),
                 'garrisons': garrisons,
+                'talents': build_talents(ch, chars_ja.get(char_id), st),
             }
             if key == 'normal':
                 bonds = [BOND_ID[b] for b in cd['bondIds']]

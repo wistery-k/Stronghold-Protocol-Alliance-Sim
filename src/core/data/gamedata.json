@@ -2597,6 +2597,16 @@
        "attack_speed": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "火力支援",
+      "description": "配置から20秒後、自身の弾薬消費系スキルの弾薬上限+2",
+      "blackboard": {
+       "self_ammo": 2.0,
+       "duration": 20.0
+      }
+     }
     ]
    },
    "golden": {
@@ -2642,6 +2652,17 @@
        "divide_num": 5.0,
        "bond_id": "lateranoShip",
        "attack_speed": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "火力支援",
+      "description": "配置から20秒後、自身の弾薬消費系スキルの弾薬上限+3、さらにランダムな味方【ラテラーノ】1名の弾薬消費系スキルの弾薬上限+1",
+      "blackboard": {
+       "self_ammo": 3.0,
+       "duration": 20.0,
+       "ally_ammo": 1.0
       }
      }
     ]
@@ -2703,6 +2724,15 @@
        "count": 2.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "雪原の衛士",
+      "description": "術耐性+7",
+      "blackboard": {
+       "magic_resistance": 7.0
+      }
+     }
     ]
    },
    "golden": {
@@ -2745,6 +2775,15 @@
       "description": "〈獲得時〉自身が所属する盟約の加算数+4（盟約の有効化不要）",
       "blackboard": {
        "count": 4.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "雪原の衛士",
+      "description": "術耐性+15",
+      "blackboard": {
+       "magic_resistance": 15.0
       }
      }
     ]
@@ -2805,6 +2844,15 @@
        "multi": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "雷行自在",
+      "description": "ブロックされていない敵を攻撃時攻撃力が110%まで上昇",
+      "blackboard": {
+       "atk_scale": 1.1
+      }
+     }
     ]
    },
    "golden": {
@@ -2847,6 +2895,15 @@
        "add_method": "shoplv",
        "bond": "yanShip",
        "multi": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "雷行自在",
+      "description": "ブロックされていない敵を攻撃時攻撃力が120%まで上昇",
+      "blackboard": {
+       "atk_scale": 1.2
       }
      }
     ]
@@ -2911,6 +2968,18 @@
        "atk": 1.5
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "細胞活性化抑制剤",
+      "description": "攻撃時、攻撃対象に追加で3秒間毎秒40の術ダメージを与える（敵【海の怪物】に対して効果倍増）",
+      "blackboard": {
+       "duration": 3.0,
+       "interval": 1.0,
+       "damage": 40.0,
+       "damage_seamonster": 80.0
+      }
+     }
     ]
    },
    "golden": {
@@ -2957,6 +3026,18 @@
        "key": "act1autochess_gar_eff_attack_enemy",
        "check_tag": "seamonster",
        "atk": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "細胞活性化抑制剤",
+      "description": "攻撃時、攻撃対象に追加で3秒間毎秒80の術ダメージを与える（敵【海の怪物】に対して効果倍増）",
+      "blackboard": {
+       "duration": 3.0,
+       "interval": 1.0,
+       "damage": 80.0,
+       "damage_seamonster": 160.0
       }
      }
     ]
@@ -3020,6 +3101,15 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "土壌改良",
+      "description": "攻撃範囲内で最大HPが最も高い味方が受ける治療効果+8%",
+      "blackboard": {
+       "heal_scale": 1.08
+      }
+     }
     ]
    },
    "golden": {
@@ -3064,6 +3154,15 @@
        "bond": "victoriaShip",
        "count": 2.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "土壌改良",
+      "description": "攻撃範囲内で最大HPが最も高い味方が受ける治療効果+15%",
+      "blackboard": {
+       "heal_scale": 1.15
       }
      }
     ]
@@ -3123,6 +3222,17 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "ハンターアロー",
+      "description": "攻撃時、20%の確率でその攻撃のみ攻撃力が140%に上昇。敵が正面1マスにいる時、その確率が50%に上昇",
+      "blackboard": {
+       "prob": 0.2,
+       "prob2": 0.5,
+       "atk_scale": 1.4
+      }
+     }
     ]
    },
    "golden": {
@@ -3164,6 +3274,17 @@
       "description": "〈獲得時〉無料更新を2回獲得",
       "blackboard": {
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "ハンターアロー",
+      "description": "攻撃時、20%の確率でその攻撃のみ攻撃力が180%に上昇。敵が正面1マスにいる時、その確率が50%に上昇",
+      "blackboard": {
+       "prob": 0.2,
+       "prob2": 0.5,
+       "atk_scale": 1.8
       }
      }
     ]
@@ -3225,6 +3346,15 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "戦場配達員",
+      "description": "編成中、初期所持コスト+1",
+      "blackboard": {
+       "cost": 1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -3267,6 +3397,15 @@
       "description": "〈売却時〉無料更新を2回獲得",
       "blackboard": {
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "戦場配達員",
+      "description": "編成中、初期所持コスト+2",
+      "blackboard": {
+       "cost": 2.0
       }
      }
     ]
@@ -3328,6 +3467,16 @@
        "atk": 1.5
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "遊び心",
+      "description": "攻撃時、25%の確率でその攻撃のみ攻撃力が130%に上昇",
+      "blackboard": {
+       "prob": 0.25,
+       "atk_scale": 1.3
+      }
+     }
     ]
    },
    "golden": {
@@ -3371,6 +3520,16 @@
        "key": "act1autochess_gar_eff_attack_enemy",
        "check_tag": "drone",
        "atk": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "遊び心",
+      "description": "攻撃時、25%の確率でその攻撃のみ攻撃力が150%に上昇",
+      "blackboard": {
+       "prob": 0.25,
+       "atk_scale": 1.5
       }
      }
     ]
@@ -3431,6 +3590,17 @@
        "sp_recovery_per_sec": 0.15
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "フライパンマスター",
+      "description": "攻撃時、10%の確率でその攻撃のみ攻撃力が150%に上昇、敵を0.5秒間スタンさせる",
+      "blackboard": {
+       "prob": 0.1,
+       "atk_scale": 1.5,
+       "stun": 0.5
+      }
+     }
     ]
    },
    "golden": {
@@ -3473,6 +3643,17 @@
       "blackboard": {
        "key": "attr_common_global_buff",
        "sp_recovery_per_sec": 0.3
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "フライパンマスター",
+      "description": "攻撃時、15%の確率でその攻撃のみ攻撃力が200%に上昇、敵を1秒間スタンさせる",
+      "blackboard": {
+       "prob": 0.15,
+       "atk_scale": 2.0,
+       "stun": 1.0
       }
      }
     ]
@@ -3532,6 +3713,15 @@
        "count": 2.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "自然治癒能力",
+      "description": "周囲8マス内で敵が倒れた時、自身のHPが最大値の7%回復",
+      "blackboard": {
+       "hp_ratio": 0.07
+      }
+     }
     ]
    },
    "golden": {
@@ -3573,6 +3763,15 @@
       "description": "〈獲得時〉自身が所属する盟約の加算数+4（盟約の有効化不要）",
       "blackboard": {
        "count": 4.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "自然治癒能力",
+      "description": "周囲8マス内で敵が倒れた時、自身のHPが最大値の12%回復",
+      "blackboard": {
+       "hp_ratio": 0.12
       }
      }
     ]
@@ -3632,6 +3831,15 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "ガーデナー",
+      "description": "配置中、味方【補助】の攻撃力+5%",
+      "blackboard": {
+       "atk": 0.05
+      }
+     }
     ]
    },
    "golden": {
@@ -3673,6 +3881,15 @@
       "description": "〈準備フェーズ終了時〉有効化中で加算数が最も多い盟約の加算数+2（控えにいても有効）",
       "blackboard": {
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "ガーデナー",
+      "description": "配置中、味方【補助】の攻撃力+9%",
+      "blackboard": {
+       "atk": 0.09
       }
      }
     ]
@@ -3732,6 +3949,15 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "静電場",
+      "description": "攻撃時、攻撃対象を0.4秒足止め",
+      "blackboard": {
+       "sluggish": 0.4
+      }
+     }
     ]
    },
    "golden": {
@@ -3773,6 +3999,15 @@
       "description": "〈売却時〉次の準備フェーズで資金+2",
       "blackboard": {
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "静電場",
+      "description": "攻撃時、攻撃対象を0.6秒足止め",
+      "blackboard": {
+       "sluggish": 0.6
       }
      }
     ]
@@ -3835,6 +4070,16 @@
        "count": 2.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "柔光のとばり",
+      "description": "攻撃時、12%の確率で攻撃対象を4秒間バインドする（バインド状態の敵を攻撃しない）",
+      "blackboard": {
+       "prob": 0.12,
+       "duration": 4.0
+      }
+     }
     ]
    },
    "golden": {
@@ -3878,6 +4123,16 @@
       "description": "〈獲得時〉自身が所属する盟約の加算数+4（盟約の有効化不要）",
       "blackboard": {
        "count": 4.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "柔光のとばり",
+      "description": "攻撃時、18%の確率で攻撃対象を4秒間バインドする（バインド状態の敵を攻撃しない）",
+      "blackboard": {
+       "prob": 0.18,
+       "duration": 4.0
       }
      }
     ]
@@ -3939,6 +4194,16 @@
        "key": "act1autochess_gar_eff_chaos"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "マジモード",
+      "description": "配置中、最大で攻撃速度+75の不屈状態を獲得する（HPが最大値の60%減少時、効果最大）",
+      "blackboard": {
+       "min_attack_speed": 75.0,
+       "min_hp_ratio": 0.4
+      }
+     }
     ]
    },
    "golden": {
@@ -3982,6 +4247,16 @@
       "description": "〈戦闘中〉与えるダメージが弱点ダメージになる（敵の防御力と術耐性に応じて物理・術を切り替える）",
       "blackboard": {
        "key": "act1autochess_gar_eff_chaos"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "マジモード",
+      "description": "配置中、最大で攻撃速度+100の不屈状態を獲得する（HPが最大値の70%減少時、効果最大）",
+      "blackboard": {
+       "min_attack_speed": 100.0,
+       "min_hp_ratio": 0.3
       }
      }
     ]
@@ -4042,6 +4317,17 @@
        "count": 2.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "「あたしに続け！」",
+      "description": "初回配置後、未配置の【前衛】全員の配置コスト-1",
+      "blackboard": {
+       "flag": 0.0,
+       "value": -1.0,
+       "max_stack_cnt": 1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -4083,6 +4369,17 @@
       "description": "〈獲得時〉自身が所属する盟約の加算数+4（盟約の有効化不要）",
       "blackboard": {
        "count": 4.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "「あたしに続け！」",
+      "description": "配置後、未配置の【前衛】全員の配置コスト-1（重複可能、最大-5まで）",
+      "blackboard": {
+       "flag": 1.0,
+       "value": -1.0,
+       "max_stack_cnt": 5.0
       }
      }
     ]
@@ -4148,6 +4445,15 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "戦術防御",
+      "description": "攻撃された時、自身と隣接4マス内にいるランダムな味方1人のSPが1回復",
+      "blackboard": {
+       "sp": 1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -4195,6 +4501,22 @@
        "bond": "indomShip",
        "count": 2.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "戦術防御",
+      "description": "攻撃された時、自身と隣接4マス内にいるランダムな味方1人のSPが1回復",
+      "blackboard": {
+       "sp": 1.0
+      }
+     },
+     {
+      "name": "耐雷",
+      "description": "術耐性+10",
+      "blackboard": {
+       "magic_resistance": 10.0
       }
      }
     ]
@@ -4261,6 +4583,15 @@
        "garrison_key": "garrison_138_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "アサルトカスタム",
+      "description": "攻撃時、対象の防御力を80無視",
+      "blackboard": {
+       "def_penetrate_fixed": 80.0
+      }
+     }
     ]
    },
    "golden": {
@@ -4308,6 +4639,15 @@
        "bond_add_count": 6.0,
        "max_add_count_per_battle": 6.0,
        "garrison_key": "garrison_138_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "アサルトカスタム",
+      "description": "攻撃時、対象の防御力を160無視",
+      "blackboard": {
+       "def_penetrate_fixed": 160.0
       }
      }
     ]
@@ -4367,6 +4707,15 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "強化注射",
+      "description": "配置中、味方【医療】の攻撃速度+6",
+      "blackboard": {
+       "attack_speed": 6.0
+      }
+     }
     ]
    },
    "golden": {
@@ -4408,6 +4757,15 @@
       "blackboard": {
        "count": 4.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "強化注射",
+      "description": "配置中、味方【医療】の攻撃速度+12",
+      "blackboard": {
+       "attack_speed": 12.0
       }
      }
     ]
@@ -4472,6 +4830,16 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "「いい子にしてて」",
+      "description": "攻撃速度+6。攻撃対象が【野生動物】である場合、特性による足止め効果の効果時間をやや延長",
+      "blackboard": {
+       "attack_speed": 6.0,
+       "sluggish_addition": 0.2
+      }
+     }
     ]
    },
    "golden": {
@@ -4517,6 +4885,16 @@
        "bond": "yanShip",
        "multi": 2.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "「いい子にしてて」",
+      "description": "攻撃速度+10。攻撃対象が【野生動物】である場合、特性による足止めの効果時間を延長",
+      "blackboard": {
+       "attack_speed": 10.0,
+       "sluggish_addition": 0.4
       }
      }
     ]
@@ -4591,6 +4969,15 @@
        "max_hp": 1.2
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "我即ち兵営なり",
+      "description": "攻撃範囲内にいる元素損傷蓄積値が上限値の50%を超える味方は、受ける元素損傷-12%",
+      "blackboard": {
+       "ep_damage_resistance": 0.12
+      }
+     }
     ]
    },
    "golden": {
@@ -4646,6 +5033,15 @@
       "blackboard": {
        "atk": 1.4,
        "max_hp": 1.4
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "我即ち兵営なり",
+      "description": "攻撃範囲内にいる元素損傷蓄積値が上限値の50%を超える味方は、受ける元素損傷-15%",
+      "blackboard": {
+       "ep_damage_resistance": 0.15
       }
      }
     ]
@@ -4711,6 +5107,16 @@
        "garrison_key": "garrison_42_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "古書博覧",
+      "description": "治療時、対象に自身の攻撃力の10%のバリアを付与する（8秒間持続可能）",
+      "blackboard": {
+       "attack@scale": 0.1,
+       "attack@shield_duration": 8.0
+      }
+     }
     ]
    },
    "golden": {
@@ -4758,6 +5164,16 @@
        "bond_add_count": 10.0,
        "max_add_count_per_battle": 10.0,
        "garrison_key": "garrison_42_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "古書博覧",
+      "description": "治療時、対象に自身の攻撃力の20%のバリアを付与する（8秒間持続可能）",
+      "blackboard": {
+       "attack@scale": 0.2,
+       "attack@shield_duration": 8.0
       }
      }
     ]
@@ -4821,6 +5237,16 @@
        "bond_add_count": 3.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "最大HP上昇",
+      "description": "最大HP+10%",
+      "blackboard": {
+       "max_hp": 0.1,
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.0
+      }
+     }
     ]
    },
    "golden": {
@@ -4866,6 +5292,16 @@
        "bond_id": "egirShip",
        "bond_add_type": "by_count",
        "bond_add_count": 6.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "深海の蘇生力",
+      "description": "最大HP+10%、1秒ごとにHPが最大値の2%回復",
+      "blackboard": {
+       "max_hp": 0.1,
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.02
       }
      }
     ]
@@ -4930,6 +5366,16 @@
        "def": 0.01
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "トゲトゲシールド",
+      "description": "バブルを攻撃した敵の攻撃力が5秒間-5%",
+      "blackboard": {
+       "atk": -0.05,
+       "duration": 5.0
+      }
+     }
     ]
    },
    "golden": {
@@ -4975,6 +5421,16 @@
        "divide_num": 3.0,
        "bond_id": "sargonShip,steadShip",
        "def": 0.02
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "トゲトゲシールド",
+      "description": "バブルを攻撃した敵の攻撃力が5秒間-8%",
+      "blackboard": {
+       "atk": -0.08,
+       "duration": 5.0
       }
      }
     ]
@@ -5042,6 +5498,16 @@
        "bond_add_count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "再利用",
+      "description": "自身のHP回復時、最大値を超えた分のHPは等量のバリアに変換される。この効果によるのバリア最大値は自身の最大HPの60%まで",
+      "blackboard": {
+       "max_hp_ratio": 0.6,
+       "def": 0.0
+      }
+     }
     ]
    },
    "golden": {
@@ -5091,6 +5557,16 @@
        "bond_id": "raidShip",
        "bond_add_type": "by_count",
        "bond_add_count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "再利用",
+      "description": "自身のHP回復時、最大値を超えた分のHPは等量のバリアに変換される。この効果によるのバリア最大値は自身の最大HPの100%まで",
+      "blackboard": {
+       "max_hp_ratio": 1.0,
+       "def": 0.0
       }
      }
     ]
@@ -5154,6 +5630,17 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "礎石",
+      "description": "配置中、15秒ごとに攻撃力+2%、最大3回まで",
+      "blackboard": {
+       "atk": 0.02,
+       "max_stack_cnt": 3.0,
+       "interval": 15.0
+      }
+     }
     ]
    },
    "golden": {
@@ -5198,6 +5685,17 @@
       "blackboard": {
        "pool": "pool_equip_rockr",
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "礎石",
+      "description": "配置中、15秒ごとに攻撃力+4%、最大4回まで",
+      "blackboard": {
+       "atk": 0.04,
+       "max_stack_cnt": 4.0,
+       "interval": 15.0
       }
      }
     ]
@@ -5255,6 +5753,15 @@
       "description": "同じオペレーターが2体揃えば精鋭化できる",
       "blackboard": {}
      }
+    ],
+    "talents": [
+     {
+      "name": "折り紙の極意",
+      "description": "<身替り>が出現時、周囲8マスにいる敵全員に攻撃力の225%の術ダメージを与える",
+      "blackboard": {
+       "damage_scale": 2.25
+      }
+     }
     ]
    },
    "golden": {
@@ -5295,6 +5802,15 @@
       "effect": "NONE",
       "description": "同じオペレーターが2体揃えば精鋭化できる",
       "blackboard": {}
+     }
+    ],
+    "talents": [
+     {
+      "name": "折り紙の極意",
+      "description": "<身替り>が出現時、周囲8マスにいる敵全員に攻撃力の270%の術ダメージを与える",
+      "blackboard": {
+       "damage_scale": 2.7
+      }
      }
     ]
    }
@@ -5371,6 +5887,15 @@
        "bond_add_count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "高速配置",
+      "description": "自身の配置コスト-1",
+      "blackboard": {
+       "cost": -1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -5429,6 +5954,17 @@
        "bond_id": "kazimierzShip",
        "bond_add_type": "by_count",
        "bond_add_count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "ローコストガード",
+      "description": "自身の配置コスト-1。配置中、初期配置コスト10以下の味方防御力+6%",
+      "blackboard": {
+       "cost": -1.0,
+       "def": 0.06,
+       "cond.cost": 10.0
       }
      }
     ]
@@ -5490,6 +6026,16 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "撮影現場作業マニュアル",
+      "description": "13秒間ダメージを受けずにいると、次に受ける物理・術のダメージを回避",
+      "blackboard": {
+       "stack_time": 13.0,
+       "prob": 1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -5532,6 +6078,16 @@
       "blackboard": {
        "count": 4.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "撮影現場作業マニュアル",
+      "description": "9秒間攻撃を受けずにいると、次に受ける物理・術のダメージを回避",
+      "blackboard": {
+       "stack_time": 9.0,
+       "prob": 1.0
       }
      }
     ]
@@ -5592,6 +6148,15 @@
        "count": 2.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "ラベンダー",
+      "description": "配置中1秒ごとに味方全員のHPをパフューマーの攻撃力の3%回復",
+      "blackboard": {
+       "atk_to_hp_recovery_ratio": 0.03
+      }
+     }
     ]
    },
    "golden": {
@@ -5633,6 +6198,15 @@
       "description": "〈準備フェーズ終了時〉有効化中で加算数が最も多い盟約の加算数+4（控えにいても有効）",
       "blackboard": {
        "count": 4.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "ラベンダー改",
+      "description": "配置中1秒ごとに味方全員のHPをパフューマーの攻撃力の5%回復",
+      "blackboard": {
+       "atk_to_hp_recovery_ratio": 0.05
       }
      }
     ]
@@ -5693,6 +6267,15 @@
        "layer": 4.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "精神破壊",
+      "description": "攻撃時、攻撃対象の一部の特殊能力を1秒間無効化する",
+      "blackboard": {
+       "duration": 1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -5735,6 +6318,15 @@
        "refresh_cnt": 1.0,
        "bond": "siracusaShip",
        "layer": 8.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "精神破壊",
+      "description": "攻撃時、攻撃対象の一部の特殊能力を5秒間無効化する",
+      "blackboard": {
+       "duration": 5.0
       }
      }
     ]
@@ -5798,6 +6390,15 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "简易包扎",
+      "description": "技能结束时恢复自身40%最大生命值",
+      "blackboard": {
+       "hp_ratio": 0.4
+      }
+     }
     ]
    },
    "golden": {
@@ -5842,6 +6443,15 @@
        "bond": "steadShip",
        "count": 8.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "简易包扎",
+      "description": "技能结束时恢复自身50%最大生命值",
+      "blackboard": {
+       "hp_ratio": 0.5
       }
      }
     ]
@@ -5901,6 +6511,17 @@
        "count": 3.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "砲術訓練",
+      "description": "通常時攻撃力+4%。隣接4マスがすべて地面マスの時攻撃力+8%",
+      "blackboard": {
+       "atk": 0.04,
+       "ashlok_t_1.atk": 0.08,
+       "cnt": 4.0
+      }
+     }
     ]
    },
    "golden": {
@@ -5941,6 +6562,17 @@
       "description": "〈獲得時〉有効化中で加算数が最も多い盟約の加算数+6",
       "blackboard": {
        "count": 6.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "砲術訓練",
+      "description": "通常時攻撃力+8%。隣接4マスがすべて地面マスの時攻撃力+16%",
+      "blackboard": {
+       "atk": 0.08,
+       "ashlok_t_1.atk": 0.16,
+       "cnt": 4.0
       }
      }
     ]
@@ -6017,6 +6649,13 @@
        "max_hp": 1.2
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "「オン・ザ・ウェイ」",
+      "description": "【サルカズの炉辺奇談】で招集される際の希望消費-2、負荷分担者に編入されると負荷臨界点+3",
+      "blackboard": {}
+     }
     ]
    },
    "golden": {
@@ -6074,6 +6713,20 @@
       "blackboard": {
        "atk": 1.4,
        "max_hp": 1.4
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "「オン・ザ・ウェイ」",
+      "description": "【サルカズの炉辺奇談】で招集される際の希望消費-2、負荷分担者に編入されると負荷臨界点+9",
+      "blackboard": {}
+     },
+     {
+      "name": "朽ちゆく魂",
+      "description": "錬金ユニットの効果範囲内の地上にいる敵が受ける継続ダメージが20%上昇",
+      "blackboard": {
+       "skill@damage_scale": 1.2
       }
      }
     ]
@@ -6135,6 +6788,23 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "スピードリロード",
+      "description": "攻撃速度+12",
+      "blackboard": {
+       "attack_speed": 12.0
+      }
+     },
+     {
+      "name": "天使の祝福",
+      "description": "自身の攻撃力+6%、最大HP+10%。配置中、ランダムな味方1人に同じ効果を付与",
+      "blackboard": {
+       "max_hp": 0.1,
+       "atk": 0.06
+      }
+     }
     ]
    },
    "golden": {
@@ -6177,6 +6847,23 @@
       "description": "〈獲得時〉次の準備フェーズで資金+2",
       "blackboard": {
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "スピードリロード",
+      "description": "攻撃速度+12",
+      "blackboard": {
+       "attack_speed": 12.0
+      }
+     },
+     {
+      "name": "天使の祝福",
+      "description": "自身の攻撃力+6%、最大HP+10%。配置中、ランダムな味方1人に同じ効果を付与",
+      "blackboard": {
+       "max_hp": 0.1,
+       "atk": 0.06
       }
      }
     ]
@@ -6238,6 +6925,15 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "索敵支援",
+      "description": "自身と周囲8マスの味方の攻撃速度+8",
+      "blackboard": {
+       "attack_speed": 8.0
+      }
+     }
     ]
    },
    "golden": {
@@ -6281,6 +6977,15 @@
        "dir": "behind",
        "count": 6.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "索敵支援",
+      "description": "自身と周囲8マスの味方の攻撃速度+8",
+      "blackboard": {
+       "attack_speed": 8.0
       }
      }
     ]
@@ -6342,6 +7047,15 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "近距離戦指導",
+      "description": "配置中、周囲8マスの味方近距離ユニットの攻撃力+10%",
+      "blackboard": {
+       "atk": 0.1
+      }
+     }
     ]
    },
    "golden": {
@@ -6384,6 +7098,15 @@
       "blackboard": {
        "chess": "chess_item_1_03_e_a",
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "近距離戦指導",
+      "description": "配置中、周囲8マスの味方近距離ユニットの攻撃力+10%",
+      "blackboard": {
+       "atk": 0.1
       }
      }
     ]
@@ -6447,6 +7170,27 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "経済循環",
+      "description": "スキル発動時、コイン（スキル発動時に消費）を1枚獲得。スキル発動中に特性によるコスト消費時、コインを1枚獲得し、自身の攻撃力+4%（最大8回まで重複可能）",
+      "blackboard": {
+       "sp": 1.0,
+       "trait_sp": 1.0,
+       "atk": 0.04,
+       "max_stack_cnt": 8.0
+      }
+     },
+     {
+      "name": "財あれば憂いなし",
+      "description": "致命的なダメージを受けた時、所持コストが5以上の場合、代わりにコストを5消費して、HPを最大値の70%まで回復する（発動のたびに消費コストが前回の2倍になる）",
+      "blackboard": {
+       "cost": -5.0,
+       "hp_ratio": 0.7,
+       "cost_multi": 2.0
+      }
+     }
     ]
    },
    "golden": {
@@ -6491,6 +7235,27 @@
       "blackboard": {
        "bond": "yanShip,investShip",
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "経済循環",
+      "description": "スキル発動時、コイン（スキル発動時に消費）を1枚獲得。スキル発動中に特性によるコスト消費時、コインを1枚獲得し、自身の攻撃力+4%（最大8回まで重複可能）",
+      "blackboard": {
+       "sp": 1.0,
+       "trait_sp": 1.0,
+       "atk": 0.04,
+       "max_stack_cnt": 8.0
+      }
+     },
+     {
+      "name": "財あれば憂いなし",
+      "description": "致命的なダメージを受けた時、所持コストが5以上の場合、代わりにコストを5消費して、HPを最大値の70%まで回復する（発動のたびに消費コストが前回の2倍になる）",
+      "blackboard": {
+       "cost": -5.0,
+       "hp_ratio": 0.7,
+       "cost_multi": 2.0
       }
      }
     ]
@@ -6558,6 +7323,22 @@
        "bond_add_count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "深海の捕食者",
+      "description": "編成中、味方【アビサルハンター】の攻撃力+14%",
+      "blackboard": {
+       "atk": 0.14
+      }
+     },
+     {
+      "name": "高速復帰",
+      "description": "自身の再配置時間-10秒",
+      "blackboard": {
+       "respawn_time": -10.0
+      }
+     }
     ]
    },
    "golden": {
@@ -6605,6 +7386,22 @@
        "bond_id": "egirShip,steadShip,raidShip",
        "bond_add_type": "by_count",
        "bond_add_count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "深海の捕食者",
+      "description": "編成中、味方【アビサルハンター】の攻撃力+14%",
+      "blackboard": {
+       "atk": 0.14
+      }
+     },
+     {
+      "name": "高速復帰",
+      "description": "自身の再配置時間-10秒",
+      "blackboard": {
+       "respawn_time": -10.0
       }
      }
     ]
@@ -6671,6 +7468,16 @@
        "bond_add_count": 6.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "神河の使い",
+      "description": "受ける元素損傷-10%、壊死損傷を受けた際にSPが2回復",
+      "blackboard": {
+       "damage_resistance": 0.1,
+       "sp": 2.0
+      }
+     }
     ]
    },
    "golden": {
@@ -6719,6 +7526,16 @@
        "bond_id": "sargonShip",
        "bond_add_type": "by_count",
        "bond_add_count": 12.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "神河の使い",
+      "description": "受ける元素損傷-10%、壊死損傷を受けた際にSPが2回復",
+      "blackboard": {
+       "damage_resistance": 0.1,
+       "sp": 2.0
       }
      }
     ]
@@ -6782,6 +7599,17 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "地質学者",
+      "description": "スキル未発動時、隣接4マス内の味方全員の防御力+10%\nスキル発動中、敵に狙われにくくなる",
+      "blackboard": {
+       "def": 0.1,
+       "atk": 0.0,
+       "taunt_level": -1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -6827,6 +7655,17 @@
        "bond": "victoriaShip",
        "multi": 4.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "地質学者",
+      "description": "スキル未発動時、隣接4マス内の味方全員の防御力+10%\nスキル発動中、敵に狙われにくくなる",
+      "blackboard": {
+       "def": 0.1,
+       "atk": 0.0,
+       "taunt_level": -1.0
       }
      }
     ]
@@ -6897,6 +7736,15 @@
        "garrison_key": "garrison_131_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "測量機器の応用",
+      "description": "攻撃範囲内の【エリート】と【ボス】を除く敵に16%の脆弱状態を付与",
+      "blackboard": {
+       "damage_scale": 1.16
+      }
+     }
     ]
    },
    "golden": {
@@ -6948,6 +7796,15 @@
        "bond_add_count": 6.0,
        "max_add_count_per_battle": 6.0,
        "garrison_key": "garrison_131_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "測量機器の応用",
+      "description": "攻撃範囲内の【エリート】と【ボス】を除く敵に16%の脆弱状態を付与",
+      "blackboard": {
+       "damage_scale": 1.16
       }
      }
     ]
@@ -7016,6 +7873,16 @@
        "max_pool": "pool_chess_shop_1_reward"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "ポータブル電源",
+      "description": "配置後、60秒間SP自然回復速度+0.45sp/秒",
+      "blackboard": {
+       "sp_recovery_per_sec": 0.45,
+       "duration": 60.0
+      }
+     }
     ]
    },
    "golden": {
@@ -7065,6 +7932,16 @@
        "pool5": "pool_chess_shop_5_reward",
        "pool6": "pool_chess_shop_5_reward",
        "max_pool": "pool_chess_shop_5_reward"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "ポータブル電源",
+      "description": "配置後、60秒間SP自然回復速度+0.45sp/秒",
+      "blackboard": {
+       "sp_recovery_per_sec": 0.45,
+       "duration": 60.0
       }
      }
     ]
@@ -7126,6 +8003,16 @@
        "count": 5.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "裂云一击",
+      "description": "开启技能时，派出裂云兽进行攻击，造成相当于攻击力180%的物理伤害和3秒寒冷",
+      "blackboard": {
+       "atk_scale": 1.8,
+       "cold": 3.0
+      }
+     }
     ]
    },
    "golden": {
@@ -7168,6 +8055,16 @@
       "description": "〈獲得時〉自身が所属する盟約の加算数+10（盟約の有効化不要）",
       "blackboard": {
        "count": 10.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "裂云一击",
+      "description": "开启技能时，派出裂云兽进行攻击，造成相当于攻击力180%的物理伤害和3秒寒冷",
+      "blackboard": {
+       "atk_scale": 1.8,
+       "cold": 3.0
       }
      }
     ]
@@ -7235,6 +8132,22 @@
        "garrison_key": "garrison_106_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "盾剣騎士",
+      "description": "配置中、味方全員の被撃回復系のスキルは、攻撃時にもSPを1回復できる",
+      "blackboard": {
+       "sp": 1.0
+      }
+     },
+     {
+      "name": "憐憫",
+      "description": "睡眠状態の敵を攻撃でき、優先して攻撃する\n睡眠状態の敵を攻撃時、攻撃力が140%まで上昇",
+      "blackboard": {
+       "atk_scale": 1.4
+      }
+     }
     ]
    },
    "golden": {
@@ -7283,6 +8196,22 @@
        "bond_add_count": 8.0,
        "max_add_count_per_battle": 24.0,
        "garrison_key": "garrison_106_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "盾剣騎士",
+      "description": "配置中、味方全員の被撃回復系のスキルは、攻撃時にもSPを1回復できる",
+      "blackboard": {
+       "sp": 1.0
+      }
+     },
+     {
+      "name": "憐憫",
+      "description": "睡眠状態の敵を攻撃でき、優先して攻撃する\n睡眠状態の敵を攻撃時、攻撃力が140%まで上昇",
+      "blackboard": {
+       "atk_scale": 1.4
       }
      }
     ]
@@ -7343,6 +8272,16 @@
        "price": 2.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "インスピレーション",
+      "description": "攻撃時、25%の確率でその攻撃のみ攻撃力が150%に上昇",
+      "blackboard": {
+       "prob": 0.25,
+       "atk_scale": 1.5
+      }
+     }
     ]
    },
    "golden": {
@@ -7384,6 +8323,16 @@
       "description": "購入価格が1になる",
       "blackboard": {
        "price": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "インスピレーション",
+      "description": "攻撃時、25%の確率でその攻撃のみ攻撃力が150%に上昇",
+      "blackboard": {
+       "prob": 0.25,
+       "atk_scale": 1.5
       }
      }
     ]
@@ -7450,6 +8399,23 @@
        "prob": 0.5
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "弱体化",
+      "description": "攻撃範囲内のHPが40%未満の敵に30%の脆弱状態を付与",
+      "blackboard": {
+       "hp_ratio": 0.4,
+       "damage_scale": 1.3
+      }
+     },
+     {
+      "name": "ハーモニー",
+      "description": "攻撃対象数+1",
+      "blackboard": {
+       "attack@max_target": 2.0
+      }
+     }
     ]
    },
    "golden": {
@@ -7497,6 +8463,23 @@
        "bond_id": "kjeragShip",
        "bond_add_type": "by_count",
        "prob": 0.5
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "弱体化",
+      "description": "攻撃範囲内のHPが40%未満の敵に30%の脆弱状態を付与",
+      "blackboard": {
+       "hp_ratio": 0.4,
+       "damage_scale": 1.3
+      }
+     },
+     {
+      "name": "ハーモニー",
+      "description": "攻撃対象数+1",
+      "blackboard": {
+       "attack@max_target": 2.0
       }
      }
     ]
@@ -7561,6 +8544,15 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "防御エキスパート",
+      "description": "防御力+12%",
+      "blackboard": {
+       "def": 0.12
+      }
+     }
     ]
    },
    "golden": {
@@ -7606,6 +8598,15 @@
        "bond": "steadShip",
        "multi": 2.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "防御エキスパート",
+      "description": "防御力+12%",
+      "blackboard": {
+       "def": 0.12
       }
      }
     ]
@@ -7677,6 +8678,15 @@
        "key": "act1autochess_gar_eff_chaos"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "対空エキスパート",
+      "description": "飛行ユニットを攻撃時、攻撃力が135%まで上昇",
+      "blackboard": {
+       "atk_scale": 1.35
+      }
+     }
     ]
    },
    "golden": {
@@ -7729,6 +8739,15 @@
       "description": "〈戦闘中〉与えるダメージが弱点ダメージになる（敵の防御力と術耐性に応じて物理・術を切り替える）",
       "blackboard": {
        "key": "act1autochess_gar_eff_chaos"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "対空エキスパート",
+      "description": "飛行ユニットを攻撃時、攻撃力が135%まで上昇",
+      "blackboard": {
+       "atk_scale": 1.35
       }
      }
     ]
@@ -7791,6 +8810,25 @@
        "count": 6.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "追跡者",
+      "description": "敵にダメージを与えた際、敵ごとに一度だけ、10秒間自身が対象にダメージを与えた際に追加で攻撃力の30%の術ダメージを与える効果を付与",
+      "blackboard": {
+       "atk_scale": 0.3,
+       "interval": 10.0
+      }
+     },
+     {
+      "name": "気力温存",
+      "description": "配置中、コストの自然回復速度+10%、4秒間ダメージを受けていない場合、1秒ごとにHPが最大値の4%回復",
+      "blackboard": {
+       "delta_cost_increase_time": 1.1,
+       "interval": 4.0,
+       "vulpis_t_2[heal][interval].hp_recovery_per_sec_by_max_hp_ratio": 0.04
+      }
+     }
     ]
    },
    "golden": {
@@ -7834,6 +8872,25 @@
       "description": "〈獲得時〉自身が所属する盟約の加算数+12（盟約の有効化不要）",
       "blackboard": {
        "count": 12.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "追跡者",
+      "description": "敵にダメージを与えた際、敵ごとに一度だけ、10秒間自身が対象にダメージを与えた際に追加で攻撃力の30%の術ダメージを与える効果を付与",
+      "blackboard": {
+       "atk_scale": 0.3,
+       "interval": 10.0
+      }
+     },
+     {
+      "name": "気力温存",
+      "description": "配置中、コストの自然回復速度+10%、4秒間ダメージを受けていない場合、1秒ごとにHPが最大値の4%回復",
+      "blackboard": {
+       "delta_cost_increase_time": 1.1,
+       "interval": 4.0,
+       "vulpis_t_2[heal][interval].hp_recovery_per_sec_by_max_hp_ratio": 0.04
       }
      }
     ]
@@ -7928,6 +8985,22 @@
        "key": "act1autochess_gar_eff_chaos"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "群狼の統率者",
+      "description": "戦術召集点に2体の「狼の隻影」から成る「狼の群れ」を援軍として召喚可能\n25秒ごとに「狼の隻影」が1体増える（最大計3体まで。「狼の隻影」1体につき、「狼の群れ」のブロック数+1、攻撃時のダメージ発生回数+1）",
+      "blackboard": {
+       "cnt": 1.0
+      }
+     },
+     {
+      "name": "飢えたる群狼",
+      "description": "「狼の群れ」にブロックされている敵を攻撃時、ヴィジェルと「狼の群れ」が対象の防御力を175無視",
+      "blackboard": {
+       "def_penetrate_fixed": 175.0
+      }
+     }
     ]
    },
    "golden": {
@@ -8005,6 +9078,22 @@
        "key": "act1autochess_gar_eff_chaos"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "群狼の統率者",
+      "description": "戦術召集点に2体の「狼の隻影」から成る「狼の群れ」を援軍として召喚可能\n25秒ごとに「狼の隻影」が1体増える（最大計3体まで。「狼の隻影」1体につき、「狼の群れ」のブロック数+1、攻撃時のダメージ発生回数+1）",
+      "blackboard": {
+       "cnt": 1.0
+      }
+     },
+     {
+      "name": "飢えたる群狼",
+      "description": "「狼の群れ」にブロックされている敵を攻撃時、ヴィジェルと「狼の群れ」が対象の防御力を175無視",
+      "blackboard": {
+       "def_penetrate_fixed": 175.0
+      }
+     }
     ]
    }
   },
@@ -8066,6 +9155,17 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "俯瞰",
+      "description": "攻撃力+10%。攻撃範囲内に3箇所以上地面マスがある時、攻撃力上昇効果が+16%になる",
+      "blackboard": {
+       "atk": 0.1,
+       "cnt": 2.0,
+       "kjera_t_1[high].atk": 0.16
+      }
+     }
     ]
    },
    "golden": {
@@ -8110,6 +9210,17 @@
       "blackboard": {
        "chess": "chess_item_5_02_e_a",
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "俯瞰",
+      "description": "攻撃力+10%。攻撃範囲内に3箇所以上地面マスがある時、攻撃力上昇効果が+16%になる",
+      "blackboard": {
+       "atk": 0.1,
+       "cnt": 2.0,
+       "kjera_t_1[high].atk": 0.16
       }
      }
     ]
@@ -8174,6 +9285,23 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "ランデン戦術",
+      "description": "配置中、2.5秒ごとに味方【狙撃】の攻撃回復系スキルのSPを1回復",
+      "blackboard": {
+       "sp": 1.0,
+       "interval": 2.5
+      }
+     },
+     {
+      "name": "鉄弦",
+      "description": "配置後、シールドを1枚形成する、シールドが消耗される時、SPを7回復",
+      "blackboard": {
+       "sp": 7.0
+      }
+     }
     ]
    },
    "golden": {
@@ -8219,6 +9347,23 @@
        "dir": "front",
        "count": 6.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "ランデン戦術",
+      "description": "配置中、2.5秒ごとに味方【狙撃】の攻撃回復系スキルのSPを1回復",
+      "blackboard": {
+       "sp": 1.0,
+       "interval": 2.5
+      }
+     },
+     {
+      "name": "鉄弦",
+      "description": "配置後、シールドを1枚形成する、シールドが消耗される時、SPを7回復",
+      "blackboard": {
+       "sp": 7.0
       }
      }
     ]
@@ -8287,6 +9432,26 @@
        "def": 0.01
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "歓迎の儀・掃射",
+      "description": "ダメージを与えるたびに10秒間自身の防御力+30、攻撃速度+3（最大3回まで重複可能）",
+      "blackboard": {
+       "def": 30.0,
+       "attack_speed": 3.0,
+       "max_stack_cnt": 3.0,
+       "duration": 10.0
+      }
+     },
+     {
+      "name": "見送りの儀・盾を構えて",
+      "description": "8秒間通常攻撃せずにいると、最大HPの15%までの被ダメージを吸収可能なバリアを獲得（バリア再獲得までの時間はバリアを失った時点から再度カウントされる）",
+      "blackboard": {
+       "interval": 8.0,
+       "shield": 0.15
+      }
+     }
     ]
    },
    "golden": {
@@ -8336,6 +9501,26 @@
        "divide_num": 3.0,
        "bond_id": "lateranoShip,steadShip",
        "def": 0.02
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "歓迎の儀・掃射",
+      "description": "ダメージを与えるたびに10秒間自身の防御力+30、攻撃速度+3（最大3回まで重複可能）",
+      "blackboard": {
+       "def": 30.0,
+       "attack_speed": 3.0,
+       "max_stack_cnt": 3.0,
+       "duration": 10.0
+      }
+     },
+     {
+      "name": "見送りの儀・盾を構えて",
+      "description": "8秒間通常攻撃せずにいると、最大HPの15%までの被ダメージを吸収可能なバリアを獲得（バリア再獲得までの時間はバリアを失った時点から再度カウントされる）",
+      "blackboard": {
+       "interval": 8.0,
+       "shield": 0.15
       }
      }
     ]
@@ -8405,6 +9590,22 @@
        "range_id": "x-5"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "スキルブースト・術師",
+      "description": "配置中、味方【術師】のSPの自然回復速度+0.4sp/秒（同種の効果は高いほうのみ適用）",
+      "blackboard": {
+       "sp_recovery_per_sec": 0.4
+      }
+     },
+     {
+      "name": "時間認知鈍化",
+      "description": "攻撃範囲内の敵の移動速度-15%",
+      "blackboard": {
+       "move_speed": -0.15
+      }
+     }
     ]
    },
    "golden": {
@@ -8455,6 +9656,22 @@
        "bond_add_type": "by_count",
        "bond_add_count": 2.0,
        "range_id": "x-5"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "スキルブースト・術師",
+      "description": "配置中、味方【術師】のSPの自然回復速度+0.4sp/秒（同種の効果は高いほうのみ適用）",
+      "blackboard": {
+       "sp_recovery_per_sec": 0.4
+      }
+     },
+     {
+      "name": "時間認知鈍化",
+      "description": "攻撃範囲内の敵の移動速度-15%",
+      "blackboard": {
+       "move_speed": -0.15
       }
      }
     ]
@@ -8518,6 +9735,24 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "影織り",
+      "description": "敵にダメージを与えた際、対象ごとに一回限り5秒間バインドさせ、さらに対象の攻撃力を90奪取（対象が撃破されるか、イネスが退場するまで効果が持続）",
+      "blackboard": {
+       "steal_atk": 90.0,
+       "steal_atk_max": 18000.0,
+       "duration": 5.0
+      }
+     },
+     {
+      "name": "影哨",
+      "description": "攻撃範囲内の敵のステルス状態が無効になり、さらに移動速度-30%。撤退後、影哨を1体残して効果を持続させる（最大1体まで）",
+      "blackboard": {
+       "move_speed": -0.3
+      }
+     }
     ]
    },
    "golden": {
@@ -8562,6 +9797,24 @@
       "blackboard": {
        "count": 10.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "影織り",
+      "description": "敵にダメージを与えた際、対象ごとに一回限り5秒間バインドさせ、さらに対象の攻撃力を90奪取（対象が撃破されるか、イネスが退場するまで効果が持続）",
+      "blackboard": {
+       "steal_atk": 90.0,
+       "steal_atk_max": 18000.0,
+       "duration": 5.0
+      }
+     },
+     {
+      "name": "影哨",
+      "description": "攻撃範囲内の敵のステルス状態が無効になり、さらに移動速度-30%。撤退後、影哨を1体残して効果を持続させる（最大1体まで）",
+      "blackboard": {
+       "move_speed": -0.3
       }
      }
     ]
@@ -8621,6 +9874,17 @@
        "give_garrison_id": "garrison_96_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "的中",
+      "description": "攻撃時、20%の確率でその攻撃のみ攻撃力が150%に上昇し、敵を0.2秒間スタンさせる",
+      "blackboard": {
+       "prob": 0.2,
+       "atk_scale": 1.5,
+       "stun": 0.2
+      }
+     }
     ]
    },
    "golden": {
@@ -8662,6 +9926,17 @@
       "description": "〈戦闘開始時〉前方1マスのオペレーターに特性「スキル発動時、有効化中の【精密】の加算数+2」を付与（戦闘1回につき最大20）",
       "blackboard": {
        "give_garrison_id": "garrison_96_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "的中",
+      "description": "攻撃時、20%の確率でその攻撃のみ攻撃力が150%に上昇し、敵を0.2秒間スタンさせる",
+      "blackboard": {
+       "prob": 0.2,
+       "atk_scale": 1.5,
+       "stun": 0.2
       }
      }
     ]
@@ -8730,6 +10005,23 @@
        "garrison_key": "garrison_50_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "精密装填",
+      "description": "攻撃時25%の確率でその攻撃のみ攻撃力が130%まで上昇し、攻撃対象数+1",
+      "blackboard": {
+       "atk_scale": 1.3,
+       "prob": 0.25
+      }
+     },
+     {
+      "name": "軍人の作法",
+      "description": "編成中、味方【先鋒】のストックSP+6",
+      "blackboard": {
+       "sp": 6.0
+      }
+     }
     ]
    },
    "golden": {
@@ -8778,6 +10070,23 @@
        "bond_add_count": 4.0,
        "max_add_count_per_battle": 12.0,
        "garrison_key": "garrison_50_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "精密装填",
+      "description": "攻撃時25%の確率でその攻撃のみ攻撃力が130%まで上昇し、攻撃対象数+1",
+      "blackboard": {
+       "atk_scale": 1.3,
+       "prob": 0.25
+      }
+     },
+     {
+      "name": "軍人の作法",
+      "description": "編成中、味方【先鋒】のストックSP+6",
+      "blackboard": {
+       "sp": 6.0
       }
      }
     ]
@@ -8843,6 +10152,24 @@
        "atk": 0.01
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "恐怖喚起",
+      "description": "攻撃時、攻撃範囲内のHPが最も少ない敵に追加で攻撃力の50%の術ダメージを与える",
+      "blackboard": {
+       "attack@mizuki_t_1.atk_scale": 0.5,
+       "attack@max_target": 1.0
+      }
+     },
+     {
+      "name": "逆転移",
+      "description": "攻撃範囲内にHPが最大値の50%未満の敵がいる時、攻撃力+10%",
+      "blackboard": {
+       "hp_ratio": 0.5,
+       "atk": 0.1
+      }
+     }
     ]
    },
    "golden": {
@@ -8889,6 +10216,24 @@
        "divide_num": 3.0,
        "bond_id": "egirShip",
        "atk": 0.02
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "恐怖喚起",
+      "description": "攻撃時、攻撃範囲内のHPが最も少ない敵に追加で攻撃力の50%の術ダメージを与える",
+      "blackboard": {
+       "attack@mizuki_t_1.atk_scale": 0.5,
+       "attack@max_target": 1.0
+      }
+     },
+     {
+      "name": "逆転移",
+      "description": "攻撃範囲内にHPが最大値の50%未満の敵がいる時、攻撃力+10%",
+      "blackboard": {
+       "hp_ratio": 0.5,
+       "atk": 0.1
       }
      }
     ]
@@ -8953,6 +10298,16 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "起泡性テスト",
+      "description": "敵にダメージを与えた際、対象ごとに一回限り攻撃力が110%まで上昇し、対象を2.5秒間浮遊させる",
+      "blackboard": {
+       "levitate_duration": 2.5,
+       "damage_scale": 1.1
+      }
+     }
     ]
    },
    "golden": {
@@ -8998,6 +10353,16 @@
        "multiplier": 4.0,
        "max_layer": 12.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "起泡性テスト",
+      "description": "敵にダメージを与えた際、対象ごとに一回限り攻撃力が110%まで上昇し、対象を2.5秒間浮遊させる",
+      "blackboard": {
+       "levitate_duration": 2.5,
+       "damage_scale": 1.1
       }
      }
     ]
@@ -9063,6 +10428,25 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "指向性支援信号",
+      "description": "支援装置を使用可能（配置時に3個獲得、最大2個まで同時配置可能）、支援装置前方のオペレーター1名にキャサリンの最大HPの20%のバリアを付与（対象が直前の5秒間攻撃を受けずにいると、1秒ごとにキャサリンの最大HPの6%のバリアを補充しする。バリアの値は初期上限を超えない）。装置の効果は重複不可",
+      "blackboard": {
+       "cnt": 3.0
+      }
+     },
+     {
+      "name": "",
+      "description": "-",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "-",
+      "blackboard": {}
+     }
     ]
    },
    "golden": {
@@ -9110,6 +10494,25 @@
        "count": 2.0,
        "conditionkey": "character_target_inboard"
       }
+     }
+    ],
+    "talents": [
+     {
+      "name": "指向性支援信号",
+      "description": "支援装置を使用可能（配置時に3個獲得、最大2個まで同時配置可能）、支援装置前方のオペレーター1名にキャサリンの最大HPの20%のバリアを付与（対象が直前の5秒間攻撃を受けずにいると、1秒ごとにキャサリンの最大HPの6%のバリアを補充しする。バリアの値は初期上限を超えない）。装置の効果は重複不可",
+      "blackboard": {
+       "cnt": 3.0
+      }
+     },
+     {
+      "name": "",
+      "description": "-",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "-",
+      "blackboard": {}
      }
     ]
    }
@@ -9176,6 +10579,24 @@
        "check_count": 3.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "エーギルの波濤",
+      "description": "配置中、味方【アビサルハンター】のHPが1秒ごとに最大値の2.5%回復し、【海の怪物】からの物理と術の被ダメージ-25%",
+      "blackboard": {
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.025,
+       "damage_resistance": 0.25
+      }
+     },
+     {
+      "name": "弱肉強食",
+      "description": "重量ランクが3以下の敵を攻撃時、攻撃力が130%まで上昇",
+      "blackboard": {
+       "value": 3.0,
+       "atk_scale": 1.3
+      }
+     }
     ]
    },
    "golden": {
@@ -9225,6 +10646,24 @@
        "count": 2.0,
        "conditionkey": "character_same_row",
        "check_count": 3.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "エーギルの波濤",
+      "description": "配置中、味方【アビサルハンター】のHPが1秒ごとに最大値の2.5%回復し、【海の怪物】からの物理と術の被ダメージ-25%",
+      "blackboard": {
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.025,
+       "damage_resistance": 0.25
+      }
+     },
+     {
+      "name": "弱肉強食",
+      "description": "重量ランクが3以下の敵を攻撃時、攻撃力が130%まで上昇",
+      "blackboard": {
+       "value": 3.0,
+       "atk_scale": 1.3
       }
      }
     ]
@@ -9285,6 +10724,25 @@
        "count": 5.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "堅氷",
+      "description": "攻撃時、対象に1秒の寒冷状態を付与する。攻撃範囲内の寒冷状態の敵に25%の脆弱状態を付与する。凍結状態の敵に対しては脆弱の効果値倍増",
+      "blackboard": {
+       "cold": 1.0,
+       "damage_scale_cold": 1.25,
+       "damage_scale_freeze": 1.5
+      }
+     },
+     {
+      "name": "履霜",
+      "description": "配置から10秒後、配置されている間味方【カランド貿易】全員にレジスト状態を付与",
+      "blackboard": {
+       "interval": 10.0,
+       "one_minus_status_resistance": -0.5
+      }
+     }
     ]
    },
    "golden": {
@@ -9326,6 +10784,25 @@
       "description": "〈獲得時〉自身が所属する盟約の加算数+10（盟約の有効化不要）",
       "blackboard": {
        "count": 10.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "堅氷",
+      "description": "攻撃時、対象に1秒の寒冷状態を付与する。攻撃範囲内の寒冷状態の敵に25%の脆弱状態を付与する。凍結状態の敵に対しては脆弱の効果値倍増",
+      "blackboard": {
+       "cold": 1.0,
+       "damage_scale_cold": 1.25,
+       "damage_scale_freeze": 1.5
+      }
+     },
+     {
+      "name": "履霜",
+      "description": "配置から10秒後、配置されている間味方【カランド貿易】全員にレジスト状態を付与",
+      "blackboard": {
+       "interval": 10.0,
+       "one_minus_status_resistance": -0.5
       }
      }
     ]
@@ -9390,6 +10867,16 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "破片爆散",
+      "description": "攻撃範囲内の敵の数と同じ回数、自身の攻撃力+4%（最大5回まで）",
+      "blackboard": {
+       "atk": 0.04,
+       "max_valid_stack_cnt": 5.0
+      }
+     }
     ]
    },
    "golden": {
@@ -9435,6 +10922,16 @@
       "blackboard": {
        "count": 10.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "破片爆散",
+      "description": "攻撃範囲内の敵の数と同じ回数、自身の攻撃力+4%（最大5回まで）",
+      "blackboard": {
+       "atk": 0.04,
+       "max_valid_stack_cnt": 5.0
       }
      }
     ]
@@ -9500,6 +10997,24 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "テキサスの流儀",
+      "description": "スキル発動中、攻撃力+20%。敵を倒した時、自身のHPを最大値まで回復し、スキルをもう一度発動（1回の配置につき、1回のみ発動可能）",
+      "blackboard": {
+       "atk": 0.2,
+       "hp_ratio": 1.0
+      }
+     },
+     {
+      "name": "テキサスの剣技",
+      "description": "配置後、敵を1体倒すまで攻撃速度+8、被ダメージ-25%",
+      "blackboard": {
+       "attack_speed": 8.0,
+       "damage_resistance": 0.25
+      }
+     }
     ]
    },
    "golden": {
@@ -9546,6 +11061,24 @@
       "blackboard": {
        "count": 2.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "テキサスの流儀",
+      "description": "スキル発動中、攻撃力+20%。敵を倒した時、自身のHPを最大値まで回復し、スキルをもう一度発動（1回の配置につき、1回のみ発動可能）",
+      "blackboard": {
+       "atk": 0.2,
+       "hp_ratio": 1.0
+      }
+     },
+     {
+      "name": "テキサスの剣技",
+      "description": "配置後、敵を1体倒すまで攻撃速度+8、被ダメージ-25%",
+      "blackboard": {
+       "attack_speed": 8.0,
+       "damage_resistance": 0.25
       }
      }
     ]
@@ -9605,6 +11138,22 @@
        "count": 8.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "戦術装甲",
+      "description": "25%の確率で被ダメージを無効化",
+      "blackboard": {
+       "prob": 0.25
+      }
+     },
+     {
+      "name": "重装戦略態勢",
+      "description": "配置中、味方【重装】の防御力+6%",
+      "blackboard": {
+       "def": 0.06
+      }
+     }
     ]
    },
    "golden": {
@@ -9646,6 +11195,22 @@
       "description": "〈獲得時〉自身が所属する盟約の加算数+16（盟約の有効化不要）",
       "blackboard": {
        "count": 16.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "戦術装甲",
+      "description": "25%の確率で被ダメージを無効化",
+      "blackboard": {
+       "prob": 0.25
+      }
+     },
+     {
+      "name": "重装戦略態勢",
+      "description": "配置中、味方【重装】の防御力+6%",
+      "blackboard": {
+       "def": 0.06
       }
      }
     ]
@@ -9707,6 +11272,25 @@
        "count": 2.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "沃土を我が身に",
+      "description": "9秒ごとにシールドを1枚形成する（最大3枚まで重複でき、配置後シールドを1枚形成する）。シールドが1枚消耗される時、自身のHPが最大値の20%回復",
+      "blackboard": {
+       "interval": 9.0,
+       "times": 1.0,
+       "max_times": 3.0,
+       "hp_ratio": 0.2
+      }
+     },
+     {
+      "name": "同胞の情け",
+      "description": "敵【サルカズ】からの被ダメージ-30%",
+      "blackboard": {
+       "damage_resistance": 0.3
+      }
+     }
     ]
    },
    "golden": {
@@ -9750,6 +11334,25 @@
       "description": "〈売却時〉次の準備フェーズで資金+4",
       "blackboard": {
        "count": 4.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "沃土を我が身に",
+      "description": "9秒ごとにシールドを1枚形成する（最大3枚まで重複でき、配置後シールドを1枚形成する）。シールドが1枚消耗される時、自身のHPが最大値の20%回復",
+      "blackboard": {
+       "interval": 9.0,
+       "times": 1.0,
+       "max_times": 3.0,
+       "hp_ratio": 0.2
+      }
+     },
+     {
+      "name": "同胞の情け",
+      "description": "敵【サルカズ】からの被ダメージ-30%",
+      "blackboard": {
+       "damage_resistance": 0.3
       }
      }
     ]
@@ -9814,6 +11417,20 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "先陣の巧者",
+      "description": "回避発動時、次の通常攻撃が2連撃になり、ブロック中の敵全員を同時に攻撃",
+      "blackboard": {}
+     },
+     {
+      "name": "団長のカリスマ",
+      "description": "配置中、味方【カジミエーシュ】の物理回避+22%",
+      "blackboard": {
+       "prob": 0.22
+      }
+     }
     ]
    },
    "golden": {
@@ -9860,6 +11477,20 @@
       "blackboard": {
        "pool": "pool_char_pinus",
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "先陣の巧者",
+      "description": "回避発動時、次の通常攻撃が2連撃になり、ブロック中の敵全員を同時に攻撃",
+      "blackboard": {}
+     },
+     {
+      "name": "団長のカリスマ",
+      "description": "配置中、味方【カジミエーシュ】の物理回避+22%",
+      "blackboard": {
+       "prob": 0.22
       }
      }
     ]
@@ -9920,6 +11551,23 @@
        "give_garrison_id": "garrison_108_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "一心不乱",
+      "description": "直前の10秒間ダメージを受けずにいると、攻撃力+15%",
+      "blackboard": {
+       "atk": 0.15,
+       "delay": 10.0
+      }
+     },
+     {
+      "name": "颯射ち",
+      "description": "スキル発動中、敵に狙われにくくなり、攻撃時に敵の物理回避を無視",
+      "blackboard": {
+       "taunt_level": -1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -9961,6 +11609,23 @@
       "description": "〈戦闘開始時〉左右一直線上で最も右のオペレーターに特性「〈配置時〉有効化中の【カジミエーシュ】【精密】の加算数+8（戦闘1回につき最大48）」を付与",
       "blackboard": {
        "give_garrison_id": "garrison_108_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "一心不乱",
+      "description": "直前の10秒間ダメージを受けずにいると、攻撃力+15%",
+      "blackboard": {
+       "atk": 0.15,
+       "delay": 10.0
+      }
+     },
+     {
+      "name": "颯射ち",
+      "description": "スキル発動中、敵に狙われにくくなり、攻撃時に敵の物理回避を無視",
+      "blackboard": {
+       "taunt_level": -1.0
       }
      }
     ]
@@ -10018,6 +11683,15 @@
       "description": "前方1マスのオペレーターが「準備フェーズ開始時」の特性を持つ場合、自身の特性もそれと同じになる",
       "blackboard": {}
      }
+    ],
+    "talents": [
+     {
+      "name": "スキルブースト",
+      "description": "配置中、味方全員のSPの自動回復速度+0.3sp/秒（同種の効果は高いほうのみ適用）",
+      "blackboard": {
+       "sp_recovery_per_sec": 0.3
+      }
+     }
     ]
    },
    "golden": {
@@ -10057,6 +11731,15 @@
       "effect": "SERVER_FRONT_SAME_EFFECT_PREP_START",
       "description": "前方1マスのオペレーターが「準備フェーズ開始時」の特性を持つ場合、自身の特性もそれと同じになる",
       "blackboard": {}
+     }
+    ],
+    "talents": [
+     {
+      "name": "スキルブースト",
+      "description": "配置中、味方全員のSPの自動回復速度+0.3sp/秒（同種の効果は高いほうのみ適用）",
+      "blackboard": {
+       "sp_recovery_per_sec": 0.3
+      }
      }
     ]
    }
@@ -10122,6 +11805,21 @@
        "prob": 0.5
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "カリスマ",
+      "description": "攻撃力+10%。編成中、味方全員の再配置時間-10%",
+      "blackboard": {
+       "atk": 0.1,
+       "respawn_time": -0.1
+      }
+     },
+     {
+      "name": "ホークビジョン",
+      "description": "攻撃範囲内の敵のステルス状態を無効にする",
+      "blackboard": {}
+     }
     ]
    },
    "golden": {
@@ -10171,6 +11869,21 @@
        "bond_add_type": "by_count",
        "prob": 0.5
       }
+     }
+    ],
+    "talents": [
+     {
+      "name": "カリスマ",
+      "description": "攻撃力+10%。編成中、味方全員の再配置時間-10%",
+      "blackboard": {
+       "atk": 0.1,
+       "respawn_time": -0.1
+      }
+     },
+     {
+      "name": "ホークビジョン",
+      "description": "攻撃範囲内の敵のステルス状態を無効にする",
+      "blackboard": {}
      }
     ]
    }
@@ -10238,6 +11951,27 @@
        "bond_add_count": 9.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "戦場の豪斧",
+      "description": "攻撃力と防御力+10%、ブロックしている敵1体につき、追加で+4%",
+      "blackboard": {
+       "atk": 0.1,
+       "def": 0.1,
+       "atk_add": 0.04,
+       "def_add": 0.04
+      }
+     },
+     {
+      "name": "医学の心得",
+      "description": "受ける治療効果+20%、自身のHPが最大値の50%未満の場合、効果値が+40%まで上昇",
+      "blackboard": {
+       "heal_scale_1": 1.2,
+       "heal_scale_2": 1.4,
+       "hp_ratio": 0.5
+      }
+     }
     ]
    },
    "golden": {
@@ -10288,6 +12022,27 @@
        "bond_id": "sargonShip",
        "bond_add_type": "by_count",
        "bond_add_count": 18.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "戦場の豪斧",
+      "description": "攻撃力と防御力+10%、ブロックしている敵1体につき、追加で+4%",
+      "blackboard": {
+       "atk": 0.1,
+       "def": 0.1,
+       "atk_add": 0.04,
+       "def_add": 0.04
+      }
+     },
+     {
+      "name": "医学の心得",
+      "description": "受ける治療効果+20%、自身のHPが最大値の50%未満の場合、効果値が+40%まで上昇",
+      "blackboard": {
+       "heal_scale_1": 1.2,
+       "heal_scale_2": 1.4,
+       "hp_ratio": 0.5
       }
      }
     ]
@@ -10351,6 +12106,23 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "血肉饗宴",
+      "description": "スキル発動時、HPが最大値の40%回復\nオーバーチャージ効果発動時、HPの回復量が2倍になる",
+      "blackboard": {
+       "heal_scale": 0.4,
+       "billro_t_1[enhance].heal_scale": 0.8
+      }
+     },
+     {
+      "name": "狂嵐の兆し",
+      "description": "SPが最大値以上の時、自身のSP自然回復速度+0.6sp/秒",
+      "blackboard": {
+       "sp_recovery_per_sec": 0.6
+      }
+     }
     ]
    },
    "golden": {
@@ -10395,6 +12167,23 @@
       "blackboard": {
        "chess": "chess_item_3_05_e_a",
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "血肉饗宴",
+      "description": "スキル発動時、HPが最大値の40%回復\nオーバーチャージ効果発動時、HPの回復量が2倍になる",
+      "blackboard": {
+       "heal_scale": 0.4,
+       "billro_t_1[enhance].heal_scale": 0.8
+      }
+     },
+     {
+      "name": "狂嵐の兆し",
+      "description": "SPが最大値以上の時、自身のSP自然回復速度+0.6sp/秒",
+      "blackboard": {
+       "sp_recovery_per_sec": 0.6
       }
      }
     ]
@@ -10458,6 +12247,27 @@
        "extra_cnt": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "過去の塵埃",
+      "description": "配置時、自身を中心に旋回し続ける「微塵」を3個生成する。「微塵」が味方ユニットに当たると消滅し、対象が受けるシヴィライト・エテルナの特性の効果が6秒間1.5倍になる。消滅した「微塵」は6秒後に再生する",
+      "blackboard": {
+       "cnt": 3.0,
+       "range_radius": 1.15,
+       "cooldown": 6.0,
+       "dynamic_spd": 30.0,
+       "talent_duration": 6.0,
+       "attack@trait_mul": 1.5
+      }
+     },
+     {
+      "name": "魔王の残響",
+      "description": "配置中、味方全員が敵【サルカズ】からの被ダメージ-10%",
+      "blackboard": {
+       "damage_resistance": 0.1
+      }
+     }
     ]
    },
    "golden": {
@@ -10503,6 +12313,27 @@
        "key": "act1autochess_gar_event_addition_cnt",
        "range_id": "1-1",
        "extra_cnt": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "過去の塵埃",
+      "description": "配置時、自身を中心に旋回し続ける「微塵」を3個生成する。「微塵」が味方ユニットに当たると消滅し、対象が受けるシヴィライト・エテルナの特性の効果が6秒間1.5倍になる。消滅した「微塵」は6秒後に再生する",
+      "blackboard": {
+       "cnt": 3.0,
+       "range_radius": 1.15,
+       "cooldown": 6.0,
+       "dynamic_spd": 30.0,
+       "talent_duration": 6.0,
+       "attack@trait_mul": 1.5
+      }
+     },
+     {
+      "name": "魔王の残響",
+      "description": "配置中、味方全員が敵【サルカズ】からの被ダメージ-10%",
+      "blackboard": {
+       "damage_resistance": 0.1
       }
      }
     ]
@@ -10562,6 +12393,16 @@
        "give_garrison_id": "garrison_95_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "血液サンプル回収",
+      "description": "攻撃範囲内で敵が倒れた時、自身と範囲内のランダムな味方1人のSPを2回復",
+      "blackboard": {
+       "bldsk_t_1[self].sp": 2.0,
+       "bldsk_t_1[rand].sp": 2.0
+      }
+     }
     ]
    },
    "golden": {
@@ -10603,6 +12444,16 @@
       "description": "〈戦闘開始時〉前方1マスのオペレーターに特性「スキル発動時、自身が所属する有効化中の盟約の加算数+2」を付与（戦闘1回につき最大14）",
       "blackboard": {
        "give_garrison_id": "garrison_95_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "血液サンプル回収",
+      "description": "攻撃範囲内で敵が倒れた時、自身と範囲内のランダムな味方1人のSPを2回復",
+      "blackboard": {
+       "bldsk_t_1[self].sp": 2.0,
+       "bldsk_t_1[rand].sp": 2.0
       }
      }
     ]
@@ -10694,6 +12545,24 @@
        "garrison_key": "garrison_55_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "選ばれし者",
+      "description": "攻撃時、20%の確率で追加でもう一度攻撃する。スキル発動中に消費した弾丸1発につき、追加攻撃の発生確率+5%。スキル終了時、発生確率はリセットされる",
+      "blackboard": {
+       "prob": 0.2,
+       "prob_add": 0.05
+      }
+     },
+     {
+      "name": "銃弾の共感",
+      "description": "配置中の味方【ラテラーノ】1名につき、自身の弾薬消費系スキルの弾薬上限+1（最大+4まで）",
+      "blackboard": {
+       "add_count": 1.0,
+       "add_count_max_stack": 4.0
+      }
+     }
     ]
    },
    "golden": {
@@ -10768,6 +12637,24 @@
        "garrison_key": "garrison_55_b"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "選ばれし者",
+      "description": "攻撃時、20%の確率で追加でもう一度攻撃する。スキル発動中に消費した弾丸1発につき、追加攻撃の発生確率+5%。スキル終了時、発生確率はリセットされる",
+      "blackboard": {
+       "prob": 0.2,
+       "prob_add": 0.05
+      }
+     },
+     {
+      "name": "銃弾の共感",
+      "description": "配置中の味方【ラテラーノ】1名につき、自身の弾薬消費系スキルの弾薬上限+1（最大+4まで）",
+      "blackboard": {
+       "add_count": 1.0,
+       "add_count_max_stack": 4.0
+      }
+     }
     ]
    }
   },
@@ -10838,6 +12725,24 @@
        "garrison_key": "garrison_125_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "凝固的时光",
+      "description": "自身可以攻击沉睡的敌人，且攻击非移动敌人时对其额外造成相当于攻击力15%的法术伤害，在场时沉睡中的敌人每秒受到缇缇攻击力30%的法术伤害",
+      "blackboard": {
+       "damage_atk_scale": 0.3,
+       "extra_atk_scale": 0.15
+      }
+     },
+     {
+      "name": "勇气的报偿",
+      "description": "场上的【米诺斯】或【萨尔贡】干员生命值高于50%时，获得+20攻速的精力充沛",
+      "blackboard": {
+       "attack_speed": 20.0,
+       "hp_ratio": 0.5
+      }
+     }
     ]
    },
    "golden": {
@@ -10891,6 +12796,24 @@
        "bond_add_count": 2.0,
        "max_add_count_per_battle": 48.0,
        "garrison_key": "garrison_125_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "凝固的时光",
+      "description": "自身可以攻击沉睡的敌人，且攻击非移动敌人时对其额外造成相当于攻击力15%的法术伤害，在场时沉睡中的敌人每秒受到缇缇攻击力30%的法术伤害",
+      "blackboard": {
+       "damage_atk_scale": 0.3,
+       "extra_atk_scale": 0.15
+      }
+     },
+     {
+      "name": "勇气的报偿",
+      "description": "场上的【米诺斯】或【萨尔贡】干员生命值高于50%时，获得+20攻速的精力充沛",
+      "blackboard": {
+       "attack_speed": 20.0,
+       "hp_ratio": 0.5
       }
      }
     ]
@@ -10957,6 +12880,35 @@
        "count": 5.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "融点起爆",
+      "description": "敵の灼熱損傷が爆発するたびに、その敵に攻撃力の350%の元素ダメージを与え、自身のHPを最大値の12%回復",
+      "blackboard": {
+       "ep_damage_scale": 3.5,
+       "hp_ratio": 0.12
+      }
+     },
+     {
+      "name": "窮地再燃",
+      "description": "HPが0になっても退場せず、代わりにダウン状態（攻撃不可、味方の治療対象にならない）になり、6000までの被ダメージを吸収可能なバリアを獲得し、HPが毎秒最大値の3%回復する。HPが最大値まで回復するとダウン状態が解除され、周囲にいる敵全員を5秒間スタンさせる",
+      "blackboard": {
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.03,
+       "stun": 5.0,
+       "dynamic": 6000.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     }
     ]
    },
    "golden": {
@@ -11005,6 +12957,35 @@
        "bond": "yanShip,victoriaShip",
        "count": 10.0
       }
+     }
+    ],
+    "talents": [
+     {
+      "name": "融点起爆",
+      "description": "敵の灼熱損傷が爆発するたびに、その敵に攻撃力の350%の元素ダメージを与え、自身のHPを最大値の12%回復",
+      "blackboard": {
+       "ep_damage_scale": 3.5,
+       "hp_ratio": 0.12
+      }
+     },
+     {
+      "name": "窮地再燃",
+      "description": "HPが0になっても退場せず、代わりにダウン状態（攻撃不可、味方の治療対象にならない）になり、6000までの被ダメージを吸収可能なバリアを獲得し、HPが毎秒最大値の3%回復する。HPが最大値まで回復するとダウン状態が解除され、周囲にいる敵全員を5秒間スタンさせる",
+      "blackboard": {
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.03,
+       "stun": 5.0,
+       "dynamic": 6000.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
      }
     ]
    }
@@ -11069,6 +13050,34 @@
        "atk": 0.01
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "本性の維持",
+      "description": "ダメージを受けるたび、自身のHPを100回復。HPが50%以下の場合、回復効果は160まで上昇",
+      "blackboard": {
+       "hp_ratio": 0.5,
+       "value1": 100.0,
+       "value2": 160.0
+      }
+     },
+     {
+      "name": "育まれし血脈",
+      "description": "敵を倒すたび、自身の最大HPが120、攻撃力が30上昇（最大9回まで効果重複）。自身以外の味方【アビサルハンター】は50%の上昇効果を獲得",
+      "blackboard": {
+       "max_stack_cnt": 9.0,
+       "max_hp": 120.0,
+       "atk": 30.0,
+       "ulpia_t_1[abyssal].max_hp": 60.0,
+       "ulpia_t_1[abyssal].atk": 15.0,
+       "ulpia_t_1[abyssal].max_stack_cnt": 9.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     }
     ]
    },
    "golden": {
@@ -11117,6 +13126,34 @@
        "bond_id": "egirShip",
        "atk": 0.02
       }
+     }
+    ],
+    "talents": [
+     {
+      "name": "本性の維持",
+      "description": "ダメージを受けるたび、自身のHPを100回復。HPが50%以下の場合、回復効果は160まで上昇",
+      "blackboard": {
+       "hp_ratio": 0.5,
+       "value1": 100.0,
+       "value2": 160.0
+      }
+     },
+     {
+      "name": "育まれし血脈",
+      "description": "敵を倒すたび、自身の最大HPが120、攻撃力が30上昇（最大9回まで効果重複）。自身以外の味方【アビサルハンター】は50%の上昇効果を獲得",
+      "blackboard": {
+       "max_stack_cnt": 9.0,
+       "max_hp": 120.0,
+       "atk": 30.0,
+       "ulpia_t_1[abyssal].max_hp": 60.0,
+       "ulpia_t_1[abyssal].atk": 15.0,
+       "ulpia_t_1[abyssal].max_stack_cnt": 9.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
      }
     ]
    }
@@ -11184,6 +13221,36 @@
        "max_hp": 0.01
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "血の集積",
+      "description": "攻撃時、敵の最大HPを75奪取（最大1350まで奪取可能）、さらに5秒間対象に毎秒200の術ダメージを与え続ける",
+      "blackboard": {
+       "dot_duration": 5.0,
+       "attack@steal_hp": 75.0,
+       "attack@steal_hp_max": 1350.0,
+       "magic_value": 200.0,
+       "interval": 1.0
+      }
+     },
+     {
+      "name": "返り咲き",
+      "description": "HPが25%を下回った際、1度だけHPを最大値の50%回復し、以降物理の被ダメージ-10%",
+      "blackboard": {
+       "hp_ratio": 0.25,
+       "damage_resistance": 0.1,
+       "etlchi_t_2[heal].hp_ratio": 0.5
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {
+       "take_extra_enemy_key": "enemy_5601_entlec",
+       "skill_index": 2.0
+      }
+     }
     ]
    },
    "golden": {
@@ -11233,6 +13300,36 @@
        "bond_id": "yanShip,kjeragShip,sargonShip,lateranoShip,victoriaShip,egirShip,kazimierzShip,siracusaShip",
        "atk": 0.02,
        "max_hp": 0.02
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "血の集積",
+      "description": "攻撃時、敵の最大HPを75奪取（最大1350まで奪取可能）、さらに5秒間対象に毎秒200の術ダメージを与え続ける",
+      "blackboard": {
+       "dot_duration": 5.0,
+       "attack@steal_hp": 75.0,
+       "attack@steal_hp_max": 1350.0,
+       "magic_value": 200.0,
+       "interval": 1.0
+      }
+     },
+     {
+      "name": "返り咲き",
+      "description": "HPが25%を下回った際、1度だけHPを最大値の50%回復し、以降物理の被ダメージ-10%",
+      "blackboard": {
+       "hp_ratio": 0.25,
+       "damage_resistance": 0.1,
+       "etlchi_t_2[heal].hp_ratio": 0.5
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {
+       "take_extra_enemy_key": "enemy_5601_entlec",
+       "skill_index": 2.0
       }
      }
     ]
@@ -11304,6 +13401,22 @@
        "garrison_key": "garrison_107_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "劫火",
+      "description": "攻撃時、対象の術耐性を20無視",
+      "blackboard": {
+       "magic_resist_penetrate_fixed": 20.0
+      }
+     },
+     {
+      "name": "余燼",
+      "description": "致命的なダメージを受けてもHPが1残る\n効果発動から8秒後強制退場",
+      "blackboard": {
+       "surtr_t_2[withdraw].interval": 8.0
+      }
+     }
     ]
    },
    "golden": {
@@ -11356,6 +13469,22 @@
        "bond_add_count": 16.0,
        "max_add_count_per_battle": 100.0,
        "garrison_key": "garrison_107_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "劫火",
+      "description": "攻撃時、対象の術耐性を20無視",
+      "blackboard": {
+       "magic_resist_penetrate_fixed": 20.0
+      }
+     },
+     {
+      "name": "余燼",
+      "description": "致命的なダメージを受けてもHPが1残る\n効果発動から8秒後強制退場",
+      "blackboard": {
+       "surtr_t_2[withdraw].interval": 8.0
       }
      }
     ]
@@ -11420,6 +13549,25 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "軍事要塞",
+      "description": "配置中、味方【重装】の攻撃力+20%",
+      "blackboard": {
+       "atk": 0.2
+      }
+     },
+     {
+      "name": "血戦",
+      "description": "致命的なダメージを受けても撤退せず、最大HP-50%、HPが全回復して、攻撃速度+18、防御力+18%（1回の配置につき、1回のみ発動可能）",
+      "blackboard": {
+       "max_hp": 0.5,
+       "hp_ratio": 1.0,
+       "attack_speed": 18.0,
+       "def": 0.18
+      }
+     }
     ]
    },
    "golden": {
@@ -11466,6 +13614,25 @@
       "blackboard": {
        "multi": 4.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "軍事要塞",
+      "description": "配置中、味方【重装】の攻撃力+20%",
+      "blackboard": {
+       "atk": 0.2
+      }
+     },
+     {
+      "name": "血戦",
+      "description": "致命的なダメージを受けても撤退せず、最大HP-50%、HPが全回復して、攻撃速度+18、防御力+18%（1回の配置につき、1回のみ発動可能）",
+      "blackboard": {
+       "max_hp": 0.5,
+       "hp_ratio": 1.0,
+       "attack_speed": 18.0,
+       "def": 0.18
       }
      }
     ]
@@ -11528,6 +13695,23 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "スキルブースト・補助",
+      "description": "配置中、味方【補助】のSPの自然回復速度+0.4sp/秒（同種の効果は高いほうのみ適用）",
+      "blackboard": {
+       "sp_recovery_per_sec": 0.4
+      }
+     },
+     {
+      "name": "狐の祟り",
+      "description": "攻撃範囲内の敵が足止めされた時、次の瞬間から足止めと同じ時間の20%の脆弱状態も付与される",
+      "blackboard": {
+       "damage_scale": 1.2,
+       "atk": 1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -11571,6 +13755,23 @@
        "event": "SERVER_GAIN",
        "count": 2.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "スキルブースト・補助",
+      "description": "配置中、味方【補助】のSPの自然回復速度+0.4sp/秒（同種の効果は高いほうのみ適用）",
+      "blackboard": {
+       "sp_recovery_per_sec": 0.4
+      }
+     },
+     {
+      "name": "狐の祟り",
+      "description": "攻撃範囲内の敵が足止めされた時、次の瞬間から足止めと同じ時間の20%の脆弱状態も付与される",
+      "blackboard": {
+       "damage_scale": 1.2,
+       "atk": 1.0
       }
      }
     ]
@@ -11628,6 +13829,25 @@
       "description": "前方1マスのオペレーターが「準備フェーズ終了時」の特性を持つ場合、自身の特性もそれと同じになる",
       "blackboard": {}
      }
+    ],
+    "talents": [
+     {
+      "name": "ライン製防護服",
+      "description": "配置中、20秒ごとに攻撃力+5%、防御力+4%、最大5回まで",
+      "blackboard": {
+       "max_stack_cnt": 5.0,
+       "interval": 20.0,
+       "atk": 0.05,
+       "def": 0.04
+      }
+     },
+     {
+      "name": "精神回復",
+      "description": "味方を回復するたび対象のSPを1回復",
+      "blackboard": {
+       "sp": 1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -11667,6 +13887,25 @@
       "effect": "SERVER_FRONT_SAME_EFFECT_PREP_FIN",
       "description": "前方1マスのオペレーターが「準備フェーズ終了時」の特性を持つ場合、自身の特性もそれと同じになる",
       "blackboard": {}
+     }
+    ],
+    "talents": [
+     {
+      "name": "ライン製防護服",
+      "description": "配置中、20秒ごとに攻撃力+5%、防御力+4%、最大5回まで",
+      "blackboard": {
+       "max_stack_cnt": 5.0,
+       "interval": 20.0,
+       "atk": 0.05,
+       "def": 0.04
+      }
+     },
+     {
+      "name": "精神回復",
+      "description": "味方を回復するたび対象のSPを1回復",
+      "blackboard": {
+       "sp": 1.0
+      }
      }
     ]
    }
@@ -11729,6 +13968,23 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "積墨",
+      "description": "自身と「小自在」が敵を倒すたび、自身の攻撃力+2%、最大15回まで",
+      "blackboard": {
+       "atk": 0.02,
+       "max_stack_cnt": 15.0
+      }
+     },
+     {
+      "name": "点睛",
+      "description": "配置後、最初に敵を攻撃する時、攻撃対象のいるマス（配置可能な地面マス）に「小自在」を1体召喚（召喚から25秒後強制退場）",
+      "blackboard": {
+       "attack@tokenduration": 25.0
+      }
+     }
     ]
    },
    "golden": {
@@ -11773,6 +14029,23 @@
        "bond": "yanShip,arcaneShip",
        "multi": 4.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "積墨",
+      "description": "自身と「小自在」が敵を倒すたび、自身の攻撃力+2%、最大15回まで",
+      "blackboard": {
+       "atk": 0.02,
+       "max_stack_cnt": 15.0
+      }
+     },
+     {
+      "name": "点睛",
+      "description": "配置後、最初に敵を攻撃する時、攻撃対象のいるマス（配置可能な地面マス）に「小自在」を1体召喚（召喚から25秒後強制退場）",
+      "blackboard": {
+       "attack@tokenduration": 25.0
       }
      }
     ]
@@ -11837,6 +14110,24 @@
        "bond_add_count": 5.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "内なる抱擁",
+      "description": "<身替り>状態時、周囲の敵の移動速度-40%、1秒ごとに攻撃力の40%の術ダメージを与える",
+      "blackboard": {
+       "move_speed": -0.4,
+       "atk_scale": 0.4,
+       "talent_override_rangeid_flag": 1.0
+      }
+     },
+     {
+      "name": "エーギルの深奥",
+      "description": "編成中、味方【アビサルハンター】のHP+20%",
+      "blackboard": {
+       "max_hp": 0.2
+      }
+     }
     ]
    },
    "golden": {
@@ -11882,6 +14173,24 @@
        "bond_id": "egirShip,indomShip",
        "bond_add_type": "by_count",
        "bond_add_count": 10.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "内なる抱擁",
+      "description": "<身替り>状態時、周囲の敵の移動速度-40%、1秒ごとに攻撃力の40%の術ダメージを与える",
+      "blackboard": {
+       "move_speed": -0.4,
+       "atk_scale": 0.4,
+       "talent_override_rangeid_flag": 1.0
+      }
+     },
+     {
+      "name": "エーギルの深奥",
+      "description": "編成中、味方【アビサルハンター】のHP+20%",
+      "blackboard": {
+       "max_hp": 0.2
       }
      }
     ]
@@ -11951,6 +14260,61 @@
        "give_garrison_id": "garrison_29_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "开放性开局",
+      "description": "在场时向待部署区中加入“风雪之眼”，且会使待部署区按照部署费用排列。位于“风雪之眼”左侧的干员与自身初始技力+4，下次再部署时间-20%",
+      "blackboard": {
+       "respawn_time": 0.8,
+       "sp": 4.0
+      }
+     },
+     {
+      "name": "雪境先驱",
+      "description": "在场时，【谢拉格】干员免疫冻结，防御力+60且每秒回复1.5%最大生命值；在场15秒后防御力和生命回复效果翻倍",
+      "blackboard": {
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.015,
+       "interval": 15.0,
+       "def": 60.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {
+       "cnt": 1.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {
+       "cnt": 2.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {
+       "cnt": 3.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     }
     ]
    },
    "golden": {
@@ -12001,6 +14365,61 @@
        "check_bond_id": "kjeragShip",
        "give_garrison_id": "garrison_29_b"
       }
+     }
+    ],
+    "talents": [
+     {
+      "name": "开放性开局",
+      "description": "在场时向待部署区中加入“风雪之眼”，且会使待部署区按照部署费用排列。位于“风雪之眼”左侧的干员与自身初始技力+4，下次再部署时间-20%",
+      "blackboard": {
+       "respawn_time": 0.8,
+       "sp": 4.0
+      }
+     },
+     {
+      "name": "雪境先驱",
+      "description": "在场时，【谢拉格】干员免疫冻结，防御力+60且每秒回复1.5%最大生命值；在场15秒后防御力和生命回复效果翻倍",
+      "blackboard": {
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.015,
+       "interval": 15.0,
+       "def": 60.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {
+       "cnt": 1.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {
+       "cnt": 2.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {
+       "cnt": 3.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
      }
     ]
    }
@@ -12070,6 +14489,28 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "心相",
+      "description": "攻撃力+10%、攻撃範囲内に他のオペレーターがいる場合、自身が投げた錬金ユニットの持続時間+3秒",
+      "blackboard": {
+       "projectile_extend": 3.0,
+       "projectile_extend_max": 3.0,
+       "atk": 0.1
+      }
+     },
+     {
+      "name": "視界",
+      "description": "配置中、味方全員の攻撃速度+5、敵全員の攻撃速度-5。連続する6マス以上の直線経路内にいる味方・敵に対する効果は2倍になる",
+      "blackboard": {
+       "attack_speed_ally": 5.0,
+       "attack_speed_enemy": -5.0,
+       "cnt": 6.0,
+       "attack_speed_ally_extra": 5.0,
+       "attack_speed_enemy_extra": -5.0
+      }
+     }
     ]
    },
    "golden": {
@@ -12121,6 +14562,28 @@
        "dir": "front",
        "count": 8.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "心相",
+      "description": "攻撃力+10%、攻撃範囲内に他のオペレーターがいる場合、自身が投げた錬金ユニットの持続時間+3秒",
+      "blackboard": {
+       "projectile_extend": 3.0,
+       "projectile_extend_max": 3.0,
+       "atk": 0.1
+      }
+     },
+     {
+      "name": "視界",
+      "description": "配置中、味方全員の攻撃速度+5、敵全員の攻撃速度-5。連続する6マス以上の直線経路内にいる味方・敵に対する効果は2倍になる",
+      "blackboard": {
+       "attack_speed_ally": 5.0,
+       "attack_speed_enemy": -5.0,
+       "cnt": 6.0,
+       "attack_speed_ally_extra": 5.0,
+       "attack_speed_enemy_extra": -5.0
       }
      }
     ]
@@ -12185,6 +14648,26 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "ハードパンチャー",
+      "description": "攻撃時、20%の確率でその攻撃のみ攻撃力が160%まで上昇し、攻撃対象の攻撃力を3秒間-15%（重複不可）",
+      "blackboard": {
+       "atk_scale": 1.6,
+       "prob": 0.2,
+       "atk": -0.15,
+       "duration": 3.0
+      }
+     },
+     {
+      "name": "頑健",
+      "description": "防御力+10%、物理回避+15%",
+      "blackboard": {
+       "def": 0.1,
+       "prob": 0.15
+      }
+     }
     ]
    },
    "golden": {
@@ -12231,6 +14714,26 @@
        "bond": "investShip",
        "multi": 2.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "ハードパンチャー",
+      "description": "攻撃時、20%の確率でその攻撃のみ攻撃力が160%まで上昇し、攻撃対象の攻撃力を3秒間-15%（重複不可）",
+      "blackboard": {
+       "atk_scale": 1.6,
+       "prob": 0.2,
+       "atk": -0.15,
+       "duration": 3.0
+      }
+     },
+     {
+      "name": "頑健",
+      "description": "防御力+10%、物理回避+15%",
+      "blackboard": {
+       "def": 0.1,
+       "prob": 0.15
       }
      }
     ]
@@ -12298,6 +14801,26 @@
        "duration": 100.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "遊侠",
+      "description": "攻撃時、攻撃力が110%まで上昇。周囲一定範囲内に敵3体以上いる場合、攻撃力が115%まで上昇し、被ダメージ-15%",
+      "blackboard": {
+       "atk_scale_base": 1.1,
+       "cnt": 3.0,
+       "atk_scale_up": 1.15,
+       "damage_resistance": 0.15
+      }
+     },
+     {
+      "name": "我関せず",
+      "description": "配置中、敵に攻撃されやすくなり、味方【カジミエーシュ】が攻撃を受けるたび、ムリナールの攻撃力の15%の確定ダメージで敵に反撃する",
+      "blackboard": {
+       "taunt_level": 1.0,
+       "atk_scale": 0.15
+      }
+     }
     ]
    },
    "golden": {
@@ -12347,6 +14870,26 @@
        "atk": 20.0,
        "max_hp": 100.0,
        "duration": 100.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "遊侠",
+      "description": "攻撃時、攻撃力が110%まで上昇。周囲一定範囲内に敵3体以上いる場合、攻撃力が115%まで上昇し、被ダメージ-15%",
+      "blackboard": {
+       "atk_scale_base": 1.1,
+       "cnt": 3.0,
+       "atk_scale_up": 1.15,
+       "damage_resistance": 0.15
+      }
+     },
+     {
+      "name": "我関せず",
+      "description": "配置中、敵に攻撃されやすくなり、味方【カジミエーシュ】が攻撃を受けるたび、ムリナールの攻撃力の15%の確定ダメージで敵に反撃する",
+      "blackboard": {
+       "taunt_level": 1.0,
+       "atk_scale": 0.15
       }
      }
     ]
@@ -12410,6 +14953,22 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "アクセルフィールド",
+      "description": "配置中、味方全員の攻撃速度+7",
+      "blackboard": {
+       "attack_speed": 7.0
+      }
+     },
+     {
+      "name": "ダブルワーク",
+      "description": "スキル未使用時、味方全員のHPが1秒ごとに20回復",
+      "blackboard": {
+       "hp_recovery_per_sec": 20.0
+      }
+     }
     ]
    },
    "golden": {
@@ -12454,6 +15013,22 @@
        "multiplier": 8.0,
        "max_layer": 24.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "アクセルフィールド",
+      "description": "配置中、味方全員の攻撃速度+7",
+      "blackboard": {
+       "attack_speed": 7.0
+      }
+     },
+     {
+      "name": "ダブルワーク",
+      "description": "スキル未使用時、味方全員のHPが1秒ごとに20回復",
+      "blackboard": {
+       "hp_recovery_per_sec": 20.0
       }
      }
     ]
@@ -12527,6 +15102,17 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "寒地の民",
+      "description": "配置から20秒後、攻撃力+15%、レジスト状態になる",
+      "blackboard": {
+       "atk": 0.15,
+       "interval": 20.0,
+       "one_minus_status_resistance": -0.5
+      }
+     }
     ]
    },
    "golden": {
@@ -12582,6 +15168,17 @@
        "bond": "visiShip",
        "count": 8.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "寒地の民",
+      "description": "配置から20秒後、攻撃力+15%、レジスト状態になる",
+      "blackboard": {
+       "atk": 0.15,
+       "interval": 20.0,
+       "one_minus_status_resistance": -0.5
       }
      }
     ]
@@ -12648,6 +15245,23 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "抜け落つ魂",
+      "description": "壊死損傷の爆発効果中の敵を攻撃した場合、毎秒攻撃力の40%の元素ダメージを与え続ける（壊死損傷の爆発効果が終了するまで継続）",
+      "blackboard": {
+       "element_atk_scale": 0.4
+      }
+     },
+     {
+      "name": "心を覗く鍵",
+      "description": "攻撃範囲内の敵の壊死損傷が爆発するたび、自身の攻撃力+2%（最大10回まで効果重複）",
+      "blackboard": {
+       "atk": 0.02,
+       "max_stack_cnt": 10.0
+      }
+     }
     ]
    },
    "golden": {
@@ -12696,6 +15310,23 @@
        "bond": "swiftShip",
        "multi": 4.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "抜け落つ魂",
+      "description": "壊死損傷の爆発効果中の敵を攻撃した場合、毎秒攻撃力の40%の元素ダメージを与え続ける（壊死損傷の爆発効果が終了するまで継続）",
+      "blackboard": {
+       "element_atk_scale": 0.4
+      }
+     },
+     {
+      "name": "心を覗く鍵",
+      "description": "攻撃範囲内の敵の壊死損傷が爆発するたび、自身の攻撃力+2%（最大10回まで効果重複）",
+      "blackboard": {
+       "atk": 0.02,
+       "max_stack_cnt": 10.0
       }
      }
     ]
@@ -12758,6 +15389,19 @@
        "count": "6,3"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "学成于聚",
+      "description": "攻击范围内的干员开启技能时自身回复1点技力，且攻击速度+16，持续8秒",
+      "blackboard": {
+       "attack_speed": 16.0,
+       "duration": 8.0,
+       "max_stack_cnt": 1.0,
+       "prob": 1.0,
+       "sp": 1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -12801,6 +15445,19 @@
       "blackboard": {
        "bond": "yanShip,miraShip",
        "count": "12,6"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "学成于聚",
+      "description": "攻击范围内的干员开启技能时自身回复1点技力，且攻击速度+16，持续8秒",
+      "blackboard": {
+       "attack_speed": 16.0,
+       "duration": 8.0,
+       "max_stack_cnt": 1.0,
+       "prob": 1.0,
+       "sp": 1.0
       }
      }
     ]
@@ -12877,6 +15534,26 @@
        "check_count": 3.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "越境追跡許可",
+      "description": "味方【ラテラーノ】の攻撃範囲内に敵【エリート】・【ボス】が8秒滞在すると指名手配され、味方【ラテラーノ】からの被ダメージ+15%。レミュアンは攻撃範囲外にいる指名手配中の対象にも攻撃可能",
+      "blackboard": {
+       "interval": 8.0,
+       "damage_scale": 1.15
+      }
+     },
+     {
+      "name": "逃走犯引き渡し手続き",
+      "description": "配置から20秒後、攻撃力+10%、自身の弾薬消費系スキルの弾薬上限数+1",
+      "blackboard": {
+       "interval": 20.0,
+       "atk": 0.1,
+       "add_count": 1.0,
+       "ex_add_count": 0.0
+      }
+     }
     ]
    },
    "golden": {
@@ -12934,6 +15611,26 @@
        "bond_add_count": 4.0,
        "conditionkey": "character_same_row",
        "check_count": 3.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "越境追跡許可",
+      "description": "味方【ラテラーノ】の攻撃範囲内に敵【エリート】・【ボス】が8秒滞在すると指名手配され、味方【ラテラーノ】からの被ダメージ+15%。レミュアンは攻撃範囲外にいる指名手配中の対象にも攻撃可能",
+      "blackboard": {
+       "interval": 8.0,
+       "damage_scale": 1.15
+      }
+     },
+     {
+      "name": "逃走犯引き渡し手続き",
+      "description": "配置から20秒後、攻撃力+10%、自身の弾薬消費系スキルの弾薬上限数+1",
+      "blackboard": {
+       "interval": 20.0,
+       "atk": 0.1,
+       "add_count": 1.0,
+       "ex_add_count": 0.0
       }
      }
     ]
@@ -13001,6 +15698,29 @@
        "atk": 0.01
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "无垠的雪景",
+      "description": "攻击范围内的地面每隔5.5秒产生一层积雪，地面敌人经过时立即受到相当于攻击力75%的法术伤害，每层积雪使经过的所有敌人移动速度下降12%，最多叠加5层（首个敌人离开该地块时积雪消失）",
+      "blackboard": {
+       "interval": 5.5,
+       "max_cast_cnt": 5.0,
+       "move_speed": -0.12,
+       "talent_magic_scale": 0.75,
+       "first_snow": 0.0
+      }
+     },
+     {
+      "name": "圣山的祝福",
+      "description": "受到伤害时使敌人寒冷1.5秒，若受到致命伤害，仅一次立刻回复所有生命值并使自身冻结4秒，使攻击范围内所有敌方单位冻结8秒",
+      "blackboard": {
+       "hp_ratio": 1.0,
+       "cold": 1.5,
+       "freeze": 4.0,
+       "c2e_freeze": 8.0
+      }
+     }
     ]
    },
    "golden": {
@@ -13049,6 +15769,29 @@
        "divide_num": 3.0,
        "bond_id": "kjeragShip,arcaneShip",
        "atk": 0.02
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "无垠的雪景",
+      "description": "攻击范围内的地面每隔5.5秒产生一层积雪，地面敌人经过时立即受到相当于攻击力75%的法术伤害，每层积雪使经过的所有敌人移动速度下降12%，最多叠加5层（首个敌人离开该地块时积雪消失）",
+      "blackboard": {
+       "interval": 5.5,
+       "max_cast_cnt": 5.0,
+       "move_speed": -0.12,
+       "talent_magic_scale": 0.75,
+       "first_snow": 0.0
+      }
+     },
+     {
+      "name": "圣山的祝福",
+      "description": "受到伤害时使敌人寒冷1.5秒，若受到致命伤害，仅一次立刻回复所有生命值并使自身冻结4秒，使攻击范围内所有敌方单位冻结8秒",
+      "blackboard": {
+       "hp_ratio": 1.0,
+       "cold": 1.5,
+       "freeze": 4.0,
+       "c2e_freeze": 8.0
       }
      }
     ]
@@ -13113,6 +15856,28 @@
        "check_count": 3.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "礼には礼を",
+      "description": "敵をブロック中、25%の加護状態を獲得し、ブロックしている対象に毎秒ユーの攻撃力の40%の術ダメージと攻撃力の12%の灼熱損傷を与え続ける",
+      "blackboard": {
+       "damage_resistance": 0.25,
+       "yu_t_1[enemy].atk_scale": 0.4,
+       "yu_t_1[enemy].ep_damage_ratio": 0.12,
+       "yu_t_1[enemy].interval": 1.0
+      }
+     },
+     {
+      "name": "閑雲市に隠れ",
+      "description": "配置されているオペレーターの数が4人以上のとき、自身のHPと元素損傷が毎秒最大HPの1.5%回復",
+      "blackboard": {
+       "cnt": 4.0,
+       "ep_heal_ratio": 0.015,
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.015,
+       "interval": 1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -13157,6 +15922,28 @@
       "description": "〈準備フェーズ開始時〉現在人数が最も多い盟約のオペレーターを1名ランダムに獲得",
       "blackboard": {
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "礼には礼を",
+      "description": "敵をブロック中、25%の加護状態を獲得し、ブロックしている対象に毎秒ユーの攻撃力の40%の術ダメージと攻撃力の12%の灼熱損傷を与え続ける",
+      "blackboard": {
+       "damage_resistance": 0.25,
+       "yu_t_1[enemy].atk_scale": 0.4,
+       "yu_t_1[enemy].ep_damage_ratio": 0.12,
+       "yu_t_1[enemy].interval": 1.0
+      }
+     },
+     {
+      "name": "閑雲市に隠れ",
+      "description": "配置されているオペレーターの数が4人以上のとき、自身のHPと元素損傷が毎秒最大HPの1.5%回復",
+      "blackboard": {
+       "cnt": 4.0,
+       "ep_heal_ratio": 0.015,
+       "hp_recovery_per_sec_by_max_hp_ratio": 0.015,
+       "interval": 1.0
       }
      }
     ]
@@ -13221,6 +16008,23 @@
        "sp_recovery_per_sec": 0.15
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "太古の血族",
+      "description": "「スカジのシーボーン」を配置可能（配置から25秒後強制退場）。シーボーンの攻撃範囲を自身の追加攻撃範囲と見なす",
+      "blackboard": {
+       "cnt": 1.0
+      }
+     },
+     {
+      "name": "捕食本能",
+      "description": "自身やシーボーンの攻撃範囲内に味方がいる時、自身の攻撃力+6%。攻撃範囲内に味方【アビサルハンター】がいる時、攻撃力の上昇効果が+15%になる",
+      "blackboard": {
+       "skadi2_t_2[atk][1].atk": 0.06,
+       "skadi2_t_2[atk][2].atk": 0.15
+      }
+     }
     ]
    },
    "golden": {
@@ -13267,6 +16071,23 @@
        "bond_id": "egirShip",
        "hp_recovery_per_sec": 100.0,
        "sp_recovery_per_sec": 0.3
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "太古の血族",
+      "description": "「スカジのシーボーン」を配置可能（配置から25秒後強制退場）。シーボーンの攻撃範囲を自身の追加攻撃範囲と見なす",
+      "blackboard": {
+       "cnt": 1.0
+      }
+     },
+     {
+      "name": "捕食本能",
+      "description": "自身やシーボーンの攻撃範囲内に味方がいる時、自身の攻撃力+6%。攻撃範囲内に味方【アビサルハンター】がいる時、攻撃力の上昇効果が+15%になる",
+      "blackboard": {
+       "skadi2_t_2[atk][1].atk": 0.06,
+       "skadi2_t_2[atk][2].atk": 0.15
       }
      }
     ]
@@ -13336,6 +16157,24 @@
        "atk": 0.02
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "メカニズムアナライズ",
+      "description": "HPが最大値の80%以上の敵を攻撃時、3秒間その攻撃対象にパッセンジャーの与ダメージ+20%",
+      "blackboard": {
+       "hp_ratio": 0.8,
+       "pasngr_t_1[enhance].damage_scale": 1.2,
+       "pasngr_t_1[enhance].duration": 3.0
+      }
+     },
+     {
+      "name": "ラストソルジャー",
+      "description": "隣接4マス内に敵がいない時、攻撃力+8%",
+      "blackboard": {
+       "atk": 0.08
+      }
+     }
     ]
    },
    "golden": {
@@ -13385,6 +16224,24 @@
        "divide_num": 3.0,
        "bond_id": "sargonShip,swiftShip,preciShip",
        "atk": 0.04
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "メカニズムアナライズ",
+      "description": "HPが最大値の80%以上の敵を攻撃時、3秒間その攻撃対象にパッセンジャーの与ダメージ+20%",
+      "blackboard": {
+       "hp_ratio": 0.8,
+       "pasngr_t_1[enhance].damage_scale": 1.2,
+       "pasngr_t_1[enhance].duration": 3.0
+      }
+     },
+     {
+      "name": "ラストソルジャー",
+      "description": "隣接4マス内に敵がいない時、攻撃力+8%",
+      "blackboard": {
+       "atk": 0.08
       }
      }
     ]
@@ -13452,6 +16309,23 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "語り継がれるもの",
+      "description": "スキル発動中に倒した敵1体につき、スキル終了時SPを1回復（最大14まで回復可能）",
+      "blackboard": {
+       "sp": 1.0,
+       "max_sp": 14.0
+      }
+     },
+     {
+      "name": "芳しき睡蓮",
+      "description": "配置中、【前衛】全員の攻撃力+16%",
+      "blackboard": {
+       "atk": 0.16
+      }
+     }
     ]
    },
    "golden": {
@@ -13500,6 +16374,23 @@
        "pool": "pool_equip_pepe",
        "count": 2.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "語り継がれるもの",
+      "description": "スキル発動中に倒した敵1体につき、スキル終了時SPを1回復（最大14まで回復可能）",
+      "blackboard": {
+       "sp": 1.0,
+       "max_sp": 14.0
+      }
+     },
+     {
+      "name": "芳しき睡蓮",
+      "description": "配置中、【前衛】全員の攻撃力+16%",
+      "blackboard": {
+       "atk": 0.16
       }
      }
     ]
@@ -13576,6 +16467,23 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "諸王の息",
+      "description": "自身と周囲8マスの味方が受ける物理ダメージ-20%、範囲内にいる味方1名につきヴィーナの攻撃力+5%",
+      "blackboard": {
+       "damage_resistance": 0.2,
+       "atk": 0.05
+      }
+     },
+     {
+      "name": "縛られざる鋒芒",
+      "description": "敵にダメージを与えた際、敵ごとに一度だけ、対象を4秒間戦慄状態を付与",
+      "blackboard": {
+       "not_combat": 4.0
+      }
+     }
     ]
    },
    "golden": {
@@ -13633,6 +16541,23 @@
        "bond": "miraShip",
        "multi": 4.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "諸王の息",
+      "description": "自身と周囲8マスの味方が受ける物理ダメージ-20%、範囲内にいる味方1名につきヴィーナの攻撃力+5%",
+      "blackboard": {
+       "damage_resistance": 0.2,
+       "atk": 0.05
+      }
+     },
+     {
+      "name": "縛られざる鋒芒",
+      "description": "敵にダメージを与えた際、敵ごとに一度だけ、対象を4秒間戦慄状態を付与",
+      "blackboard": {
+       "not_combat": 4.0
       }
      }
     ]
@@ -13702,6 +16627,27 @@
        "attack_speed": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "灼けつく炎",
+      "description": "敵にダメージを与えた際、30%の確率で対象に6秒間攻撃力-20%、30%の対術脆弱状態をもたらす灼痕を付与（重複不可）",
+      "blackboard": {
+       "prob": 0.3,
+       "atk": -0.2,
+       "damage_scale": 1.3,
+       "duration": 6.0,
+       "talent@atk": -0.2,
+       "talent@damage_scale": 1.3
+      }
+     },
+     {
+      "name": "耀映",
+      "description": "自身以外の味方ユニットを治療する時、焔影リードも同時に50%の治療効果を受ける",
+      "blackboard": {
+       "scale": 0.5
+      }
+     }
     ]
    },
    "golden": {
@@ -13752,6 +16698,27 @@
        "divide_num": 3.0,
        "bond_id": "victoriaShip",
        "attack_speed": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "灼けつく炎",
+      "description": "敵にダメージを与えた際、30%の確率で対象に6秒間攻撃力-20%、30%の対術脆弱状態をもたらす灼痕を付与（重複不可）",
+      "blackboard": {
+       "prob": 0.3,
+       "atk": -0.2,
+       "damage_scale": 1.3,
+       "duration": 6.0,
+       "talent@atk": -0.2,
+       "talent@damage_scale": 1.3
+      }
+     },
+     {
+      "name": "耀映",
+      "description": "自身以外の味方ユニットを治療する時、焔影リードも同時に50%の治療効果を受ける",
+      "blackboard": {
+       "scale": 0.5
       }
      }
     ]
@@ -13816,6 +16783,23 @@
        "garrison_key": "garrison_90_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "言葉なき哀歌",
+      "description": "1秒ごとに攻撃範囲内の敵に攻撃力の10%の壊死損傷を与え、0.2秒足止め状態にする",
+      "blackboard": {
+       "ep_damage_ratio": 0.1,
+       "sluggish": 0.2
+      }
+     },
+     {
+      "name": "精神逆構築",
+      "description": "攻撃範囲内の敵が受ける壊死損傷の効果値+20%",
+      "blackboard": {
+       "ep_damage_scale": 1.2
+      }
+     }
     ]
    },
    "golden": {
@@ -13862,6 +16846,23 @@
        "bond_add_count_multi": 2.0,
        "max_add_count_per_battle": 20.0,
        "garrison_key": "garrison_90_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "言葉なき哀歌",
+      "description": "1秒ごとに攻撃範囲内の敵に攻撃力の10%の壊死損傷を与え、0.2秒足止め状態にする",
+      "blackboard": {
+       "ep_damage_ratio": 0.1,
+       "sluggish": 0.2
+      }
+     },
+     {
+      "name": "精神逆構築",
+      "description": "攻撃範囲内の敵が受ける壊死損傷の効果値+20%",
+      "blackboard": {
+       "ep_damage_scale": 1.2
       }
      }
     ]
@@ -13924,6 +16925,23 @@
        "count": 1.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "清き水、即ち命なり",
+      "description": "配置待機オペレーターのステータス（最大HP、攻撃力、防御力、術耐性、ブロック数、攻撃間隔、攻撃範囲、攻撃タイプ、そして近/遠距離に基づいて異なる特性を獲得できる）をほとんどコピーできる「うつろう水影」を援軍として召喚可能\n援軍が倒された時、25秒後に再召喚される",
+      "blackboard": {
+       "cnt": 1.0
+      }
+     },
+     {
+      "name": "開源節流",
+      "description": "編成中、味方【ライン生命】全員の配置コスト-2、最初に配置する味方【ライン生命】の配置コストがさらに-1",
+      "blackboard": {
+       "cost": -2.0,
+       "runtime_cost": -1.0
+      }
+     }
     ]
    },
    "golden": {
@@ -13968,6 +16986,23 @@
       "blackboard": {
        "chess": "chess_item_6_09_e_a",
        "count": 2.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "清き水、即ち命なり",
+      "description": "配置待機オペレーターのステータス（最大HP、攻撃力、防御力、術耐性、ブロック数、攻撃間隔、攻撃範囲、攻撃タイプ、そして近/遠距離に基づいて異なる特性を獲得できる）をほとんどコピーできる「うつろう水影」を援軍として召喚可能\n援軍が倒された時、25秒後に再召喚される",
+      "blackboard": {
+       "cnt": 1.0
+      }
+     },
+     {
+      "name": "開源節流",
+      "description": "編成中、味方【ライン生命】全員の配置コスト-2、最初に配置する味方【ライン生命】の配置コストがさらに-1",
+      "blackboard": {
+       "cost": -2.0,
+       "runtime_cost": -1.0
       }
      }
     ]
@@ -14046,6 +17081,22 @@
        "max_hp": 1.2
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "殲滅戦用装備",
+      "description": "攻撃時、対象の防御力を160無視",
+      "blackboard": {
+       "def_penetrate_fixed": 160.0
+      }
+     },
+     {
+      "name": "思念維持",
+      "description": "配置時、戦場にいる【術師】からランダムに1名を選択し、対象と自身の攻撃力+8%",
+      "blackboard": {
+       "atk": 0.08
+      }
+     }
     ]
    },
    "golden": {
@@ -14104,6 +17155,22 @@
       "blackboard": {
        "atk": 1.4,
        "max_hp": 1.4
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "殲滅戦用装備",
+      "description": "攻撃時、対象の防御力を160無視",
+      "blackboard": {
+       "def_penetrate_fixed": 160.0
+      }
+     },
+     {
+      "name": "思念維持",
+      "description": "配置時、戦場にいる【術師】からランダムに1名を選択し、対象と自身の攻撃力+8%",
+      "blackboard": {
+       "atk": 0.08
       }
      }
     ]
@@ -14171,6 +17238,36 @@
        "count": 2.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "火力放送局",
+      "description": "配置中、味方オペレーターの弾薬が消費されるたびに自身のHPが最大値の6%回復し、25%の確率で対象オペレーターの攻撃範囲内の敵に対して、自身の攻撃力の150%の物理範囲ダメージを与える爆撃を1回行う",
+      "blackboard": {
+       "hp_ratio": 0.06,
+       "aoe_atk_scale": 1.5,
+       "prob": 0.25,
+       "damage_scale": 1.5
+      }
+     },
+     {
+      "name": "銃弾協約",
+      "description": "配置中、弾薬消費系スキルを持つオペレーターの攻撃力+9%。味方【ラテラーノ】に対する効果値は倍増",
+      "blackboard": {
+       "atk": 0.09,
+       "mult": 2.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     }
     ]
    },
    "golden": {
@@ -14221,6 +17318,36 @@
       "blackboard": {
        "count": 4.0
       }
+     }
+    ],
+    "talents": [
+     {
+      "name": "火力放送局",
+      "description": "配置中、味方オペレーターの弾薬が消費されるたびに自身のHPが最大値の6%回復し、25%の確率で対象オペレーターの攻撃範囲内の敵に対して、自身の攻撃力の150%の物理範囲ダメージを与える爆撃を1回行う",
+      "blackboard": {
+       "hp_ratio": 0.06,
+       "aoe_atk_scale": 1.5,
+       "prob": 0.25,
+       "damage_scale": 1.5
+      }
+     },
+     {
+      "name": "銃弾協約",
+      "description": "配置中、弾薬消費系スキルを持つオペレーターの攻撃力+9%。味方【ラテラーノ】に対する効果値は倍増",
+      "blackboard": {
+       "atk": 0.09,
+       "mult": 2.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
      }
     ]
    }
@@ -14282,6 +17409,27 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "凡人の願い",
+      "description": "味方を回復後、対象に4秒のレジスト状態を付与、対象のHPが最大値の75%を超える場合、レジスト状態の継続時間が6秒に上昇",
+      "blackboard": {
+       "status_resistance[limit]": 4.0,
+       "lumen_t_1[special].status_resistance[limit]": 6.0,
+       "one_minus_status_resistance": -0.5,
+       "lumen_t_1[special].one_minus_status_resistance": -0.5,
+       "hp_ratio": 0.75
+      }
+     },
+     {
+      "name": "応急処置",
+      "description": "攻撃範囲内の味方が状態異常を受けた時、即座に対象のHPをルーメンの攻撃力の80%で治療する。効果発動後、12秒後再発動可能になる",
+      "blackboard": {
+       "heal_scale": 0.8,
+       "duration": 12.0
+      }
+     }
     ]
    },
    "golden": {
@@ -14326,6 +17474,27 @@
       "blackboard": {
        "count": 4.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "凡人の願い",
+      "description": "味方を回復後、対象に4秒のレジスト状態を付与、対象のHPが最大値の75%を超える場合、レジスト状態の継続時間が6秒に上昇",
+      "blackboard": {
+       "status_resistance[limit]": 4.0,
+       "lumen_t_1[special].status_resistance[limit]": 6.0,
+       "one_minus_status_resistance": -0.5,
+       "lumen_t_1[special].one_minus_status_resistance": -0.5,
+       "hp_ratio": 0.75
+      }
+     },
+     {
+      "name": "応急処置",
+      "description": "攻撃範囲内の味方が状態異常を受けた時、即座に対象のHPをルーメンの攻撃力の80%で治療する。効果発動後、12秒後再発動可能になる",
+      "blackboard": {
+       "heal_scale": 0.8,
+       "duration": 12.0
       }
      }
     ]
@@ -14392,6 +17561,23 @@
        "damage_scale_per_stack": 0.01
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "虚突",
+      "description": "足止め、バインド状態の敵に攻撃時、追加で攻撃力の40%の術ダメージを与える",
+      "blackboard": {
+       "atk_scale": 0.4
+      }
+     },
+     {
+      "name": "落英",
+      "description": "攻撃時、20%の確率で対象を1.5秒間バインドさせる",
+      "blackboard": {
+       "prob": 0.2,
+       "duration": 1.5
+      }
+     }
     ]
    },
    "golden": {
@@ -14439,6 +17625,23 @@
        "check_sluggish": 1.0,
        "bond_id": "yanShip,raidShip",
        "damage_scale_per_stack": 0.02
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "虚突",
+      "description": "足止め、バインド状態の敵に攻撃時、追加で攻撃力の40%の術ダメージを与える",
+      "blackboard": {
+       "atk_scale": 0.4
+      }
+     },
+     {
+      "name": "落英",
+      "description": "攻撃時、20%の確率で対象を1.5秒間バインドさせる",
+      "blackboard": {
+       "prob": 0.2,
+       "duration": 1.5
       }
      }
     ]
@@ -14504,6 +17707,26 @@
        "conditionkey": "character_target_inboard"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "数据建模",
+      "description": "对敌人造成停顿效果时，自身的攻击速度+1，最多叠加18次",
+      "blackboard": {
+       "attack_speed": 1.0,
+       "max_stack_cnt": 18.0
+      }
+     },
+     {
+      "name": "能源解析",
+      "description": "攻击范围内的敌人受到10%的脆弱效果，敌人在溯光星源的攻击范围内停留超过7秒后，脆弱效果提升至14%",
+      "blackboard": {
+       "halo2_t_1[weak].damage_scale": 1.1,
+       "halo2_t_1[weak].interval": 7.0,
+       "halo2_t_1[weak].damage_scale_add": 0.04,
+       "halo2_t_1[weak].damage_scale_max": 1.14
+      }
+     }
     ]
    },
    "golden": {
@@ -14550,6 +17773,26 @@
        "bond": "skillfulShip,arcaneShip",
        "count": 3.0,
        "conditionkey": "character_target_inboard"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "数据建模",
+      "description": "对敌人造成停顿效果时，自身的攻击速度+1，最多叠加18次",
+      "blackboard": {
+       "attack_speed": 1.0,
+       "max_stack_cnt": 18.0
+      }
+     },
+     {
+      "name": "能源解析",
+      "description": "攻击范围内的敌人受到10%的脆弱效果，敌人在溯光星源的攻击范围内停留超过7秒后，脆弱效果提升至14%",
+      "blackboard": {
+       "halo2_t_1[weak].damage_scale": 1.1,
+       "halo2_t_1[weak].interval": 7.0,
+       "halo2_t_1[weak].damage_scale_add": 0.04,
+       "halo2_t_1[weak].damage_scale_max": 1.14
       }
      }
     ]
@@ -14645,6 +17888,23 @@
        "give_garrison_id": "garrison_159_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "「長夜の終わり」",
+      "description": "配置後、隣接4マス以内の敵全員に攻撃力の80%の確定ダメージを与え、3秒間スタンさせる\n直前に配置したオペレーターが【カジミエーシュ】に属する場合、追加でさらに1回ダメージを与える",
+      "blackboard": {
+       "atk_scale": 0.8,
+       "stun": 3.0
+      }
+     },
+     {
+      "name": "破暁",
+      "description": "攻撃時、敵の防御力を20%無視",
+      "blackboard": {
+       "def_penetrate": 0.2
+      }
+     }
     ]
    },
    "golden": {
@@ -14723,6 +17983,23 @@
        "give_garrison_id": "garrison_159_b"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "「長夜の終わり」",
+      "description": "配置後、隣接4マス以内の敵全員に攻撃力の80%の確定ダメージを与え、3秒間スタンさせる\n直前に配置したオペレーターが【カジミエーシュ】に属する場合、追加でさらに1回ダメージを与える",
+      "blackboard": {
+       "atk_scale": 0.8,
+       "stun": 3.0
+      }
+     },
+     {
+      "name": "破暁",
+      "description": "攻撃時、敵の防御力を20%無視",
+      "blackboard": {
+       "def_penetrate": 0.2
+      }
+     }
     ]
    }
   },
@@ -14794,6 +18071,37 @@
        "garrison_key": "garrison_118_a"
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "群狼の統率者",
+      "description": "配置中、20秒ごとに浮遊ユニットが以下の効果を順番に獲得：与ダメージ上限+10%/ダメージを与えた対象の特殊能力を2秒間無効化/浮遊ユニットの数+1",
+      "blackboard": {
+       "interval": 20.0,
+       "scale": 1.1,
+       "attack@silence_duration": 2.0
+      }
+     },
+     {
+      "name": "シラクーザの幸運",
+      "description": "編成中、味方【シラクーザ】のストックSP+5",
+      "blackboard": {
+       "sp": 5.0,
+       "attack_speed": 0.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {
+       "attack@cnt": 0.0
+      }
+     }
     ]
    },
    "golden": {
@@ -14843,6 +18151,37 @@
       "blackboard": {
        "check_bond_id": "siracusaShip",
        "give_garrison_id": "garrison_117_b"
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "群狼の統率者",
+      "description": "配置中、20秒ごとに浮遊ユニットが以下の効果を順番に獲得：与ダメージ上限+10%/ダメージを与えた対象の特殊能力を2秒間無効化/浮遊ユニットの数+1",
+      "blackboard": {
+       "interval": 20.0,
+       "scale": 1.1,
+       "attack@silence_duration": 2.0
+      }
+     },
+     {
+      "name": "シラクーザの幸運",
+      "description": "編成中、味方【シラクーザ】のストックSP+5",
+      "blackboard": {
+       "sp": 5.0,
+       "attack_speed": 0.0
+      }
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {}
+     },
+     {
+      "name": "",
+      "description": "",
+      "blackboard": {
+       "attack@cnt": 0.0
       }
      }
     ]
@@ -14924,6 +18263,24 @@
        "count": 8.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "「天性の武者」",
+      "description": "ダメージを与えた際、10%の確率で攻撃力が160%まで上昇し、対象を5秒間戦慄状態にする",
+      "blackboard": {
+       "prob": 0.1,
+       "atk_scale": 1.6,
+       "not_combat": 5.0
+      }
+     },
+     {
+      "name": "生ける伝説",
+      "description": "戦慄状態の敵を攻撃時、対象の防御力を25%無視",
+      "blackboard": {
+       "def_penetrate": 0.25
+      }
+     }
     ]
    },
    "golden": {
@@ -14987,6 +18344,24 @@
        "count": 16.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "「天性の武者」",
+      "description": "ダメージを与えた際、10%の確率で攻撃力が160%まで上昇し、対象を5秒間戦慄状態にする",
+      "blackboard": {
+       "prob": 0.1,
+       "atk_scale": 1.6,
+       "not_combat": 5.0
+      }
+     },
+     {
+      "name": "生ける伝説",
+      "description": "戦慄状態の敵を攻撃時、対象の防御力を25%無視",
+      "blackboard": {
+       "def_penetrate": 0.25
+      }
+     }
     ]
    }
   },
@@ -15047,6 +18422,25 @@
        "bond_add_count": 3.0
       }
      }
+    ],
+    "talents": [
+     {
+      "name": "白き雲",
+      "description": "通常治療後、対象のHPと蓄積された元素損傷を6秒間、1秒ごとに10%治療（最大3回まで重複可能）",
+      "blackboard": {
+       "heal_scale": 0.1,
+       "duration": 6.0,
+       "max_stack_cnt": 3.0
+      }
+     },
+     {
+      "name": "火山灰療法",
+      "description": "攻撃範囲内の味方の最大HP+6%、受ける元素損傷の値-12%",
+      "blackboard": {
+       "max_hp": 0.06,
+       "ep_damage_resistance": 0.12
+      }
+     }
     ]
    },
    "golden": {
@@ -15091,6 +18485,25 @@
        "bond_type": "bond_actived_maxstack",
        "bond_add_type": "by_count",
        "bond_add_count": 6.0
+      }
+     }
+    ],
+    "talents": [
+     {
+      "name": "白き雲",
+      "description": "通常治療後、対象のHPと蓄積された元素損傷を6秒間、1秒ごとに10%治療（最大3回まで重複可能）",
+      "blackboard": {
+       "heal_scale": 0.1,
+       "duration": 6.0,
+       "max_stack_cnt": 3.0
+      }
+     },
+     {
+      "name": "火山灰療法",
+      "description": "攻撃範囲内の味方の最大HP+6%、受ける元素損傷の値-12%",
+      "blackboard": {
+       "max_hp": 0.06,
+       "ep_damage_resistance": 0.12
       }
      }
     ]

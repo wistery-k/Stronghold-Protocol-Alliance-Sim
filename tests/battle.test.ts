@@ -341,7 +341,8 @@ describe('寒冷・凍結とスキルの細部', () => {
   });
 
   it('鎌は範囲内の敵全員を攻撃し、命中数（ブロック数まで）に応じて回復する', () => {
-    const reaper = UNITS.find((u) => u.subProfession === 'reaper')!;
+    // ヒューマスは素質で回復がバリアになるので、別の鎌で確かめる
+    const reaper = UNITS.find((u) => u.subProfession === 'reaper' && u.charId !== 'char_491_humus')!;
     const spec = oneEnemy('test_reap', false, { def: 0, res: 0, attack: { kind: 'melee', atk: 300, interval: 1, range: 0, arts: false } });
     const r = run([{ uid: 1, defId: reaper.id, star: 1, pos: 31, dir: 'right' }], spec);
     expect(r.perUnit[0].healed).toBeGreaterThan(0);
@@ -395,5 +396,22 @@ describe('寒冷・凍結とスキルの細部', () => {
     const leon = r.perUnit.find((u) => u.uid === 1)!;
     expect(leon.skillCasts).toBeGreaterThan(5);
     expect(leon.skillCasts <= r.elapsed + 2).toBe(true);
+  });
+  it('ウタゲの素質：HPが減るほど攻撃速度が上がる', () => {
+    const def = unit('ウタゲ');
+    const calm = oneEnemy('test_utage_calm', false, { def: 0, res: 0 });
+    const hard = oneEnemy('test_utage_hard', false, { def: 0, res: 0, attack: { kind: 'melee', atk: 400, interval: 1, range: 0, arts: false } });
+    calm.timeLimit = hard.timeLimit = 20;
+    const a = run([{ uid: 1, defId: def.id, star: 2, pos: 31, dir: 'right' }], calm);
+    const b = run([{ uid: 1, defId: def.id, star: 2, pos: 31, dir: 'right' }], hard);
+    // 殴られてHPが低いほうが攻撃回数が多い
+    expect(b.perUnit[0].hits).toBeGreaterThan(a.perUnit[0].hits);
+  });
+
+  it('マドロックの素質：シールドが被弾を防ぎ、HPを回復する', () => {
+    const spec = oneEnemy('test_mud', false, { attack: { kind: 'melee', atk: 3000, interval: 1, range: 0, arts: false } });
+    const mud = unit('マドロック');
+    const r = run([{ uid: 1, defId: mud.id, star: 2, pos: 31, dir: 'right' }], spec);
+    expect(r.perUnit[0].healed).toBeGreaterThan(0);
   });
 });

@@ -1475,3 +1475,20 @@ body.dragging * {
   background: var(--ng);
   color: #fff;
 }
+.talent-impl {
+  font-size: 10px;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 4px;
+  color: #fff;
+}
+.talent-impl.full {
+  background: var(--ok);
+}
+.talent-impl.partial {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.talent-impl.none {
+  background: var(--muted);
+}

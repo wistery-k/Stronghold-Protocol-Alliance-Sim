@@ -4,6 +4,7 @@ import { getItem, itemState } from './data/items';
 import { cellX, egirDevour, frontOf, neighbors, rightmostInRow, sameRow, sidesOf } from './board';
 import type { AllianceId, GarrisonData, Modifier, OwnedUnit } from './types';
 import type { BandId } from './data/bands';
+import { applyTalentMods } from './talents';
 
 export interface AllianceStatus {
   id: AllianceId;
@@ -117,6 +118,8 @@ export interface BattleGlobals {
   indom?: { prob: number; sp: number };
   /** イェラグ：所属者の与ダメージ（寒冷・凍結した敵には ex）。Lv2で定期的に寒風 */
   kjerag?: { members: Set<number>; base: number; ex: number; storm: { interval: number; duration: number } | null };
+  /** 初期所持コストの追加（テキサスの素質） */
+  initialCost?: number;
   /** 俊敏：スキル終了時にSPが回復する確率 */
   swiftProb?: number;
   /** 戦術【命結の秘】：最初に倒れた数名が即座に復活 */
@@ -191,6 +194,8 @@ function add(m: Modifier, d: Modifier): void {
     if (val === undefined) continue;
     if (k === 'weakDamage') {
       m.weakDamage = m.weakDamage || (val as boolean);
+    } else if (k === 'spRegenTalent') {
+      m.spRegenTalent = Math.max(m.spRegenTalent ?? 0, val as number);
     } else if (k === 'damageMult') {
       m.damageMult = (m.damageMult ?? 1) * (val as number);
     } else {
@@ -578,8 +583,12 @@ export function battleSetup(
     }
   }
 
-  // 戦術
+  // 素質（戦闘開始時に決まる補正）
   const fielded = board.filter((o) => !excluded.has(o.uid));
+  const talent = applyTalentMods(fielded, ownedBonds, apply);
+  if (talent.initialCost) globals.initialCost = talent.initialCost;
+
+  // 戦術
   switch (opts.band) {
     case 'amiya': {
       const n = statuses.filter((x) => x.level > 0).length;

@@ -3,6 +3,7 @@ import { ENEMY_PATHS, canBlockAt, cellPos, cellX, cellY, rangeCells, DEFAULT_DIR
 import { ENEMIES, rangeGrid, unitRangeIds, type ElementType, type EnemySpec, type RoundSpec } from './data/battle';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE, ENEMY_SPEED_SCALE } from './rules';
 import { unitState } from './data/units';
+import { ABYSSAL, talentBB } from './talents';
 import type { AllianceId, DamageType, Direction, EnemyDef, EnemyPhase, GarrisonData, Modifier, SkillData, Star, UnitDef } from './types';
 
 // 戦闘シミュレーション（時間刻み）。
@@ -264,10 +265,10 @@ export function hitDamage(raw: number, type: DamageType, enemy: DefenseState, mo
   if (type === 'heal') return 0;
   let dmg: number;
   if (type === 'physical') {
-    const def = enemy.def * (1 - Math.min(mods.defIgnorePct ?? 0, 1));
+    const def = Math.max(0, enemy.def * (1 - Math.min(mods.defIgnorePct ?? 0, 1)) - (mods.defIgnoreFlat ?? 0));
     dmg = Math.max(raw - def, raw * MIN_DAMAGE_RATIO);
   } else if (type === 'arts') {
-    const res = Math.min(Math.max(0, enemy.res * (1 - Math.min(mods.resIgnorePct ?? 0, 1))), 100);
+    const res = Math.min(Math.max(0, enemy.res * (1 - Math.min(mods.resIgnorePct ?? 0, 1)) - (mods.resIgnoreFlat ?? 0)), 100);
     dmg = Math.max(raw * (1 - res / 100), raw * MIN_DAMAGE_RATIO) * (1 + artsVuln);
   } else {
     dmg = raw;
@@ -569,6 +570,87 @@ interface EnemyInput {
   bounty?: number;
 }
 
+/** 素質の戦闘中の状態 */
+interface TalentState {
+  deployedAt: number;
+  /** 最後に攻撃を受けた・ダメージを与えた時刻 */
+  lastHitAt: number;
+  lastDealtAt: number;
+  /** 確率の被ダメージ無効・回避の累積（期待値） */
+  nullAcc: number;
+  evadeAcc: number;
+  /** 撃破で得た層・攻撃力・最大HP */
+  killStacks: number;
+  killAtk: number;
+  /** 奪った攻撃力（イネス） */
+  stealAtk: number;
+  /** サンクタ・ミキサーの層 */
+  mixer: number;
+  /** 一度だけの効果を使った */
+  saveUsed: boolean;
+  /** スルト：強制退場する時刻 */
+  surtrUntil: number | null;
+  /** マドロックのシールド */
+  shields: number;
+  shieldTimer: number;
+  /** アルケットのシールド（1回） */
+  archShield: boolean;
+  /** レコードキーパーの攻撃速度上昇の終わる時刻 */
+  reckUntil: number;
+  /** ペペ：スキル中の撃破数 */
+  pepeKills: number;
+  /** 血掟テキサス：最初の撃破・スキルの再発動 */
+  firstKill: boolean;
+  recast: boolean;
+  /** ホルン：血戦 */
+  bloodBattle: boolean;
+  /** 敵ごとに一度だけの効果（敵id → 最初に当てた時刻） */
+  firstHit: Map<number, number>;
+  /** 一定間隔の効果のタイマー */
+  timer: number;
+  /** 聖聆プラマニクス：自身の凍結の終わる時刻 */
+  selfFrozenUntil: number;
+  reedAcc: number;
+}
+
+const newTalentState = (): TalentState => ({
+  deployedAt: 0,
+  lastHitAt: -99,
+  lastDealtAt: -99,
+  nullAcc: 0,
+  evadeAcc: 0,
+  killStacks: 0,
+  killAtk: 0,
+  stealAtk: 0,
+  mixer: 0,
+  saveUsed: false,
+  surtrUntil: null,
+  shields: 0,
+  shieldTimer: 0,
+  archShield: false,
+  reckUntil: -1,
+  pepeKills: 0,
+  firstKill: false,
+  recast: false,
+  bloodBattle: false,
+  firstHit: new Map(),
+  timer: 0,
+  selfFrozenUntil: -1,
+  reedAcc: 0,
+});
+
+/** 攻撃時に確率で攻撃力が上がる素質（期待値で扱う）：[1つ目/2つ目の素質, 確率のキー, 倍率のキー] */
+const CRIT_TALENT: Record<string, [number, string, string]> = {
+  char_145_prove: [0, 'prob', 'atk_scale'],
+  char_4100_caper: [0, 'prob', 'atk_scale'],
+  char_196_sunbr: [0, 'prob', 'atk_scale'],
+  char_4054_malist: [0, 'prob', 'atk_scale'],
+  char_1021_kroos2: [0, 'prob', 'atk_scale'],
+  char_222_bpipe: [0, 'prob', 'atk_scale'],
+  char_264_f12yin: [0, 'prob', 'atk_scale'],
+  char_4116_blkkgt: [0, 'prob', 'atk_scale'],
+};
+
 interface Enemy {
   id: number;
   input: EnemyInput;
@@ -614,6 +696,12 @@ interface Enemy {
   y: number;
   blockedBy: number | null;
   arcaneUntil: number;
+  /** 素質による弱体化（バブル：攻撃力低下、焔影リード：灼痕、イネス：奪われた攻撃力） */
+  bubbleUntil: number;
+  reedUntil: number;
+  stolenAtk: number;
+  /** 素質の継続術ダメージ（攻撃者ごと） */
+  dots: Map<Runtime, { until: number; dps: number }>;
 }
 
 interface Runtime {
@@ -657,6 +745,9 @@ interface Runtime {
   huntAmmo: number;
   /** 回避の確率の累積（期待値） */
   evadeAcc: number;
+  /** 素質（blackboard）と戦闘中の状態 */
+  tb: Record<string, number>[];
+  ts: TalentState;
   /** 俊敏の確率の累積と、次にスキルを発動できる時刻 */
   swiftAcc: number;
   recastAt: number;
@@ -732,6 +823,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const toSet = (pos: number | undefined, dir: Direction | undefined, id: string | null) =>
     pos === undefined || !id ? null : new Set(rangeCells(pos, dir ?? DEFAULT_DIRECTION, rangeGrid(id)));
 
+  const cid = (u: Runtime) => u.input.def.charId;
   const rt: Runtime[] = units.map((input) => {
     const st = unitState(input.def, input.star);
     const skill = parseSkill(st.skill);
@@ -753,8 +845,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       hp: st.stats.hp * (1 + (input.mods.hpPct ?? 0)),
       maxHp: st.stats.hp * (1 + (input.mods.hpPct ?? 0)),
       baseMaxHp: st.stats.hp * (1 + (input.mods.hpPct ?? 0)),
-      baseDef: st.stats.def * (1 + (input.mods.defPct ?? 0)),
-      def: st.stats.def * (1 + (input.mods.defPct ?? 0)),
+      baseDef: st.stats.def * (1 + (input.mods.defPct ?? 0)) + (input.mods.defFlat ?? 0),
+      def: st.stats.def * (1 + (input.mods.defPct ?? 0)) + (input.mods.defFlat ?? 0),
       res: Math.min(95, st.stats.res + (input.mods.resFlat ?? 0)),
       alive: true,
       order: 0,
@@ -769,6 +861,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
       evadeAcc: 0,
+      tb: [talentBB(input.def, input.star, 0), talentBB(input.def, input.star, 1)],
+      ts: newTalentState(),
       swiftAcc: 0,
       recastAt: -1,
       inspireAtk: 0,
@@ -782,7 +876,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       coldAcc: 0,
       coldDotTimer: 1,
       redeployAt: null,
-      respawn: Math.max(1, st.stats.respawn * Math.max(0.1, 1 + (input.mods.respawnPct ?? 0))),
+      respawn: Math.max(1, st.stats.respawn * Math.max(0.1, 1 + (input.mods.respawnPct ?? 0)) + (input.mods.respawnFlat ?? 0)),
       merchantTimer: 0,
       // 琳琅スワイヤー（大買家）：スキル（常時）開始時にコイン1枚
       coins: SWIRE[input.def.charId] ? 1 : 0,
@@ -830,7 +924,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.neutralUntil = Math.max(e.neutralUntil, t + seconds);
     e.defense.res = currentRes(e);
   };
-  const isStealthed = (e: Enemy) => !!e.input.spec.stealth && e.blockedBy === null && e.reviveAt === null && !neutral(e);
+  const isStealthed = (e: Enemy) => !!e.input.spec.stealth && e.blockedBy === null && e.reviveAt === null && !neutral(e) && !revealed(e);
 
   /** スキルによる防御力・術耐性低下を反映した敵の防御 */
   const effDefense = (e: Enemy): DefenseState => {
@@ -948,6 +1042,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       y: input.path ? cellY(input.path[0]) : 0,
       blockedBy: null,
       arcaneUntil: -1,
+      bubbleUntil: -1,
+      reedUntil: -1,
+      stolenAtk: 0,
+      dots: new Map(),
     });
   const enemies: Enemy[] = enemyInputs.map((input, i) => newEnemy(input, i + 1)).sort((a, b) => a.input.spawnAt - b.input.spawnAt);
 
@@ -1030,6 +1128,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
     }
     by.result.kills++;
+    talentOnKill(e, by);
     // 突撃兵：敵を倒すとコスト+1
     if (field && by.input.def.subProfession === 'charger') cost = Math.min(MAX_COST, cost + 1);
     for (const ev of by.events) if (ev.kind === 'kill' && by.result.kills % ev.every === 0) gainStacks(ev);
@@ -1090,8 +1189,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const type = u.skill.artsAttack && skillOn && def.damageType !== 'heal' ? 'arts' : bestType(def.damageType, raw, defense, mods);
     // イェラグ：所属者の与ダメージ上昇（寒冷・凍結した敵にはさらに上昇）
     const kj = g.kjerag?.members.has(uid) ? (isChilled(e) ? g.kjerag.ex : g.kjerag.base) : 1;
-    const dmg = hitDamage(raw, type, defense, mods, type === 'arts' ? artsVuln(e) : 0) * flagFactor(mods, t) * kj;
+    const dmg = hitDamage(raw, type, defense, mods, type === 'arts' ? artsVuln(e) : 0) * flagFactor(mods, t) * kj * talentDamageMult(u, e, type);
     deal(u, e, dmg);
+    if (dmg > 0 && type !== 'heal') talentOnDealt(u, e, atk);
     if (type !== 'heal' && mods.lifeOnHit) healUnit(u, u, u.maxHp * mods.lifeOnHit);
     if (type !== 'heal') {
       if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken);
@@ -1149,7 +1249,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const cands = targetsInRange(u, skillActive);
     if (!cands.length) return [];
     const sub = u.input.def.subProfession;
-    const n = skillActive && u.skill.maxTarget > 1 ? u.skill.maxTarget : 1;
+    // プラマニクスの素質「ハーモニー」：攻撃対象数+1
+    const talentTargets = cid(u) === 'char_174_slbell' ? (u.tb[1]['attack@max_target'] ?? 1) : 1;
+    const n = Math.max(skillActive && u.skill.maxTarget > 1 ? u.skill.maxTarget : 1, talentTargets);
     if (ALL_IN_RANGE_SUB.has(sub) || (sub === 'phalanx' && skillActive)) return cands.map((e) => [e, 1]);
     if (sub === 'centurion' && u.blocked.length) return u.blocked.map((e) => [e, 1]);
     // 鎌：攻撃範囲内の敵全員を攻撃（群体ダメージ）
@@ -1192,6 +1294,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const endSkill = (u: Runtime) => {
     setSkillHp(u, false);
+    talentOnSkillEnd(u);
     // 戦術【回収利用】：地上オペレーターのスキル終了時、周囲4マスのランダムな味方1名のSP回復
     if (g.humus && u.melee && u.input.pos !== undefined) {
       const p = u.input.pos;
@@ -1225,7 +1328,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const s = u.skill;
     u.sp = 0;
     u.result.skillCasts++;
-    if (s.ammo > 0) u.ammoLeft = Math.round(s.ammo * (1 + (mods.ammoPct ?? 0)));
+    if (s.ammo > 0) u.ammoLeft = Math.round(s.ammo * (1 + (mods.ammoPct ?? 0))) + (mods.ammoFlat ?? 0);
     else if (s.duration > 0) u.skillLeft = s.duration;
     if (u.skillLeft > 0 || u.ammoLeft > 0) setSkillHp(u, true);
     // ポデンコ（胞子飛散）：着弾地点の周囲の敵の特殊能力を無効化
@@ -1237,6 +1340,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const support = field ? SUPPORT_SKILL[def.charId] : undefined;
     const skillAtk = () => baseAtk(def, star, mods, outerAtkPct + s.atkPct);
     u.castAt = t;
+    talentOnCast(u);
     if (field && s.costOnCast) cost = Math.min(MAX_COST, cost + s.costOnCast);
     if (support === 'nextHeal') {
       const target = injuredNear(u)[0];
@@ -1260,7 +1364,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         until: t + zd,
         atk: skillAtk(),
         heal: s.bb.hp_recovery_per_sec_ratio ?? s.bb.hp_recovery_per_sec_ratio_chr ?? 0,
-        dot: s.bb.atk_scale ?? 0,
+        // ブリキの素質：錬金ユニットの継続ダメージ上昇
+        dot: (s.bb.atk_scale ?? 0) * (u.tb[1]['skill@damage_scale'] ?? 1),
         groundOnly: def.charId === 'char_4151_tinman',
       });
       endSkill(u);
@@ -1356,7 +1461,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const dmg = arts ? Math.max(raw * (1 - res / 100), raw * MIN_DAMAGE_RATIO) : Math.max(raw - df, raw * MIN_DAMAGE_RATIO);
     // ユーの素質：ブロック中は庇護30%
     const protect = ELEMENT_TALENT[u.input.def.charId]?.protectWhileBlocking && u.blocked.length ? ELEMENT_TALENT[u.input.def.charId]!.protectWhileBlocking! : 0;
-    return dmg * Math.max(0, 1 - (u.input.mods.damageReduce ?? 0)) * (1 - protect);
+    return dmg * Math.max(0, 1 - (u.input.mods.damageReduce ?? 0) - (arts ? 0 : (u.input.mods.physReduce ?? 0))) * (1 - protect);
   };
 
   /** 戦場から外れる（倒れた・コスト不足で撤退）。再配置タイマーが動き出す */
@@ -1376,6 +1481,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const unitDown = (u: Runtime) => {
     const ground = u.melee;
+    // 素質：致命傷を耐える（スルト・ホルン・聖聆プラマニクス）
+    if (talentOnDown(u)) return;
     // 琳琅スワイヤー（破財消災）：コストを払ってHPを回復（払うたびに倍）
     const save = SWIRE[u.input.def.charId];
     if (save && cost >= u.swireSaveCost) {
@@ -1419,7 +1526,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
 
   // ---- コスト・再配置 ----
-  let cost = INITIAL_COST;
+  let cost = INITIAL_COST + (g.initialCost ?? 0);
   let orderCounter = rt.length;
   /** 再配置に必要なコスト（初回の再配置は1.5倍、2回目以降は2倍） */
   const redeployCost = (u: Runtime) => Math.round(unitState(u.input.def, u.input.star).stats.cost * (u.result.retreats <= 1 ? 1.5 : 2));
@@ -1444,6 +1551,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   /** 配置時に発動するスキル（ウタゲ：HP減少と効果時間、グラベル：バリア） */
   const onDeployed = (u: Runtime) => {
     const s = u.skill;
+    // 素質：配置からの時間、マドロックのシールド（配置時に1枚）、アルケットのシールド
+    u.ts.deployedAt = t;
+    u.ts.shields = cid(u) === 'char_311_mudrok' ? 1 : 0;
+    u.ts.shieldTimer = u.tb[0].interval ?? 9;
+    u.ts.archShield = false;
+    u.ts.saveUsed = false;
+    u.ts.bloodBattle = false;
+    u.ts.surtrUntil = null;
     if (!s.onDeploy) return;
     u.skillLeft = s.duration;
     u.castAt = t;
@@ -1457,7 +1572,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   if (field) for (const u of rt) onDeployed(u);
 
   const tickCost = () => {
-    cost = Math.min(MAX_COST, cost + dt / COST_INTERVAL);
+    // ウルピスフォリア：配置中はコストの自然回復速度上昇
+    const vulpis = rt.find((w) => w.alive && cid(w) === 'char_4026_vulpis');
+    cost = Math.min(MAX_COST, cost + (dt / COST_INTERVAL) * (vulpis?.tb[1].delta_cost_increase_time ?? 1));
     // 再配置：タイマーが0になり、コストが足りていれば配置する（待っている順に）
     for (const u of [...rt].filter((x) => x.redeployAt !== null && t >= x.redeployAt).sort((a, b) => a.redeployAt! - b.redeployAt!)) {
       const need = redeployCost(u);
@@ -1496,6 +1613,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (amount <= 0) return;
     }
     u.hp -= amount;
+    // スルト：余燼の間はHP1で耐える
+    if (u.ts.surtrUntil !== null) u.hp = Math.max(1, u.hp);
+    // エンテレケイア：HPが25%を下回ると1度だけHP回復
+    if (cid(u) === 'char_4010_etlchi' && !u.ts.saveUsed && u.hp < u.maxHp * (u.tb[1].hp_ratio ?? 0) && u.tb[1].hp_ratio) {
+      u.ts.saveUsed = true;
+      u.hp = Math.max(u.hp, 0) + u.maxHp * (u.tb[1]['etlchi_t_2[heal].hp_ratio'] ?? 0);
+    }
     if (u.hp <= 1e-6) unitDown(u);
   };
 
@@ -1511,6 +1635,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const hurt = (u: Runtime, raw: number, arts: boolean, src: Enemy) => {
     philaeCounter(u);
+    if (talentOnHurt(u, arts, src)) return;
     // 聖約イグゼキュター：スキル中は近接攻撃を確率で回避し、弾薬を補充（期待値）
     if (EVADE_REFILL.has(u.input.def.charId) && u.ammoLeft > 0 && src.input.spec.attack?.kind === 'melee') {
       u.evadeAcc += u.skill.bb.prob ?? 0;
@@ -1525,7 +1650,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       u.mberryShield--;
       return;
     }
-    let dmg = mitigate(u, raw, arts);
+    let dmg = mitigate(u, raw, arts) * talentTakenMult(u, arts);
     const sd = g.stead;
     if (sd && sd.members.has(u.input.uid)) steadReflect(u, src);
     else if (sd) {
@@ -1545,6 +1670,23 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (!target.alive || amount <= 0) return;
     // 武者・鎌は他の味方から治療されない
     if (healer !== target && SELF_HEAL_SUB[target.input.def.subProfession]) return;
+    // 百錬ガヴィル：受ける治療効果上昇（HP50%未満でさらに）
+    if (cid(target) === 'char_1026_gvial2' && target.tb[1].heal_scale_1) {
+      amount *= target.hp / target.maxHp < (target.tb[1].hp_ratio ?? 0.5) ? target.tb[1].heal_scale_2 : target.tb[1].heal_scale_1;
+    }
+    // ヒューマス：最大値を超えた回復はバリアに
+    if (cid(target) === 'char_491_humus') {
+      const over = amount - (target.maxHp - target.hp);
+      if (over > 0) target.barrier = Math.min(target.maxHp * (target.tb[0].max_hp_ratio ?? 1), target.barrier + over);
+    }
+    if (healer !== target) {
+      // サリア：治療した味方のSP回復
+      if (cid(healer) === 'char_202_demkni' && healer.tb[1].sp) target.sp += healer.tb[1].sp;
+      // パピルス：治療した味方にバリア
+      if (cid(healer) === 'char_4139_papyrs') {
+        target.barrier = Math.max(target.barrier, baseAtk(healer.input.def, healer.input.star, healer.input.mods) * (healer.tb[0]['attack@scale'] ?? 0));
+      }
+    }
     const applied = Math.min(amount, target.maxHp - target.hp);
     if (applied <= 0) return;
     target.hp += applied;
@@ -1596,7 +1738,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   // ------------------------------------------------------------
   const elemMax = (o: Runtime) => Math.max(0, ...(Object.values(o.elem) as number[]));
   const opBursting = (o: Runtime, type: ElementType) => t < (o.elemBurst[type] ?? -1);
-  const stunned = (o: Runtime) => t < (o.elemBurst.neural ?? -1);
+  const stunned = (o: Runtime) => t < (o.elemBurst.neural ?? -1) || t < o.ts.selfFrozenUntil;
   /** 元素損傷の回復（多い種類から） */
   const healElement = (o: Runtime, amount: number) => {
     for (const type of (Object.keys(o.elem) as ElementType[]).sort((a, b) => (o.elem[b] ?? 0) - (o.elem[a] ?? 0))) {
@@ -1794,6 +1936,440 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
 
   /** 敵の攻撃：ブロックされていればブロックしている相手、遠距離は範囲内で最後に配置された相手（警報器を優先） */
+  // ------------------------------------------------------------
+  // 素質（戦闘中に変化するもの）
+  // ------------------------------------------------------------
+  const posXY = (u: Runtime) => ({ x: cellX(u.input.pos ?? 0), y: cellY(u.input.pos ?? 0) });
+  const enemiesInRange = (u: Runtime) => enemies.filter((e) => e.alive && e.spawned && !!u.rangeNormal?.has(enemyTile(e)));
+  const enemiesNear = (u: Runtime, r: number) => {
+    const p = posXY(u);
+    return enemies.filter((e) => e.alive && e.spawned && Math.hypot(e.x - p.x, e.y - p.y) <= r);
+  };
+  /** 素質の持ち主（場にいる） */
+  const holders = (id: string) => rt.filter((w) => w.alive && cid(w) === id);
+
+  /** 攻撃力（割合）の上昇 */
+  const talentAtkPct = (u: Runtime): number => {
+    const [b0, b1] = u.tb;
+    const ts = u.ts;
+    switch (cid(u)) {
+      case 'char_373_lionhd': // レオンハルト：攻撃範囲内の敵の数だけ攻撃力上昇
+        return (b0.atk ?? 0) * Math.min(b0.max_valid_stack_cnt ?? 5, enemiesInRange(u).length);
+      case 'char_472_pasngr': // パッセンジャー：隣接4マスに敵がいなければ攻撃力上昇
+        return b1.atk !== undefined && !enemiesNear(u, 1.01).length ? b1.atk : 0;
+      case 'char_437_mizuki': // ミヅキ：攻撃範囲内にHP50%未満の敵がいれば攻撃力上昇
+        return b1.atk !== undefined && enemiesInRange(u).some((e) => e.hp / e.maxHp < (b1.hp_ratio ?? 0.5)) ? b1.atk : 0;
+      case 'char_4040_rockr': // ロックロック：配置中、一定時間ごとに攻撃力上昇
+      case 'char_202_demkni': // サリア：配置中、一定時間ごとに攻撃力・防御力上昇
+        return (b0.atk ?? 0) * Math.min(b0.max_stack_cnt ?? 0, Math.floor((t - ts.deployedAt) / Math.max(1, b0.interval ?? 15)));
+      case 'char_430_fartth': // ファートゥース：一定時間攻撃を受けていなければ攻撃力上昇
+        return t - ts.lastHitAt >= (b0.delay ?? 10) ? (b0.atk ?? 0) : 0;
+      case 'char_341_sntlla': // サンタラ：配置から一定時間後に攻撃力上昇
+        return t - ts.deployedAt >= (b0.interval ?? 20) ? (b0.atk ?? 0) : 0;
+      case 'char_2015_dusk': // シー：撃破ごとに攻撃力上昇
+        return (b0.atk ?? 0) * ts.killStacks;
+      case 'char_1026_gvial2': // 百錬ガヴィル：ブロック中の敵1体ごとに攻撃力上昇
+        return (b0.atk_add ?? 0) * u.blocked.length;
+      case 'char_1028_texas2': // 血掟テキサス：スキル発動中は攻撃力上昇
+        return u.skillLeft > 0 ? (b0.atk ?? 0) : 0;
+      case 'char_4146_nymph':
+      default:
+        return 0;
+    }
+  };
+  /** 攻撃力（固定値）の上昇 */
+  const talentAtkFlat = (u: Runtime) => u.ts.killAtk + u.ts.stealAtk;
+  /** 攻撃速度の上昇 */
+  const talentAspd = (u: Runtime): number => {
+    const [b0, b1] = u.tb;
+    const ts = u.ts;
+    switch (cid(u)) {
+      case 'char_337_utage': {
+        // ウタゲ：HPが減るほど攻撃速度上昇（最大HPの70%減少で最大）
+        const lost = 1 - u.hp / u.maxHp;
+        return (b0.min_attack_speed ?? 0) * Math.max(0, Math.min(1, lost / Math.max(0.01, 1 - (b0.min_hp_ratio ?? 0.3))));
+      }
+      case 'char_4194_rmixer': // サンクタ・ミキサー：ダメージを与えるたびに攻撃速度上昇（10秒）
+        return t - ts.lastDealtAt < (b0.duration ?? 10) ? ts.mixer * (b0.attack_speed ?? 0) : 0;
+      case 'char_4196_reckpr': // レコードキーパー：範囲内の味方のスキル発動で攻撃速度上昇
+        return t < ts.reckUntil ? (b0.attack_speed ?? 0) : 0;
+      case 'char_4039_horn': // ホルン：血戦
+        return ts.bloodBattle ? (b1.attack_speed ?? 0) : 0;
+      case 'char_1028_texas2': // 血掟テキサス：最初の撃破まで攻撃速度上昇
+        return !ts.firstKill ? (b1.attack_speed ?? 0) : 0;
+      default:
+        return 0;
+    }
+  };
+  /** 通常攻撃の倍率（対象ごと） */
+  const talentScale = (u: Runtime, e: Enemy, skillOn: boolean): number => {
+    const [b0] = u.tb;
+    let m = 1;
+    const crit = CRIT_TALENT[cid(u)];
+    if (crit) {
+      const b = u.tb[crit[0]];
+      m *= 1 + (b[crit[1]] ?? 0) * ((b[crit[2]] ?? 1) - 1);
+    }
+    switch (cid(u)) {
+      case 'char_306_leizi': // レイズ：ブロックされていない敵に攻撃力上昇
+        if (e.blockedBy === null) m *= b0.atk_scale ?? 1;
+        break;
+      case 'char_126_shotst': // メテオ：飛行の敵に攻撃力上昇
+        if (e.input.spec.flying) m *= b0.atk_scale ?? 1;
+        break;
+      case 'char_4064_mlynar': // ムリナール：攻撃力上昇（周囲に敵3体以上でさらに）
+        m *= enemiesNear(u, 1.5).length >= (b0.cnt ?? 3) ? (b0.atk_scale_up ?? 1) : (b0.atk_scale_base ?? 1);
+        break;
+      case 'char_1032_excu2': // 聖約イグゼキュター：確率で追加攻撃（期待値）
+        m *= 1 + Math.min(1, (b0.prob ?? 0) + (skillOn ? (b0.prob_add ?? 0) * u.ammoUsed : 0));
+        break;
+    }
+    return m;
+  };
+  /** 与ダメージ倍率（素質の脆弱など。対象・ダメージ種別ごと） */
+  const talentDamageMult = (u: Runtime, e: Enemy, type: DamageType): number => {
+    let vuln = 1;
+    for (const w of rt) {
+      if (!w.alive || !w.rangeNormal?.has(enemyTile(e))) continue;
+      const [b0] = w.tb;
+      switch (cid(w)) {
+        case 'char_4079_haini': // ルシーラ：エリート・ボス以外に脆弱
+          if (!e.input.spec.boss && !e.input.spec.elite) vuln = Math.max(vuln, b0.damage_scale ?? 1);
+          break;
+        case 'char_174_slbell': // プラマニクス：HP40%未満の敵に脆弱
+          if (e.hp / e.maxHp < (b0.hp_ratio ?? 0.4)) vuln = Math.max(vuln, b0.damage_scale ?? 1);
+          break;
+        case 'char_206_gnosis': // ノーシス：寒冷の敵に脆弱（凍結は倍）
+          if (isFrozen(e)) vuln = Math.max(vuln, b0.damage_scale_freeze ?? 1);
+          else if (isChilled(e)) vuln = Math.max(vuln, b0.damage_scale_cold ?? 1);
+          break;
+        case 'char_1047_halo2': {
+          // 溯光アステジーニ：範囲内の敵に脆弱（7秒以上いると上昇。出現からの時間で近似）
+          const base = w.tb[1]['halo2_t_1[weak].damage_scale'] !== undefined ? w.tb[1] : b0;
+          const sc = base['halo2_t_1[weak].damage_scale'];
+          if (sc) vuln = Math.max(vuln, t - e.input.spawnAt >= (base['halo2_t_1[weak].interval'] ?? 7) ? (base['halo2_t_1[weak].damage_scale_max'] ?? sc) : sc);
+          break;
+        }
+      }
+    }
+    let m = vuln;
+    const [b0] = u.tb;
+    // 焔影リードの灼痕：術ダメージ上昇
+    if (type === 'arts' && t < e.reedUntil) m *= 1.3;
+    switch (cid(u)) {
+      case 'char_472_pasngr': // パッセンジャー：HP80%以上の敵への与ダメージ上昇
+        if (e.hp / e.maxHp >= (b0.hp_ratio ?? 0.8)) m *= b0['pasngr_t_1[enhance].damage_scale'] ?? 1;
+        break;
+      case 'char_446_aroma': // アロマ：敵ごとに最初の一撃の攻撃力上昇
+        if (!u.ts.firstHit.has(e.id)) m *= b0.damage_scale ?? 1;
+        break;
+    }
+    return m;
+  };
+  /** ダメージを与えた後の素質 */
+  const talentOnDealt = (u: Runtime, e: Enemy, atk: number) => {
+    const [b0, b1] = u.tb;
+    const ts = u.ts;
+    if (t - ts.lastDealtAt >= (b0.duration ?? 10)) ts.mixer = 0;
+    ts.lastDealtAt = t;
+    const first = !ts.firstHit.has(e.id);
+    if (first) ts.firstHit.set(e.id, t);
+    const res = effDefense(e);
+    switch (cid(u)) {
+      case 'char_4194_rmixer':
+        ts.mixer = Math.min(b0.max_stack_cnt ?? 3, ts.mixer + 1);
+        break;
+      case 'char_4137_udflow': // アンダーフロー：継続術ダメージ
+        e.dots.set(u, { until: t + (b0.duration ?? 3), dps: b0.damage ?? 0 });
+        break;
+      case 'char_4010_etlchi': // エンテレケイア：継続術ダメージと最大HPの奪取
+        e.dots.set(u, { until: t + (b0.dot_duration ?? 5), dps: b0.magic_value ?? 0 });
+        if (u.maxHp - u.baseMaxHp < (b0['attack@steal_hp_max'] ?? 0)) {
+          const steal = b0['attack@steal_hp'] ?? 0;
+          u.maxHp += steal;
+          u.hp += steal;
+          deal(u, e, steal);
+        }
+        break;
+      case 'char_4026_vulpis': // ウルピスフォリア：最初に当ててから10秒間、追加の術ダメージ
+        if (t - (ts.firstHit.get(e.id) ?? t) <= (b0.interval ?? 10)) deal(u, e, hitDamage(atk * (b0.atk_scale ?? 0), 'arts', res, u.input.mods));
+        break;
+      case 'char_1020_reed2': // 焔影リード：確率で灼痕（期待値）
+        ts.reedAcc += b0.prob ?? 0;
+        if (ts.reedAcc >= 1) {
+          ts.reedAcc -= 1;
+          e.reedUntil = t + (b0.duration ?? 6);
+        }
+        break;
+      case 'char_4087_ines': // イネス：敵ごとに一度だけ攻撃力を奪う
+        if (first && ts.stealAtk < (b0.steal_atk_max ?? 0)) {
+          ts.stealAtk += b0.steal_atk ?? 0;
+          e.stolenAtk += b0.steal_atk ?? 0;
+        }
+        break;
+      case 'char_206_gnosis': // ノーシス：攻撃時に寒冷
+        if (b0.cold) applyCold(e, b0.cold);
+        break;
+    }
+    void b1;
+  };
+  /** 被弾時の素質。ダメージを無効化したら true */
+  const talentOnHurt = (u: Runtime, arts: boolean, src: Enemy): boolean => {
+    const [b0, b1] = u.tb;
+    const ts = u.ts;
+    const prevHit = ts.lastHitAt;
+    ts.lastHitAt = t;
+    // バブル：攻撃した敵の攻撃力低下
+    if (cid(u) === 'char_381_bubble') src.bubbleUntil = t + (b0.duration ?? 5);
+    // 聖聆プラマニクス：攻撃した敵を寒冷に
+    if (cid(u) === 'char_1046_sbell2' && b1.cold) applyCold(src, b1.cold);
+    // リスカム：自身と隣接する味方1人のSP回復
+    if (cid(u) === 'char_107_liskam') {
+      u.sp += b0.sp ?? 0;
+      const p = posXY(u);
+      const ally = rt
+        .filter((o) => o !== u && o.alive && o.input.pos !== undefined && Math.abs(cellX(o.input.pos) - p.x) + Math.abs(cellY(o.input.pos) - p.y) === 1)
+        .sort((a, b) => a.sp / Math.max(1, a.skill.spCost) - b.sp / Math.max(1, b.skill.spCost))[0];
+      if (ally) ally.sp += b0.sp ?? 0;
+    }
+    // ウルピアヌス：ダメージを受けるたびにHP回復
+    if (cid(u) === 'char_4145_ulpia') healUnit(u, u, u.hp / u.maxHp <= (b0.hp_ratio ?? 0.5) ? (b0.value2 ?? 0) : (b0.value1 ?? 0));
+    // ティッピ：一定時間攻撃を受けていなければ次のダメージを回避
+    if (cid(u) === 'char_4191_tippi' && t - prevHit >= (b0.stack_time ?? 9)) return true;
+    // マドロック：シールドで被ダメージを無効化し、HP回復
+    if (cid(u) === 'char_311_mudrok' && ts.shields > 0) {
+      ts.shields--;
+      healUnit(u, u, u.maxHp * (b0.hp_ratio ?? 0));
+      return true;
+    }
+    // アルケット：配置後のシールド（1回）でSP回復
+    if (cid(u) === 'char_332_archet' && !ts.archShield && b1.sp) {
+      ts.archShield = true;
+      u.sp += b1.sp;
+      return true;
+    }
+    // ホシグマ：確率で被ダメージ無効（期待値）
+    if (cid(u) === 'char_136_hsguma') {
+      ts.nullAcc += b0.prob ?? 0;
+      if (ts.nullAcc >= 1) {
+        ts.nullAcc -= 1;
+        return true;
+      }
+    }
+    // 物理回避（マウンテン・フレイムテイルの付与。期待値）
+    const ev = u.input.mods.evadePhys ?? 0;
+    if (!arts && ev > 0) {
+      ts.evadeAcc += ev;
+      if (ts.evadeAcc >= 1) {
+        ts.evadeAcc -= 1;
+        return true;
+      }
+    }
+    return false;
+  };
+  /** 被ダメージの倍率 */
+  const talentTakenMult = (u: Runtime, arts: boolean): number => {
+    const [b0, b1] = u.tb;
+    switch (cid(u)) {
+      case 'char_4064_mlynar':
+        return enemiesNear(u, 1.5).length >= (b0.cnt ?? 3) ? 1 - (b0.damage_resistance ?? 0) : 1;
+      case 'char_1028_texas2':
+        return !u.ts.firstKill ? 1 - (b1.damage_resistance ?? 0) : 1;
+      case 'char_4010_etlchi':
+        return u.ts.saveUsed && !arts ? 1 - (b1.damage_resistance ?? 0) : 1;
+      default:
+        return 1;
+    }
+  };
+  /** 致命傷を受けた時の素質。耐えたら true */
+  const talentOnDown = (u: Runtime): boolean => {
+    const [, b1] = u.tb;
+    const ts = u.ts;
+    if (ts.saveUsed) return false;
+    switch (cid(u)) {
+      case 'char_350_surtr': // スルト：HP1で耐え、8秒後に強制退場
+        if (!b1['surtr_t_2[withdraw].interval']) return false;
+        ts.saveUsed = true;
+        u.hp = 1;
+        ts.surtrUntil = t + b1['surtr_t_2[withdraw].interval'];
+        return true;
+      case 'char_4039_horn': // ホルン：血戦（最大HP-50%、全回復、攻撃速度・防御力上昇）
+        if (b1.max_hp === undefined) return false;
+        ts.saveUsed = true;
+        ts.bloodBattle = true;
+        u.maxHp *= 1 - b1.max_hp;
+        u.hp = u.maxHp;
+        u.def *= 1 + (b1.def ?? 0);
+        return true;
+      case 'char_1046_sbell2': {
+        // 聖聆プラマニクス：全回復し、自身は凍結、攻撃範囲内の敵を凍結
+        if (b1.freeze === undefined) return false;
+        ts.saveUsed = true;
+        u.hp = u.maxHp;
+        ts.selfFrozenUntil = t + b1.freeze;
+        for (const e of enemiesInRange(u)) {
+          e.frozenUntil = Math.max(e.frozenUntil, t + (b1.c2e_freeze ?? 8));
+          e.defense.res = currentRes(e);
+        }
+        return true;
+      }
+      default:
+        return false;
+    }
+  };
+  /** 敵が倒れた時の素質 */
+  const talentOnKill = (e: Enemy, by: Runtime) => {
+    const tile = enemyTile(e);
+    const [b0, b1] = by.tb;
+    switch (cid(by)) {
+      case 'char_2015_dusk':
+        by.ts.killStacks = Math.min(b0.max_stack_cnt ?? 15, by.ts.killStacks + 1);
+        break;
+      case 'char_4145_ulpia': {
+        // ウルピアヌス：撃破ごとに攻撃力・最大HP上昇。他のアビサルハンターは半分
+        const b = b1.atk !== undefined ? b1 : b0;
+        if (by.ts.killStacks < (b.max_stack_cnt ?? 9)) {
+          by.ts.killStacks++;
+          by.ts.killAtk += b.atk ?? 0;
+          by.maxHp += b.max_hp ?? 0;
+          by.hp += b.max_hp ?? 0;
+          for (const o of rt) {
+            if (o === by || !o.alive || !ABYSSAL.has(cid(o))) continue;
+            o.ts.killAtk += b['ulpia_t_1[abyssal].atk'] ?? 0;
+            o.maxHp += b['ulpia_t_1[abyssal].max_hp'] ?? 0;
+            o.hp += b['ulpia_t_1[abyssal].max_hp'] ?? 0;
+          }
+        }
+        break;
+      }
+      case 'char_1028_texas2':
+        by.ts.firstKill = true;
+        // テキサスの流儀：撃破でHP全回復し、スキルをもう一度（1回のみ）
+        if (by.skillLeft > 0 && !by.ts.recast) {
+          by.ts.recast = true;
+          by.hp = by.maxHp;
+          by.skillLeft = by.skill.duration;
+        }
+        break;
+      case 'char_4058_pepe':
+        if (by.skillLeft > 0) by.ts.pepeKills++;
+        break;
+    }
+    // エステル：周囲8マスで敵が倒れるとHP回復
+    for (const w of holders('char_127_estell')) {
+      if (w.input.pos === undefined) continue;
+      if (Math.abs(cellX(tile) - cellX(w.input.pos)) <= 1 && Math.abs(cellY(tile) - cellY(w.input.pos)) <= 1) healUnit(w, w, w.maxHp * (w.tb[0].hp_ratio ?? 0));
+    }
+    // ワルファリン：攻撃範囲内で敵が倒れると自身と範囲内の味方1人のSP回復
+    for (const w of holders('char_171_bldsk')) {
+      if (!w.rangeNormal?.has(tile)) continue;
+      w.sp += w.tb[0]['bldsk_t_1[self].sp'] ?? 0;
+      const ally = alliesInRange(w, false)
+        .filter((o) => o !== w && o.skill.spCost > 0)
+        .sort((a, b) => a.sp / a.skill.spCost - b.sp / b.skill.spCost)[0];
+      if (ally) ally.sp += w.tb[0]['bldsk_t_1[rand].sp'] ?? 0;
+    }
+  };
+  /** スキル発動時の素質 */
+  const talentOnCast = (u: Runtime) => {
+    // カーネリアン：スキル発動時にHP回復
+    if (cid(u) === 'char_426_billro') healUnit(u, u, u.maxHp * (u.tb[0].heal_scale ?? 0));
+    // レコードキーパー：攻撃範囲内の味方がスキルを発動するとSP回復・攻撃速度上昇
+    for (const w of holders('char_4196_reckpr')) {
+      if (w === u || u.input.pos === undefined || !w.rangeNormal?.has(u.input.pos)) continue;
+      w.sp += w.tb[0].sp ?? 0;
+      w.ts.reckUntil = t + (w.tb[0].duration ?? 8);
+    }
+  };
+  /** スキル終了時の素質 */
+  const talentOnSkillEnd = (u: Runtime) => {
+    const [b0] = u.tb;
+    // ヴェトチキ：スキル終了時にHP回復
+    if (cid(u) === 'char_4207_branch') healUnit(u, u, u.maxHp * (b0.hp_ratio ?? 0));
+    // ペペ：スキル中の撃破数だけSP回復
+    if (cid(u) === 'char_4058_pepe') {
+      u.sp += Math.min((b0.sp ?? 0) * u.ts.pepeKills, b0.max_sp ?? 0);
+      u.ts.pepeKills = 0;
+    }
+  };
+  /** 毎フレームの素質（継続回復・時間で増える効果など） */
+  const tickTalents = () => {
+    for (const u of rt) {
+      if (!u.alive) continue;
+      const [b0, b1] = u.tb;
+      const ts = u.ts;
+      // スルト：強制退場
+      if (ts.surtrUntil !== null && t >= ts.surtrUntil) {
+        ts.surtrUntil = null;
+        leaveField(u);
+        continue;
+      }
+      switch (cid(u)) {
+        case 'char_181_flower': // パフューマー：味方全員を継続回復
+          for (const o of rt) if (o.alive) healUnit(u, o, baseAtk(u.input.def, u.input.star, u.input.mods) * (b0.atk_to_hp_recovery_ratio ?? 0) * dt);
+          break;
+        case 'char_291_aglina': // アンジェリーナ：スキル未使用時、味方全員を継続回復
+          if (u.skillLeft <= 0 && b1.hp_recovery_per_sec) for (const o of rt) if (o.alive) healUnit(u, o, b1.hp_recovery_per_sec * dt);
+          break;
+        case 'char_332_archet': // アルケット：狙撃の攻撃回復スキルのSPを定期的に回復
+          ts.timer -= dt;
+          if (ts.timer <= 0) {
+            ts.timer += b0.interval ?? 2.5;
+            for (const o of rt) if (o.alive && o.input.def.profession === 'sniper' && o.skill.charge === 'attack' && o.skillLeft <= 0 && o.ammoLeft <= 0) o.sp += b0.sp ?? 0;
+          }
+          break;
+        case 'char_4026_vulpis': // ウルピスフォリア：一定時間ダメージを受けていなければ継続回復
+          if (t - ts.lastHitAt >= (b1.interval ?? 4)) healUnit(u, u, u.maxHp * (b1['vulpis_t_2[heal][interval].hp_recovery_per_sec_by_max_hp_ratio'] ?? 0) * dt);
+          break;
+        case 'char_311_mudrok': // マドロック：一定時間ごとにシールド（最大3枚）
+          ts.shieldTimer -= dt;
+          if (ts.shieldTimer <= 0) {
+            ts.shieldTimer += b0.interval ?? 9;
+            ts.shields = Math.min(b0.max_times ?? 3, ts.shields + 1);
+          }
+          break;
+        case 'char_202_demkni': // サリア：防御力も時間で上昇
+          u.def = u.baseDef * (1 + (b0.def ?? 0) * Math.min(b0.max_stack_cnt ?? 0, Math.floor((t - ts.deployedAt) / Math.max(1, b0.interval ?? 20))));
+          break;
+        case 'char_1026_gvial2': // 百錬ガヴィル：ブロック数に応じた防御力
+          u.def = u.baseDef * (1 + (b0.def_add ?? 0) * u.blocked.length);
+          break;
+      }
+    }
+    // 素質の継続術ダメージ
+    for (const e of enemies) {
+      if (!e.alive || !e.dots.size) continue;
+      for (const [src, d] of e.dots) {
+        if (t >= d.until) {
+          e.dots.delete(src);
+          continue;
+        }
+        deal(src, e, hitDamage(d.dps * dt, 'arts', effDefense(e), src.input.mods));
+      }
+    }
+  };
+  /** 敵の移動速度の倍率（モスティマ・イネスの減速） */
+  const talentSlow = (e: Enemy): number => {
+    let slow = 0;
+    for (const w of rt) {
+      if (!w.alive || !w.rangeNormal?.has(enemyTile(e))) continue;
+      if (cid(w) === 'char_213_mostma' || cid(w) === 'char_4087_ines') slow = Math.max(slow, -(w.tb[1].move_speed ?? 0));
+    }
+    return 1 - slow;
+  };
+  /** ステルスを無効にする素質（シルバーアッシュ・イネス） */
+  const revealed = (e: Enemy) =>
+    rt.some(
+      (w) =>
+        w.alive &&
+        w.rangeNormal?.has(enemyTile(e)) &&
+        ((cid(w) === 'char_172_svrash' && (unitState(w.input.def, w.input.star).talents?.length ?? 0) >= 2) ||
+          (cid(w) === 'char_4087_ines' && w.tb[1].move_speed !== undefined)),
+    );
+  /** 敵の攻撃力（素質の弱体化） */
+  const enemyAtk = (e: Enemy, atk: number) =>
+    Math.max(0, atk * (t < e.bubbleUntil ? 1 + (holders('char_381_bubble')[0]?.tb[0].atk ?? -0.08) : 1) * (t < e.reedUntil ? 0.8 : 1) - e.stolenAtk);
+
   const enemyAttacks = () => {
     for (const e of enemies) {
       const a = e.input.spec.attack;
@@ -1817,7 +2393,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
       if (!target || !target.alive) continue;
       if (a.kind === 'ranged') emit([3, e.id, target.input.uid, a.arts ? 1 : 0]);
-      hurt(target, a.atk * weakFactor(e), a.arts, e);
+      hurt(target, enemyAtk(e, a.atk) * weakFactor(e), a.arts, e);
       if (e.input.spec.element) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
       e.atkTimer = a.interval;
       // 遠距離攻撃の間は一瞬足を止める
@@ -1859,7 +2435,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.defense.res = currentRes(e);
       }
       const path = e.input.path;
-      const speed = e.input.spec.speed * moveMultiplier;
+      const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) : 1);
       const curTile = path[Math.min(Math.round(e.d), path.length - 1)];
       const nd = e.d + speed * dt;
       const nextTile = path[Math.min(Math.round(nd), path.length - 1)];
@@ -1918,6 +2494,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       tickCost();
       tickCold();
       tickElements();
+      tickTalents();
       enemyAttacks();
       tickZones();
       tickPollution();
@@ -1965,7 +2542,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         castAtk +
         (swire ? u.swireStacks * swire.atkPerStack : 0) +
         u.talentStacks * (ELEMENT_TALENT[def.charId]?.atkPerApoptosisBurst?.atk ?? 0) +
-        u.qalaisaStacks * (g.qalaisa?.atk ?? 0);
+        u.qalaisaStacks * (g.qalaisa?.atk ?? 0) +
+        talentAtkPct(u);
       // 琳琅スワイヤー：コインを使って「シャンパン爆弾」（範囲内の敵に物理ダメージ）
       if (swire && field) {
         u.bombTimer -= dt;
@@ -1995,14 +2573,16 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const peak = activeNow && !s.passive ? (peakPerformance(s.bb).find(([ratio]) => u.hp / u.maxHp >= ratio)?.[1] ?? 0) : 0;
       const atk =
         baseAtk(def, star, mods, outerAtkPct + peak + (activeNow && (!PHILAE[def.charId] || u.philaeBoost) ? s.atkPct : 0)) +
-        (t < u.inspireUntil ? u.inspireAtk : 0);
+        (t < u.inspireUntil ? u.inspireAtk : 0) +
+        talentAtkFlat(u);
       const aspd =
         stats.aspd +
         (mods.aspd ?? 0) +
         (activeNow ? s.aspd : 0) +
         (g.sargon ? sargonCount * g.sargon.aspd : 0) +
         Math.min(u.attacks, mods.aspdPerAttackMax ?? 0) * (mods.aspdPerAttack ?? 0) +
-        (g.siracusa?.members.has(uid) && t < g.siracusa.duration ? g.siracusa.aspd : 0);
+        (g.siracusa?.members.has(uid) && t < g.siracusa.duration ? g.siracusa.aspd : 0) +
+        talentAspd(u);
       const interval = attackInterval(stats.interval, aspd, activeNow && !s.passive ? s.intervalAdd : 0);
       const scale = activeNow && !s.instant && !s.passive ? s.atkScale : 1;
       const hits = activeNow && !s.instant ? s.hits : 1;
@@ -2087,7 +2667,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           const inSkill = !s.passive && activeNow;
           if (targets.length >= 3 || (inSkill && targets.length >= 2)) emit([2, uid, inSkill ? 1 : 0], `area${uid}`, 0.3);
         }
-        for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1));
+        for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1) * talentScale(u, e, activeNow));
+        // ミヅキ：攻撃範囲内でHPが最も少ない敵に追加の術ダメージ
+        if (cid(u) === 'char_437_mizuki') {
+          const low = enemiesInRange(u).filter((e) => !isStealthed(e)).sort((a, b) => a.hp - b.hp)[0];
+          if (low) deal(u, low, hitDamage(atk * (u.tb[0]['attack@mizuki_t_1.atk_scale'] ?? 0), 'arts', effDefense(low), mods));
+        }
         // 武者・鎌の職分特性：攻撃で自身を回復
         const selfHeal = SELF_HEAL_SUB[def.subProfession];
         if (selfHeal) healUnit(u, u, selfHeal.hp * (selfHeal.perTarget ? Math.min(targets.length, Math.max(1, u.block)) : 1));
@@ -2141,7 +2726,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u.skillLeft -= dt;
         if (u.skillLeft <= 0) endSkill(u);
       } else if (u.ammoLeft <= 0 && s.charge === 'time') {
-        u.sp += (1 + (mods.spRegen ?? 0)) * dt;
+        u.sp += (1 + (mods.spRegen ?? 0) + (mods.spRegenTalent ?? 0)) * dt;
       }
     }
 

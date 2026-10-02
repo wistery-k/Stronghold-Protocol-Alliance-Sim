@@ -82,6 +82,13 @@ export interface GarrisonData {
   blackboard: Record<string, string | number>;
 }
 
+/** 素質（昇進・レベルで解放されているもの） */
+export interface TalentData {
+  name: string;
+  description: string;
+  blackboard: Record<string, string | number>;
+}
+
 export interface UnitState {
   evolvePhase: number;
   level: number;
@@ -90,6 +97,7 @@ export interface UnitState {
   stats: UnitStats;
   skill: SkillData;
   garrisons: GarrisonData[];
+  talents?: TalentData[];
 }
 
 export interface UnitDef {
@@ -166,6 +174,21 @@ export interface Modifier {
   lifeOnHit?: number;
   /** 毎秒最大HPのこの割合を回復（ペガサスの兜＋槍） */
   regenPct?: number;
+  /** 防御力・術耐性の固定値無視 */
+  defIgnoreFlat?: number;
+  resIgnoreFlat?: number;
+  /** 防御力（固定値） */
+  defFlat?: number;
+  /** 物理ダメージの被ダメージ軽減（割合） */
+  physReduce?: number;
+  /** 物理攻撃の回避率（期待値） */
+  evadePhys?: number;
+  /** 素質のSP自然回復の上昇（同種の効果は高い方のみ） */
+  spRegenTalent?: number;
+  /** 弾薬（固定値） */
+  ammoFlat?: number;
+  /** 再配置時間（固定値、秒） */
+  respawnFlat?: number;
   /** 再配置時間（割合、加算。-0.3 で30%短縮） */
   respawnPct?: number;
   /** 攻撃時に確率で寒冷を付与（イェラグの不融氷） */

@@ -1,3 +1,4 @@
+import { talentStatus } from '../core/talents';
 import { ALLIANCES } from '../core/data/alliances';
 import { DAMAGE_TYPE_NAME, PROFESSION_NAME, getUnit, unitState } from '../core/data/units';
 import { getItem, itemState } from '../core/data/items';
@@ -253,6 +254,24 @@ export function unitDetail(o: OwnedUnit, mods: Modifier | undefined) {
         h('span', { class: 'muted small' }, `　SP ${st.skill.initSp}/${st.skill.spCost}${st.skill.duration > 0 ? `・${st.skill.duration}秒` : ''}`),
         h('br'),
         h('span', { class: 'small' }, st.skill.description),
+      ),
+      h('dt', null, '素質'),
+      h(
+        'dd',
+        null,
+        talentStatus(d, o.star).length
+          ? talentStatus(d, o.star).map((tl) =>
+              h(
+                'div',
+                { class: `talent small${tl.impl === 'none' ? ' nosim' : ''}`, title: tl.note ?? (tl.impl === 'none' ? 'まだシミュレーターで再現していない素質です' : undefined) },
+                h('b', null, tl.name),
+                h('span', { class: `talent-impl ${tl.impl}` }, tl.impl === 'full' ? '再現' : tl.impl === 'partial' ? '一部' : '未再現'),
+                '：',
+                tl.description,
+                tl.note ? h('span', { class: 'muted' }, `（${tl.note}）`) : null,
+              ),
+            )
+          : h('span', { class: 'muted' }, 'なし'),
       ),
       h('dt', null, '堅守特性'),
       h(

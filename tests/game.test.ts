@@ -365,7 +365,7 @@ describe('装備', () => {
   });
 
   it('攻撃力の装備で攻撃力が上がる', () => {
-    const u = { ...ou(1, 'スカジ'), pos: 0, items: [{ uid: 9, itemId: '1_01', star: 1 as const }] };
+    const u = { ...ou(1, 'グム'), pos: 0, items: [{ uid: 9, itemId: '1_01', star: 1 as const }] };
     expect(battleSetup([u], [], {}).mods.get(1)?.atkPct).toBeCloseTo(0.15);
   });
 
