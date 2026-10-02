@@ -103,6 +103,10 @@ export interface GameState {
   band: BandId | null;
   /** マップ（ゲーム開始時に抽選。古いセーブデータには無い） */
   mapId?: string;
+  /** 戦闘前の状態（戦闘結果の画面から戻すため。次のラウンドへ進むと消える） */
+  preBattle?: GameState | null;
+  /** 戦闘前に戻したラウンドの戦闘結果（新しい順。比較用） */
+  undoneBattles?: BattleReport[];
   bandState: BandState;
   /** 懸賞：提示中の候補と、選んだ懸賞（3〜4ラウンドに出現） */
   bounty: { offer: string[] | null; picked: string | null };
@@ -166,6 +170,7 @@ export type Action =
   | { type: 'choose'; index: number }
   | { type: 'skipChoice' }
   | { type: 'pickBounty'; index: number }
+  | { type: 'undoBattle' }
   | { type: 'refresh' }
   | { type: 'levelUp' }
   | { type: 'toggleFreeze' }
@@ -354,7 +359,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
   const state = structuredClone(prev);
   const fail = (error: string): ActionResult => ({ state: prev, error });
   const inPrep = state.phase === 'prep';
-  if (!inPrep && action.type !== 'next') return fail('準備フェーズではありません');
+  if (!inPrep && action.type !== 'next' && action.type !== 'undoBattle') return fail('準備フェーズではありません');
 
   switch (action.type) {
     case 'buy': {
@@ -528,16 +533,30 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       state.frozen = !state.frozen;
       return { state };
     }
+    case 'undoBattle': {
+      // 戦闘前の状態に戻す（盟約の加算数・資金・乱数もすべて戦闘前に戻る）。今回の戦闘結果は比較用に残す
+      if (state.phase !== 'result' || !state.preBattle || !state.lastBattle) return fail('戻せる戦闘がありません');
+      const back = structuredClone(state.preBattle);
+      back.undoneBattles = [state.lastBattle, ...(state.undoneBattles ?? [])].filter((x) => x.round === state.round).slice(0, 3);
+      notify(back, `ラウンド${state.round}の戦闘を取り消して、戦闘前に戻した`);
+      return { state: back };
+    }
     case 'battle': {
       if (state.choices.length) return fail(CHOICE_LOCK_MESSAGE);
       if (state.bounty.offer) return fail('懸賞の対象を先に選んでください');
       if (benchOverflow(state) > 0) return fail(`控えが上限を${benchOverflow(state)}名超えています。配置するか売却してください`);
       normalizePositions(state.board);
+      // 戻せるように戦闘前の状態を残す（取り消した戦闘の記録は持たせない）
+      const snap = structuredClone(state);
+      snap.preBattle = null;
       resolveBattle(state);
+      state.preBattle = snap;
       return { state };
     }
     case 'next': {
       if (state.phase !== 'result') return fail('戦闘結果フェーズではありません');
+      state.preBattle = null;
+      state.undoneBattles = [];
       if (state.life <= 0) {
         state.phase = 'gameover';
       } else if (state.round >= MAX_ROUND) {

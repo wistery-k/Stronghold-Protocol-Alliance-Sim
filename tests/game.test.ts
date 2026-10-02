@@ -514,3 +514,56 @@ describe('獲得時の効果と精鋭化', () => {
     expect((s.stacks.kjerag ?? 0) - before).toBe(4); // 精鋭 +4 が1回だけ
   });
 });
+
+describe('戦闘前に戻す', () => {
+  it('戦闘結果から戦闘前に戻すと、加算数・資金・耐久値・ラウンドが戻り、取り消した戦闘が残る', () => {
+    let s = withShop(createGame(5, { mapId: 'legacy' }), ['マッターホルン'], 10);
+    s = applyAction(s, { type: 'buy', slot: 0 }).state;
+    const unitUid = owned(s)[0].uid;
+    s = applyAction(s, { type: 'deploy', uid: unitUid }).state;
+    const before = structuredClone(s);
+    s = applyAction(s, { type: 'battle' }).state;
+    expect(s.phase).toBe('result');
+    const back = applyAction(s, { type: 'undoBattle' }).state;
+    expect(back.phase).toBe('prep');
+    expect(back.gold).toBe(before.gold);
+    expect(back.life).toBe(before.life);
+    expect(back.stacks).toEqual(before.stacks);
+    expect(back.undoneBattles?.length).toBe(1);
+    // 同じ配置でもう一度戦えば同じ結果
+    const again = applyAction(back, { type: 'battle' }).state;
+    expect(again.lastBattle!.sim.killed).toBe(s.lastBattle!.sim.killed);
+    // 次のラウンドへ進むと戻せない
+    const next = applyAction(again, { type: 'next' }).state;
+    expect(applyAction(next, { type: 'undoBattle' }).error).toBeDefined();
+  });
+
+  it('プロデュース戦略は、所持している間はショップに出ない', () => {
+    let s = createGame(1, { mapId: 'legacy' });
+    s = { ...s, level: 6, bench: [{ uid: 900, itemId: '5_07', star: 1 }, ...s.bench.slice(1)] };
+    for (let i = 0; i < 200; i++) {
+      s = applyAction({ ...s, gold: 10 }, { type: 'refresh' }).state;
+      expect(s.itemShop).not.toBe('5_07');
+    }
+  });
+});
+
+describe('スズランの堅守特性', () => {
+  it('精鋭は前方2マスのオペレーターの獲得時効果をそれぞれ1回発動する', () => {
+    let s = createGame(1, { mapId: 'legacy' });
+    // 22 に右向きのスズラン、前方の 23・24 に獲得時に加算数を得るオペレーター
+    s = {
+      ...s,
+      board: [
+        { ...ou(1, 'スズラン', 2), pos: 22, dir: 'right' },
+        { ...ou(2, 'マッターホルン'), pos: 23, dir: 'right' },
+        { ...ou(3, 'ノーシス'), pos: 24, dir: 'right' },
+      ],
+    };
+    const before = s.stacks.kjerag ?? 0;
+    s = applyAction(s, { type: 'battle' }).state;
+    s = applyAction(s, { type: 'next' }).state;
+    // マッターホルン +2、ノーシス +5（どちらも1回ずつ）
+    expect((s.stacks.kjerag ?? 0) - before).toBe(7);
+  });
+});

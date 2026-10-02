@@ -158,6 +158,32 @@ function eventLog(state: GameState): HTMLElement {
   return details;
 }
 
+/** 取り消した戦闘（同じラウンド）の結果。開いた時だけリプレイを作る */
+function undonePanel(state: GameState): HTMLElement | null {
+  const list = (state.undoneBattles ?? []).filter((b) => b.round === state.round);
+  if (!list.length) return null;
+  return h(
+    'section',
+    { class: 'panel' },
+    h('h2', null, `取り消した戦闘（${list.length}）`),
+    list.map((b, i) => {
+      const verdict = b.sim.cleared ? `全滅 ${b.sim.elapsed}秒` : `突破${b.sim.leaked}体・耐久値-${b.lifeLost}`;
+      const body = h('div', null);
+      const d = h(
+        'details',
+        { class: 'undone-battle' },
+        h('summary', null, `${i === 0 ? '直前' : `${i + 1}つ前`}：${verdict}`),
+        body,
+      ) as HTMLDetailsElement;
+      d.addEventListener('toggle', () => {
+        if (d.open) body.replaceChildren(battleSummary(b.sim, b.units ?? []));
+        else body.replaceChildren();
+      });
+      return d;
+    }),
+  );
+}
+
 /** 資金が残っている時の戦闘開始の確認 */
 let confirmBattle = false;
 
@@ -506,6 +532,7 @@ function prepView(p: GameViewProps): HTMLElement {
         bountyPanel(state, dispatch),
         choicePanel,
         shopPanel,
+        undonePanel(state),
       ),
       h(
         'aside',
@@ -542,7 +569,17 @@ function resultView(p: GameViewProps): HTMLElement {
   return h(
     'div',
     { class: 'game' },
-    topBar(state, h('div', { class: 'actions' }, h('button', { class: 'btn primary big', onclick: () => dispatch({ type: 'next' }) }, nextLabel))),
+    topBar(
+      state,
+      h(
+        'div',
+        { class: 'actions' },
+        state.preBattle
+          ? h('button', { class: 'btn', title: '盟約の加算数・資金なども戦闘前に戻ります。今回の戦闘結果は準備画面で見返せます', onclick: () => dispatch({ type: 'undoBattle' }) }, '戦闘前に戻す')
+          : null,
+        h('button', { class: 'btn primary big', onclick: () => dispatch({ type: 'next' }) }, nextLabel),
+      ),
+    ),
     h(
       'div',
       { class: 'layout' },

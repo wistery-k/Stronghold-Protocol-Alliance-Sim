@@ -11,6 +11,8 @@ import { isItemEntry, type OwnedItem, type OwnedUnit, type Tier } from './types'
 // 装備（アイテム）の入手・装備・効果（準備フェーズ側）
 
 export const MAX_EQUIP = 2;
+/** 所持している間はショップに出ない装備（プロデュース戦略） */
+const ONE_AT_A_TIME = new Set(['5_07']);
 export const ITEM_SELL_PRICE = 1;
 
 /** 控えにある装備 */
@@ -22,7 +24,9 @@ export function storedItems(state: GameState): OwnedItem[] {
 export function rollItemShop(state: GameState): void {
   withRng(state, (rng) => {
     const tier = rng.weighted(TIER_ODDS[state.level - 1]) + 1;
-    const cands = ITEMS.filter((i) => i.tier === tier && !NOT_IN_SHOP.has(i.id));
+    // プロデュース戦略は、所持している間は出さない（複数持つと資金が無限に増えるため）
+    const owned = new Set([...storedItems(state), ...allOwned(state).flatMap((o) => o.items ?? [])].map((i) => i.itemId));
+    const cands = ITEMS.filter((i) => i.tier === tier && !NOT_IN_SHOP.has(i.id) && !(ONE_AT_A_TIME.has(i.id) && owned.has(i.id)));
     state.itemShop = cands.length ? cands[rng.int(cands.length)].id : null;
   });
 }

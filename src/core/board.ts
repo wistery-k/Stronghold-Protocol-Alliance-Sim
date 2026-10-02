@@ -279,6 +279,17 @@ export function frontOf(board: OwnedUnit[], o: OwnedUnit): OwnedUnit | undefined
   return offset(board, o, dx, dy);
 }
 
+/** 前方 reach マスまでにいるオペレーター（近い順） */
+export function frontsOf(board: OwnedUnit[], o: OwnedUnit, reach: number): OwnedUnit[] {
+  const [dx, dy] = DIR_DELTA[o.dir ?? DEFAULT_DIRECTION];
+  const out: OwnedUnit[] = [];
+  for (let k = 1; k <= reach; k++) {
+    const f = offset(board, o, dx * k, dy * k);
+    if (f) out.push(f);
+  }
+  return out;
+}
+
 export function behindOf(board: OwnedUnit[], o: OwnedUnit): OwnedUnit | undefined {
   const [dx, dy] = DIR_DELTA[o.dir ?? DEFAULT_DIRECTION];
   return offset(board, o, -dx, -dy);

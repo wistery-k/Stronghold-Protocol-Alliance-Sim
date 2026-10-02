@@ -4,7 +4,7 @@ import { gainRandom, rollChoices } from './acquire';
 import { gainItem, gainItemFromPool, gainRandomItem } from './items';
 import { ITEM_POOLS } from './data/items';
 import { itemKey } from './data/items';
-import { behindOf, egirDevour, frontOf, sameRow } from './board';
+import { behindOf, egirDevour, frontOf, frontsOf, sameRow } from './board';
 import { ALLIANCES, v } from './data/alliances';
 import { UNITS, getUnit, unitState } from './data/units';
 import type { GameState } from './game';
@@ -260,12 +260,13 @@ function runGarrison(
     }
     case 'SERVER_TRIGGER_ANOTHER':
     case 'SERVER_TRIGGER_FRONT_COUNT': {
-      const front = frontOf(state.board, unit);
-      if (!front) return true;
-      const times = g.effect === 'SERVER_TRIGGER_FRONT_COUNT' ? n('count') : 1;
-      for (const fg of unitState(getUnit(front.defId), front.star).garrisons) {
-        if (fg.event !== 'SERVER_GAIN') continue;
-        for (let i = 0; i < times; i++) runGarrison(state, fg, front, 'board', active);
+      // 前方1マス（精鋭は前方2マスまで）のオペレーターの「獲得時」効果をそれぞれ1回発動
+      const reach = g.effect === 'SERVER_TRIGGER_FRONT_COUNT' ? n('count') : 1;
+      for (const front of frontsOf(state.board, unit, reach)) {
+        for (const fg of unitState(getUnit(front.defId), front.star).garrisons) {
+          if (fg.event !== 'SERVER_GAIN') continue;
+          runGarrison(state, fg, front, 'board', active);
+        }
       }
       return true;
     }

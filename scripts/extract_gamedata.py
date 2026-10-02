@@ -211,7 +211,13 @@ def with_optional_max(text: str):
     return fn
 
 
+def garrison_60(body, nums):
+    n = '2' if '两格' in body else '1'
+    return f'〈準備フェーズ開始時〉前方{n}マスの他のオペレーターの「獲得時」効果を発動させる'
+
+
 GARRISON_JA_FN = {
+    '60': garrison_60,
     '30': garrison_30,
     '37': garrison_37,
     '39': garrison_39,

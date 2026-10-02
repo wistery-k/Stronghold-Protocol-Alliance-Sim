@@ -13750,7 +13750,7 @@
       "id": "garrison_60_b",
       "event": "SERVER_PREP_START",
       "effect": "SERVER_TRIGGER_FRONT_COUNT",
-      "description": "〈準備フェーズ開始時〉前方1マスの他のオペレーターの「獲得時」効果を発動させる",
+      "description": "〈準備フェーズ開始時〉前方2マスの他のオペレーターの「獲得時」効果を発動させる",
       "blackboard": {
        "event": "SERVER_GAIN",
        "count": 2.0,
