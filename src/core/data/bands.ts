@@ -61,7 +61,7 @@ export interface BandDef {
 export const BANDS: BandDef[] = [
   { id: 'bldsk', leader: 'ワルファリン', name: '重点監護', life: 28, impl: 'full', description: '戦闘開始時、場にいる等級ごとにランダムな1名を選び、その所属盟約の加算数+2' },
   { id: 'amiya', leader: 'アーミヤ', name: '衆志一心', life: 25, impl: 'full', description: '場に発動中の盟約が3/4/5種類以上あると、全オペレーターの攻撃力・最大HP+20/30/40%' },
-  { id: 'duyaoy', leader: 'ドゥ・ヤオイエ', name: '豪傑歓迎', life: 29, impl: 'full', description: '毎ラウンド最初の2回の更新は特殊更新：【炎】のオペレーターが優先して1名出現する' },
+  { id: 'duyaoy', leader: 'ドゥ・ヤオイェ', name: '豪傑歓迎', life: 29, impl: 'full', description: '毎ラウンド最初の2回の更新は特殊更新：【炎】のオペレーターが優先して1名出現する' },
   { id: 'sarkazb', leader: 'ゴリアテ', name: '難攻不落', life: 45, impl: 'full', description: '初期耐久値が45' },
   {
     id: 'orchid',
@@ -72,7 +72,7 @@ export const BANDS: BandDef[] = [
     note: '「同名2名が出現し1名を凍結」は未実装（10ラウンド目の呼出モジュールのみ）',
     description: '更新はすべて特殊更新：同じオペレーターが必ず2名出現し、そのうち1名を凍結する。10ラウンド目に「呼出モジュール」を1つ獲得',
   },
-  { id: 'justin', leader: 'ジャスティン', name: '私募ファンド', life: 23, impl: 'full', description: '1・4・7・10ラウンドの準備開始時に「騎士の貯金箱」を1つ獲得' },
+  { id: 'justin', leader: 'ジャスティンJr.', name: '私募ファンド', life: 23, impl: 'full', description: '1・4・7・10ラウンドの準備開始時に「騎士の貯金箱」を1つ獲得' },
   { id: 'ermengard', leader: 'エルメンガルド', name: '命結の秘', life: 27, impl: 'full', description: '戦闘中、最初に倒れたオペレーター3名はその場で即座に復活する' },
   { id: 'lmlee', leader: 'リー', name: '飲茶でもどう', life: 27, impl: 'full', description: '1・2ラウンドの資金は3ラウンドにまとめて支給。3ラウンドの準備開始時に2等級と4等級のランダムなオペレーターを1名ずつ獲得' },
   { id: 'kirara', leader: 'キララ', name: 'クリア報酬', life: 26, impl: 'full', description: '資金を20使うたびに、管理レベル以下の等級のランダムなオペレーターを1名獲得' },
@@ -105,7 +105,7 @@ export const BANDS: BandDef[] = [
     description: '管理レベルを上げるたびに、装備3つから1つを選んで獲得',
   },
   { id: 'malkie', leader: 'マルキー', name: '商業パッケージ', life: 28, impl: 'full', description: '最初に「プロデュース戦略」を1つ獲得' },
-  { id: 'qalaisa', leader: 'カライサ', name: '屍喰らいの蝶', life: 26, impl: 'full', description: 'オペレーターが倒れると、場に残るオペレーターの攻撃力+20%（最大200%。そのオペレーターが倒れるか戦闘終了まで）' },
+  { id: 'qalaisa', leader: 'カライシャ', name: '屍喰らいの蝶', life: 26, impl: 'full', description: 'オペレーターが倒れると、場に残るオペレーターの攻撃力+20%（最大200%。そのオペレーターが倒れるか戦闘終了まで）' },
   { id: 'chen', leader: 'チェン', name: '己の長所で', life: 22, impl: 'full', description: '全オペレーターの物理・術ダメージが弱点ダメージになる（敵の防御力と術耐性に応じて有利な方になる）' },
   { id: 'damaztic', leader: 'ダマズティク', name: '変形同構', life: 29, impl: 'full', description: '5ラウンドごとに特殊装備「変形同位体」を獲得' },
   { id: 'pith', leader: 'ピス', name: '優等生', life: 24, impl: 'none', note: '専用オペレーターは未実装', description: '1ラウンド目に、神経・灼熱・凋亡損傷を与える専用オペレーター（調和盟約）を1名獲得' },

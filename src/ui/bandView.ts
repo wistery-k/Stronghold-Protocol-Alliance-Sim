@@ -39,7 +39,7 @@ export function bandView(onPick: (id: BandId) => void, onCancel: (() => void) | 
         'div',
         { class: 'panel-head' },
         h('h2', null, '戦術を選択'),
-        h('span', { class: 'muted small' }, '戦術ごとに初期耐久値と独自の効果があります'),
+        h('span', { class: 'muted small' }, '戦術ごとに初期耐久値と独自の効果があります（【】内の効果名は大陸版からの仮訳）'),
         h(
           'div',
           { class: 'row' },
