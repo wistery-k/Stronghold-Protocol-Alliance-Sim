@@ -131,6 +131,7 @@ function enemyBadges(e: EnemySpec) {
 export function roundInfo(spec: RoundSpec, timeLimit: number, group?: RoundGroup | null) {
   const list = roundEnemySummary(spec);
   const total = list.reduce((sum, x) => sum + x.count, 0);
+  const bounties = new Map(spec.spawns.filter((s) => s.bounty).map((s) => [s.enemy, s.bounty!]));
   return h(
     'div',
     { class: 'round-info' },
@@ -149,11 +150,11 @@ export function roundInfo(spec: RoundSpec, timeLimit: number, group?: RoundGroup
       h(
         'tbody',
         null,
-        list.map(({ enemy, count }) =>
+        list.map(({ key, enemy, count }) =>
           h(
             'tr',
-            { class: enemy.boss ? 'boss' : '' },
-            h('td', null, enemy.name, ' ', enemyBadges(enemy)),
+            { class: enemy.boss ? 'boss' : bounties.has(key) ? 'bounty' : '' },
+            h('td', null, enemy.name, ' ', enemyBadges(enemy), bounties.has(key) ? h('span', { class: 'badge bounty', title: `懸賞：倒すと資金+${bounties.get(key)}（次のラウンドに支給）` }, `懸賞+${bounties.get(key)}`) : null),
             h('td', null, count),
             h('td', null, enemy.hitsToKill ? '-' : fmt(enemy.boss ? enemy.hp : enemy.hp * ENEMY_HP_SCALE)),
             h('td', null, enemy.def),
@@ -271,6 +272,7 @@ export function battleSummary(r: BattleResult, units: ReplayUnit[]) {
       h('div', null, h('span', { class: 'muted small' }, '撃破'), h('b', null, `${r.killed}/${r.total}`)),
       h('div', null, h('span', { class: 'muted small' }, '総ダメージ'), h('b', null, fmt(r.totalDamage))),
       h('div', null, h('span', { class: 'muted small' }, '平均DPS'), h('b', null, fmt(r.totalDamage / Math.max(1, r.elapsed)))),
+      r.bountyKills ? h('div', null, h('span', { class: 'muted small' }, '懸賞'), h('b', { class: 'ok' }, `資金+${r.bountyGold}`)) : null,
       r.opBursts || r.enBursts ? h('div', null, h('span', { class: 'muted small', title: '元素損傷が爆発した回数（味方/敵）' }, '元素爆発 味方/敵'), h('b', null, `${r.opBursts ?? 0}/${r.enBursts ?? 0}回`)) : null,
       r.colds || r.freezes ? h('div', null, h('span', { class: 'muted small' }, '寒冷/凍結'), h('b', null, `${r.colds ?? 0}/${r.freezes ?? 0}回`)) : null,
       h('div', null, h('span', { class: 'muted small' }, '撤退'), h('b', { class: downCount(r) ? 'ng' : '' }, `${downCount(r)}人`)),

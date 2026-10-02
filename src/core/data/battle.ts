@@ -55,6 +55,8 @@ export interface SpawnSpec {
   delay: number;
   /** 出現マス（0: 上、1: 下） */
   spawn: number;
+  /** 懸賞の敵：倒すと得る資金 */
+  bounty?: number;
 }
 
 /** 敵グループの種類（主力部隊は常に出る。ほかの6種から3種がゲーム開始時に選ばれる） */
@@ -91,11 +93,32 @@ const DATA = battledata as unknown as {
   groups: Record<EnemyGroupType, { name: string; entries: EnemyGroupEntry[] }>;
   firstHalfRounds: number;
   rounds: RoundSpec[];
+  bounties: BountyDef[];
 };
+
+/** 懸賞（倒すと資金を得る追加の敵）。tier は I〜III、group は対応する敵グループ */
+export interface BountyDef {
+  id: string;
+  enemy: string;
+  tier: number;
+  group: EnemyGroupType;
+  coin: number;
+}
 
 export const ENEMIES: Record<string, EnemySpec> = DATA.enemies;
 export const ROUNDS: RoundSpec[] = DATA.rounds;
 export const ENEMY_GROUPS = DATA.groups;
+export const BOUNTIES: BountyDef[] = DATA.bounties;
+export const getBounty = (id: string | null | undefined) => BOUNTIES.find((b) => b.id === id);
+/** 懸賞が提示されるラウンドと、懸賞の敵が出るラウンド */
+export const BOUNTY_OFFER_ROUND = 3;
+export const BOUNTY_ROUNDS = [3, 4];
+
+/** 懸賞の敵を出現に加える（出現はステージ序盤、2つの出現マスを交互に） */
+export function withBounty(spec: RoundSpec, bounty: BountyDef | undefined): RoundSpec {
+  if (!bounty || !BOUNTY_ROUNDS.includes(spec.round)) return spec;
+  return { ...spec, spawns: [...spec.spawns, { enemy: bounty.enemy, count: 1, interval: 0, delay: 8, spawn: spec.round % 2, bounty: bounty.coin }] };
+}
 /** ゲーム開始時に抽選される特殊敵の種類 */
 export const SPECIAL_GROUP_TYPES: EnemyGroupType[] = ['FLY', 'TIMES', 'ELEMENT', 'DOT', 'INVISIBLE', 'REFLECTION'];
 export const SPECIAL_GROUP_COUNT = 3;

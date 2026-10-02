@@ -295,4 +295,20 @@ describe('寒冷・凍結とスキルの細部', () => {
     const r = run([{ uid: 1, defId: unit('ヴィルトゥオーサ').id, star: 2, pos: 22, dir: 'down' }], spec);
     expect(r.enBursts).toBeGreaterThan(0);
   });
+  it('戦術【命結の秘】：最初に倒れた3名はその場で復活する', () => {
+    const spec = oneEnemy('test_crush', false, { attack: { kind: 'melee', atk: 99999, interval: 1, range: 0, arts: false } });
+    const board: OwnedUnit[] = [{ uid: 1, defId: UNITS.find((u) => u.profession === 'defender')!.id, star: 1, pos: 31, dir: 'right' }];
+    const plain = buildSimInputs(board, [], {});
+    const withBand = buildSimInputs(board, [], {}, { band: 'ermengard' });
+    const a = simulateBattle(plain.inputs, spec, { globals: plain.globals });
+    const b = simulateBattle(withBand.inputs, spec, { globals: withBand.globals });
+    expect(b.perUnit[0].taken).toBeGreaterThan(a.perUnit[0].taken * 2);
+  });
+
+  it('懸賞の敵を倒すと資金を得る', () => {
+    const spec = oneEnemy('test_bounty', false, { hp: 100, def: 0, res: 0 });
+    spec.spawns[0].bounty = 3;
+    const r = run([{ uid: 1, defId: byProf('sniper').id, star: 2, pos: 22, dir: 'down' }], spec);
+    expect(r.bountyGold).toBe(3);
+  });
 });

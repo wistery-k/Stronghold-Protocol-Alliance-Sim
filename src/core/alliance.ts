@@ -1,8 +1,9 @@
 import { ALLIANCES, ALLIANCE_IDS, CORE_IDS, v } from './data/alliances';
 import { GIVEN_GARRISONS, getUnit, isRanged, unitState } from './data/units';
 import { getItem, itemState } from './data/items';
-import { egirDevour, frontOf, neighbors, rightmostInRow, sameRow, sidesOf } from './board';
+import { cellX, egirDevour, frontOf, neighbors, rightmostInRow, sameRow, sidesOf } from './board';
 import type { AllianceId, GarrisonData, Modifier, OwnedUnit } from './types';
+import type { BandId } from './data/bands';
 
 export interface AllianceStatus {
   id: AllianceId;
@@ -116,12 +117,24 @@ export interface BattleGlobals {
   indom?: { prob: number; sp: number };
   /** イェラグ：所属者の与ダメージ（寒冷・凍結した敵には ex）。Lv2で定期的に寒風 */
   kjerag?: { members: Set<number>; base: number; ex: number; storm: { interval: number; duration: number } | null };
+  /** 戦術【命結の秘】：最初に倒れた数名が即座に復活 */
+  bandRevive?: number;
+  /** 戦術【屍喰らいの蝶】：味方が倒れるたびに残りの味方の攻撃力上昇 */
+  qalaisa?: { atk: number; max: number };
+  /** 戦術【崇高な犠牲】：倒れるとエーギルの加算数を得るユニット */
+  egirSacrifice?: Set<number>;
+  /** 戦術【薬効実験】：攻撃時に確率で護盾 */
+  mberry?: { members: Set<number>; prob: number };
+  /** 戦術【リサイクル】：地上オペレーターのスキル終了時に隣の味方のSP回復 */
+  humus?: { sp: number };
 }
 
 export interface BattleOptions {
   banned?: AllianceId[];
   /** このラウンドに獲得したオペレーター数（天師の祭器） */
   roundGained?: number;
+  /** 選んだ戦術 */
+  band?: BandId | null;
 }
 
 export interface BattleSetup {
@@ -560,6 +573,51 @@ export function battleSetup(
         if (front) bonusGain.set(front.uid, (bonusGain.get(front.uid) ?? 0) + Number(g.blackboard.extra_cnt ?? 0));
       }
     }
+  }
+
+  // 戦術
+  const fielded = board.filter((o) => !excluded.has(o.uid));
+  switch (opts.band) {
+    case 'amiya': {
+      const n = statuses.filter((x) => x.level > 0).length;
+      const pct = n >= 5 ? 0.4 : n >= 4 ? 0.3 : n >= 3 ? 0.2 : 0;
+      if (pct) apply(all, { atkPct: pct, hpPct: pct });
+      break;
+    }
+    case 'ioleta': {
+      const elites = fielded.filter((o) => o.star === 2).map((o) => o.uid);
+      apply(elites, { atkPct: 0.1 * elites.length, hpPct: 0.1 * elites.length });
+      break;
+    }
+    case 'dusk': {
+      const count = new Map<string, number>();
+      for (const o of fielded) count.set(o.defId, (count.get(o.defId) ?? 0) + 1);
+      apply(fielded.filter((o) => (count.get(o.defId) ?? 0) >= 2).map((o) => o.uid), { atkPct: 0.3 });
+      break;
+    }
+    case 'chen':
+      apply(all, { weakDamage: true });
+      break;
+    case 'emperor':
+      apply(all, { respawnPct: -0.5 });
+      break;
+    case 'ermengard':
+      globals.bandRevive = 3;
+      break;
+    case 'qalaisa':
+      globals.qalaisa = { atk: 0.2, max: 10 };
+      break;
+    case 'clementia':
+      globals.egirSacrifice = new Set(board.filter((o) => ownedBonds(o).includes('egir')).map((o) => o.uid));
+      break;
+    case 'mberry': {
+      const right = Math.max(...fielded.map((o) => (o.pos === undefined ? -1 : cellX(o.pos))));
+      globals.mberry = { members: new Set(fielded.filter((o) => o.pos !== undefined && cellX(o.pos) === right).map((o) => o.uid)), prob: 0.25 };
+      break;
+    }
+    case 'humus':
+      globals.humus = { sp: 3 };
+      break;
   }
 
   return { statuses, mods, globals, garrisons, rowCount, bonusGain, excluded };

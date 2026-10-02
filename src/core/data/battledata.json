@@ -5381,6 +5381,122 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 0
+  },
+  "enemy_1204_msfhu": {
+   "name": "青磁の茶器",
+   "hp": 4,
+   "def": 0,
+   "res": 0.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "unblockable": true
+  },
+  "enemy_1203_sfhu": {
+   "name": "煮泉",
+   "hp": 6500,
+   "def": 290,
+   "res": 50.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 280,
+    "interval": 3.5,
+    "range": 2.0,
+    "arts": true
+   },
+   "deadSpawn": {
+    "enemy": "enemy_1204_msfhu",
+    "count": 4
+   }
+  },
+  "enemy_1210_msfden": {
+   "name": "銅の燭台",
+   "hp": 35,
+   "def": 0,
+   "res": 0.0,
+   "speed": 0.5,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "unblockable": true,
+   "hitsToKill": true
+  },
+  "enemy_1209_sfden": {
+   "name": "清明",
+   "hp": 14000,
+   "def": 850,
+   "res": 20.0,
+   "speed": 0.7,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 550,
+    "interval": 3.0,
+    "range": 0,
+    "arts": true
+   },
+   "deadSpawn": {
+    "enemy": "enemy_1210_msfden",
+    "count": 1
+   }
+  },
+  "enemy_1162_magmot": {
+   "name": "造波術師搭乗ボート",
+   "hp": 12000,
+   "def": 200,
+   "res": 0.0,
+   "speed": 1.1,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": true,
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 300,
+    "interval": 3.5,
+    "range": 3.0,
+    "arts": true
+   },
+   "element": {
+    "type": "erosion",
+    "ratio": 0.8
+   }
+  },
+  "enemy_1023_jmage": {
+   "name": "迷彩術師",
+   "hp": 2200,
+   "def": 80,
+   "res": 50.0,
+   "speed": 0.8,
+   "blockCnt": 1,
+   "flying": false,
+   "boss": false,
+   "elite": false,
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 350,
+    "interval": 4.0,
+    "range": 2.0,
+    "arts": true
+   },
+   "stealth": true
   }
  },
  "groups": {
@@ -7838,6 +7954,134 @@
      "spawn": 0
     }
    ]
+  }
+ ],
+ "bounties": [
+  {
+   "id": "enemyeffect_10_4",
+   "enemy": "enemy_1005_yokai",
+   "tier": 1,
+   "group": "FLY",
+   "coin": 1
+  },
+  {
+   "id": "enemyeffect_10_5",
+   "enemy": "enemy_1040_bombd",
+   "tier": 2,
+   "group": "FLY",
+   "coin": 2
+  },
+  {
+   "id": "enemyeffect_10_6",
+   "enemy": "enemy_1041_lazerd",
+   "tier": 3,
+   "group": "FLY",
+   "coin": 3
+  },
+  {
+   "id": "enemyeffect_11_4",
+   "enemy": "enemy_1195_sfyin",
+   "tier": 1,
+   "group": "TIMES",
+   "coin": 1
+  },
+  {
+   "id": "enemyeffect_11_5",
+   "enemy": "enemy_1203_sfhu",
+   "tier": 2,
+   "group": "TIMES",
+   "coin": 2
+  },
+  {
+   "id": "enemyeffect_11_6",
+   "enemy": "enemy_1209_sfden",
+   "tier": 3,
+   "group": "TIMES",
+   "coin": 3
+  },
+  {
+   "id": "enemyeffect_12_4",
+   "enemy": "enemy_1148_dssbr",
+   "tier": 1,
+   "group": "ELEMENT",
+   "coin": 1
+  },
+  {
+   "id": "enemyeffect_12_5",
+   "enemy": "enemy_1161_tidmag",
+   "tier": 2,
+   "group": "ELEMENT",
+   "coin": 2
+  },
+  {
+   "id": "enemyeffect_12_6",
+   "enemy": "enemy_1162_magmot",
+   "tier": 3,
+   "group": "ELEMENT",
+   "coin": 3
+  },
+  {
+   "id": "enemyeffect_13_4",
+   "enemy": "enemy_1267_nhpbr_2",
+   "tier": 1,
+   "group": "DOT",
+   "coin": 1
+  },
+  {
+   "id": "enemyeffect_13_5",
+   "enemy": "enemy_1270_nhstlk",
+   "tier": 2,
+   "group": "DOT",
+   "coin": 2
+  },
+  {
+   "id": "enemyeffect_13_6",
+   "enemy": "enemy_1272_nhtank",
+   "tier": 3,
+   "group": "DOT",
+   "coin": 3
+  },
+  {
+   "id": "enemyeffect_14_4",
+   "enemy": "enemy_1019_jshoot",
+   "tier": 1,
+   "group": "INVISIBLE",
+   "coin": 1
+  },
+  {
+   "id": "enemyeffect_14_5",
+   "enemy": "enemy_1023_jmage",
+   "tier": 2,
+   "group": "INVISIBLE",
+   "coin": 2
+  },
+  {
+   "id": "enemyeffect_14_6",
+   "enemy": "enemy_1299_ymkilr",
+   "tier": 3,
+   "group": "INVISIBLE",
+   "coin": 3
+  },
+  {
+   "id": "enemyeffect_15_4",
+   "enemy": "enemy_1169_duphlx",
+   "tier": 1,
+   "group": "REFLECTION",
+   "coin": 1
+  },
+  {
+   "id": "enemyeffect_15_5",
+   "enemy": "enemy_1168_dumage",
+   "tier": 2,
+   "group": "REFLECTION",
+   "coin": 2
+  },
+  {
+   "id": "enemyeffect_15_6",
+   "enemy": "enemy_1174_duholy",
+   "tier": 3,
+   "group": "REFLECTION",
+   "coin": 3
   }
  ]
 }

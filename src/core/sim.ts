@@ -68,6 +68,8 @@ export interface EnemyMeta {
   boss: boolean;
   flying: boolean;
   maxHp: number;
+  /** 懸賞の資金 */
+  bounty?: number;
 }
 
 /** リプレイ用のコマ：敵ごとに [id, x*100, y*100, HP%] と、スキル中のユニット */
@@ -112,6 +114,9 @@ export interface BattleResult {
   opBursts: number;
   enBursts: number;
   enemies: EnemyMeta[];
+  /** 懸賞の敵を倒して得た資金 */
+  bountyGold: number;
+  bountyKills: number;
   frames?: ReplayFrame[];
 }
 
@@ -494,6 +499,8 @@ interface EnemyInput {
   /** 経路（マス番号）。null なら動かない標的 */
   path: number[] | null;
   phases?: EnemyPhase[];
+  /** 懸賞：倒すと得る資金 */
+  bounty?: number;
 }
 
 interface Enemy {
@@ -582,6 +589,11 @@ interface Runtime {
   counterReadyAt: number;
   /** 狩人：弾数とリロード */
   huntAmmo: number;
+  /** 戦術【食腐の蝶】：味方が倒れるたびに得た攻撃力の層 */
+  qalaisaStacks: number;
+  /** 戦術【薬枚実験】：護盾（被弾1回を無効化）と確率の累積 */
+  mberryShield: number;
+  mberryAcc: number;
   lastAttackAt: number;
   /** バリア（残量・減る速さ） */
   barrier: number;
@@ -671,6 +683,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       philaeBoost: false,
       counterReadyAt: 0,
       huntAmmo: HUNTER_AMMO,
+      qalaisaStacks: 0,
+      mberryShield: 0,
+      mberryAcc: 0,
       lastAttackAt: -99,
       barrier: 0,
       barrierDecay: 0,
@@ -1049,6 +1064,16 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const endSkill = (u: Runtime) => {
     setSkillHp(u, false);
+    // 戦術【回収利用】：地上オペレーターのスキル終了時、周囲4マスのランダムな味方1名のSP回復
+    if (g.humus && u.melee && u.input.pos !== undefined) {
+      const p = u.input.pos;
+      const near = rt.filter(
+        (o) => o !== u && o.alive && o.input.pos !== undefined && Math.abs(cellX(o.input.pos) - cellX(p)) + Math.abs(cellY(o.input.pos) - cellY(p)) === 1,
+      );
+      // ランダムの代わりに、SPの割合が最も低い1名（戦闘を決定的にするため）
+      const pick = near.sort((a, b) => a.sp / Math.max(1, a.skill.spCost) - b.sp / Math.max(1, b.skill.spCost))[0];
+      if (pick) pick.sp += g.humus.sp;
+    }
     u.philaeBoost = false;
     u.sp += u.input.mods.spOnSkillEnd ?? 0;
     if (!u.firstEndDone) {
@@ -1177,6 +1202,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   // ------------------------------------------------------------
   let indomAcc = 0;
   let egirRevives = g.egirRevive?.count ?? 0;
+  let bandRevives = g.bandRevive ?? 0;
 
   /** 防御・術耐性・被ダメージ軽減を通したダメージ */
   const mitigate = (u: Runtime, raw: number, arts: boolean) => {
@@ -1199,6 +1225,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.blocked = [];
     u.skillLeft = 0;
     u.ammoLeft = 0;
+    u.qalaisaStacks = 0;
+    u.mberryShield = 0;
     if (field && u.input.pos !== undefined) u.redeployAt = t + u.respawn;
   };
 
@@ -1214,6 +1242,16 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     // 不屈Lv2：地上オペレーターが倒れると全員のSP回復
     if (ground && g.indom?.sp) for (const o of rt) if (o.alive && o !== u) o.sp += g.indom.sp;
+    // 戦術【崇高な犠牲】：エーギルが倒れると、その等級だけエーギルの加算数
+    if (g.egirSacrifice?.has(u.input.uid)) stackGains.egir = (stackGains.egir ?? 0) + u.input.def.tier;
+    // 戦術【食腐の蝶】：倒れるたびに、場に残る味方の攻撃力上昇
+    if (g.qalaisa) for (const o of rt) if (o.alive && o !== u) o.qalaisaStacks = Math.min(g.qalaisa.max, o.qalaisaStacks + 1);
+    // 戦術【命結の秘】：戦闘中に最初に倒れた数名は即座に復活
+    if (bandRevives > 0) {
+      bandRevives--;
+      u.hp = u.maxHp;
+      return;
+    }
     // エーギルLv2：最初に倒れたエーギル数名は即座に復活
     if (g.egirRevive?.members.has(u.input.uid) && egirRevives > 0) {
       egirRevives--;
@@ -1326,6 +1364,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const hurt = (u: Runtime, raw: number, arts: boolean, src: Enemy) => {
     philaeCounter(u);
+    // 戦術【薬枚実験】：護盾で被弾1回を無効化
+    if (u.mberryShield > 0) {
+      u.mberryShield--;
+      return;
+    }
     let dmg = mitigate(u, raw, arts);
     const sd = g.stead;
     if (sd && sd.members.has(u.input.uid)) steadReflect(u, src);
@@ -1751,7 +1794,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         lateranoAtk +
         castAtk +
         (swire ? u.swireStacks * swire.atkPerStack : 0) +
-        u.talentStacks * (ELEMENT_TALENT[def.charId]?.atkPerApoptosisBurst?.atk ?? 0);
+        u.talentStacks * (ELEMENT_TALENT[def.charId]?.atkPerApoptosisBurst?.atk ?? 0) +
+        u.qalaisaStacks * (g.qalaisa?.atk ?? 0);
       // 琳琅スワイヤー：コインを使って「シャンパン爆弾」（範囲内の敵に物理ダメージ）
       if (swire && field) {
         u.bombTimer -= dt;
@@ -1830,6 +1874,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         if (hunter) {
           u.huntAmmo -= 1;
           u.lastAttackAt = t;
+        }
+        // 戦術【薬枚実験】：攻撃時に確率で護盾（最大1層。期待値で扱う）
+        if (g.mberry?.members.has(uid) && u.mberryShield < 1) {
+          u.mberryAcc += g.mberry.prob;
+          if (u.mberryAcc >= 1) {
+            u.mberryAcc -= 1;
+            u.mberryShield = 1;
+          }
         }
         // 狩人は弾を消費して攻撃力120%
         for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1));
@@ -1938,7 +1990,7 @@ export function roundEnemies(spec: RoundSpec): EnemyInput[] {
     const scaled = scaledEnemy(enemy);
     const ds = enemy.deadSpawn;
     const child = ds && ENEMIES[ds.enemy] ? { key: ds.enemy, spec: scaledEnemy(ENEMIES[ds.enemy]), count: ds.count } : undefined;
-    for (let i = 0; i < s.count; i++) out.push({ key: s.enemy, spec: scaled, child, spawnAt: s.delay + i * s.interval, path });
+    for (let i = 0; i < s.count; i++) out.push({ key: s.enemy, spec: scaled, child, spawnAt: s.delay + i * s.interval, path, bounty: s.bounty });
   }
   return out;
 }
@@ -1993,7 +2045,9 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     l.lifeLoss += loss;
     leakMap.set(e.input.key, l);
   }
-  const killed = r.enemies.filter((e) => e.spawned && !e.alive && !e.leaked).length;
+  const isKilled = (e: (typeof r.enemies)[number]) => e.spawned && !e.alive && !e.leaked;
+  const killed = r.enemies.filter(isKilled).length;
+  const bountyKilled = r.enemies.filter((e) => e.input.bounty && isKilled(e));
   const totalHp = r.enemies.reduce((s, e) => s + e.input.spec.hp, 0);
   const perUnit = r.units.map((u) => ({ ...u.result, damage: Math.round(u.result.damage) }));
   return {
@@ -2016,7 +2070,9 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     freezes: r.freezes,
     opBursts: r.opBursts,
     enBursts: r.enBursts,
-    enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying, maxHp: e.input.spec.hp })),
+    enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying, maxHp: e.input.spec.hp, bounty: e.input.bounty })),
+    bountyGold: bountyKilled.reduce((sum, e) => sum + (e.input.bounty ?? 0), 0),
+    bountyKills: bountyKilled.length,
     frames: opts.record ? r.frames : undefined,
   };
 }

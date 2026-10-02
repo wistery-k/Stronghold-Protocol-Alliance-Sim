@@ -1,5 +1,7 @@
 import { ALLIANCES } from '../core/data/alliances';
-import { groupLabel, groupName, roundEnemySummary, roundSpec } from '../core/data/battle';
+import { ENEMIES, getBounty, groupLabel, groupName, roundEnemySummary, roundSpec } from '../core/data/battle';
+import { getBand } from '../core/data/bands';
+import { ENEMY_HP_SCALE } from '../core/rules';
 import { activeAllianceIds, evaluateAlliances, unitAlliances } from '../core/alliance';
 import { benchUnits } from '../core/garrison';
 import {
@@ -58,7 +60,54 @@ function topBar(state: GameState, extra: HTMLElement | null = null) {
     { class: 'topbar' },
     h('div', { class: 'stat' }, h('span', { class: 'label' }, 'ラウンド'), h('b', null, `${state.round}/${MAX_ROUND}`)),
     h('div', { class: `stat ${state.life <= 5 ? 'warn' : ''}` }, h('span', { class: 'label' }, '耐久値'), h('b', null, state.life)),
+    bandStat(state),
     extra,
+  );
+}
+
+/** 選んだ戦術（マウスオーバーで効果） */
+function bandStat(state: GameState): HTMLElement | null {
+  const band = getBand(state.band);
+  if (!band) return null;
+  const note = band.impl === 'full' ? '' : `\n※${band.note ?? '未実装'}`;
+  return h(
+    'div',
+    { class: 'stat band-stat', title: `${band.description}${note}` },
+    h('span', { class: 'label' }, '戦術'),
+    h('b', null, `${band.leader}【${band.name}】`),
+  );
+}
+
+/** 懸賞の候補（3ラウンド開始時に提示） */
+function bountyPanel(state: GameState, dispatch: (a: Action) => void): HTMLElement | null {
+  const offer = state.bounty.offer;
+  if (!offer) return null;
+  return h(
+    'section',
+    { class: 'panel elite' },
+    h('div', { class: 'panel-head' }, h('h2', null, '懸賞：対象を1つ選択'), h('span', { class: 'muted small' }, '選んだ敵が3・4ラウンドに追加で出現し、倒すと資金を獲得（次のラウンドに支給）')),
+    h(
+      'div',
+      { class: 'bounty-list' },
+      offer.map((id, index) => {
+        const b = getBounty(id)!;
+        const e = ENEMIES[b.enemy];
+        return h(
+          'button',
+          { class: 'bounty-card', onclick: () => dispatch({ type: 'pickBounty', index }) },
+          h('div', { class: 'bounty-tier' }, `懸賞・${groupName(b.group)}${'I'.repeat(b.tier)}`),
+          h('b', null, e?.name ?? b.enemy),
+          h('div', { class: 'small' }, `撃破で資金+${b.coin}`),
+          e
+            ? h(
+                'div',
+                { class: 'muted small' },
+                `HP ${Math.round(e.boss ? e.hp : e.hp * ENEMY_HP_SCALE)}・防御 ${e.def}・術耐 ${e.res}${e.flying ? '・飛行' : ''}${e.stealth ? '・潜行' : ''}`,
+              )
+            : null,
+        );
+      }),
+    ),
   );
 }
 
@@ -209,7 +258,7 @@ function prepView(p: GameViewProps): HTMLElement {
   const activeIds = activeAllianceIds(statuses);
   // 戦闘開始時（準備フェーズ終了時の特性・配置時の特性の後）の加算数で予測する
   const battleStacks = previewBattleStacks(state);
-  const setup = buildSimInputs(state.board, bench, battleStacks, { banned: state.banned, roundGained: state.round_.gained });
+  const setup = buildSimInputs(state.board, bench, battleStacks, { banned: state.banned, roundGained: state.round_.gained, band: state.band });
   const predictOpts = { globals: setup.globals, activeAlliances: activeAllianceIds(setup.statuses), stacks: battleStacks };
   const prediction = cachedPrediction(setup.inputs, spec, predictOpts);
   const lvCost = levelUpCost(state);
@@ -217,7 +266,13 @@ function prepView(p: GameViewProps): HTMLElement {
   const ownedNormal = new Set(allOwned(state).filter((o) => o.star === 1).map((o) => o.defId));
   const hasChoice = state.choices.length > 0;
   const overflow = benchOverflow(state);
-  const blockReason = hasChoice ? '無料獲得の候補を先に選んでください' : overflow > 0 ? `控えが上限を${overflow}つ超えています` : null;
+  const blockReason = hasChoice
+    ? '無料獲得の候補を先に選んでください'
+    : state.bounty.offer
+      ? '懸賞の対象を選んでください'
+      : overflow > 0
+        ? `控えが上限を${overflow}つ超えています`
+        : null;
 
   // 詳細表示：マウスオーバー中のユニットを優先し、なければ選択中のユニット。
   // マウスオーバーでは全体を再描画せず（ドラッグが途切れるため）、詳細パネルだけを差し替える
@@ -397,8 +452,8 @@ function prepView(p: GameViewProps): HTMLElement {
           {
             class: 'btn primary big',
             onclick: () => {
-              // 資金が残っていれば確認する
-              if (state.gold > 0) {
+              // 資金が残っていれば確認する（戦術【複利】は繰り越せるので確認しない）
+              if (state.gold > 0 && state.band !== 'cannot') {
                 confirmBattle = true;
                 select(selectedUid);
                 return;
@@ -446,6 +501,7 @@ function prepView(p: GameViewProps): HTMLElement {
           ),
           h('div', { class: 'cards bench' }, benchSlots),
         ),
+        bountyPanel(state, dispatch),
         choicePanel,
         shopPanel,
       ),

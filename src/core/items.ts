@@ -109,7 +109,8 @@ export function equipNeedsDiscard(state: GameState, itemUid: number, unit: Owned
   const item = state.bench.find((i) => isItemEntry(i) && i.uid === itemUid) as OwnedItem | undefined;
   if (!item) return false;
   const def = getItem(item.itemId);
-  const anyone = !!findBuff(itemState(def, item.star), 'equip_round_start_upgrade_char');
+  const st = itemState(def, item.star);
+  const anyone = !!findBuff(st, 'equip_round_start_upgrade_char') || !!findBuff(st, 'use_equip_upgrade_char');
   return !isConsumable(def) && !anyone && (unit.items?.length ?? 0) >= MAX_EQUIP;
 }
 
@@ -121,6 +122,14 @@ export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit, di
   const st = itemState(def, item.star);
   const consumable = isConsumable(def);
   const anyone = !!findBuff(st, 'equip_round_start_upgrade_char');
+  // 精鋭のドクターのホログラム：誰でも装備でき、即座に精鋭化
+  if (findBuff(st, 'use_equip_upgrade_char')) {
+    if (unit.star === 2) return 'すでに精鋭化しています';
+    state.bench[idx] = null;
+    unit.star = 2;
+    notify(state, `${st.name}：${getUnit(unit.defId).name} を精鋭化`);
+    return undefined;
+  }
   if (!consumable && !anyone && (unit.items?.length ?? 0) >= MAX_EQUIP) {
     // 指定された装備を破棄して付け替える
     const old = unit.items?.find((i) => i.uid === discardUid);

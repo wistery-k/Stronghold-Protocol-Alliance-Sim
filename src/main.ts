@@ -1,15 +1,22 @@
 import { applyAction, createGame, type Action, type GameState } from './core/game';
 import { h } from './ui/dom';
 import { gameView } from './ui/gameView';
+import { bandView } from './ui/bandView';
+import type { BandId } from './core/data/bands';
 import { createSandbox, sandboxView, type SandboxState } from './ui/sandboxView';
 
-const SAVE_KEY = 'sp-sim:game:v8';
+const SAVE_KEY = 'sp-sim:game:v9';
 
 type Mode = 'game' | 'sandbox';
 
+const saved = loadGame();
 const app = {
   mode: 'game' as Mode,
-  game: loadGame() ?? createGame(),
+  game: saved ?? createGame(),
+  /** 戦術の選択中（保存されたゲームが無い時と「新しいゲーム」の時） */
+  choosingBand: !saved,
+  /** 遊べるゲームがある（戦術選択をキャンセルできる） */
+  hasGame: !!saved,
   sandbox: createSandbox(),
   selectedUid: null as number | null,
   toast: null as string | null,
@@ -22,7 +29,7 @@ function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
-    return s.version === 8 ? s : null;
+    return s.version === 9 ? s : null;
   } catch {
     return null;
   }
@@ -54,7 +61,14 @@ function dispatch(a: Action) {
 }
 
 function newGame() {
-  app.game = createGame();
+  app.choosingBand = true;
+  render();
+}
+
+function startGame(band: BandId) {
+  app.game = createGame(undefined, { band });
+  app.choosingBand = false;
+  app.hasGame = true;
   app.selectedUid = null;
   saveGame();
   render();
@@ -64,7 +78,9 @@ function render() {
   const root = document.getElementById('app')!;
   const scrollY = window.scrollY;
   const view =
-    app.mode === 'game'
+    app.mode === 'game' && app.choosingBand
+      ? bandView(startGame, app.hasGame && app.game.phase !== 'gameover' && app.game.phase !== 'clear' ? () => { app.choosingBand = false; render(); } : null)
+      : app.mode === 'game'
       ? gameView({
           state: app.game,
           selectedUid: app.selectedUid,
@@ -90,7 +106,7 @@ function render() {
       h('button', { class: `tab ${app.mode === 'game' ? 'on' : ''}`, onclick: () => { app.mode = 'game'; render(); } }, 'プレイ'),
       h('button', { class: `tab ${app.mode === 'sandbox' ? 'on' : ''}`, onclick: () => { app.mode = 'sandbox'; render(); } }, 'サンドボックス'),
     ),
-    app.mode === 'game'
+    app.mode === 'game' && !app.choosingBand
       ? h('button', { class: 'btn ghost', onclick: () => { if (confirm('現在のゲームを破棄して新しく始めますか？')) newGame(); } }, '新しいゲーム')
       : null,
   );

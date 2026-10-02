@@ -1,6 +1,33 @@
 import { Rng } from './rng';
 import { notify, trimLog } from './log';
-import { pickGroupTypes, pickRoundGroup, roundSpec, type EnemyGroupType, type RoundGroup, type RoundSpec } from './data/battle';
+import {
+  BOUNTIES,
+  BOUNTY_OFFER_ROUND,
+  ENEMIES,
+  getBounty,
+  pickGroupTypes,
+  pickRoundGroup,
+  roundSpec,
+  withBounty,
+  type EnemyGroupType,
+  type RoundGroup,
+  type RoundSpec,
+} from './data/battle';
+import { getBand, type BandId } from './data/bands';
+import {
+  bandAfterRefresh,
+  bandIncome,
+  bandKeepsGold,
+  bandOnBuy,
+  bandOnLevelUp,
+  bandOnSell,
+  bandOnSpend,
+  bandPrepFinish,
+  bandPrice,
+  bandRoundStart,
+  newBandState,
+  type BandState,
+} from './band';
 import { UNITS, getUnit, unitState } from './data/units';
 import { activeAllianceIds, battleSetup, evaluateAlliances, type AllianceStatus, type BattleOptions } from './alliance';
 import {
@@ -42,7 +69,6 @@ import {
   buyPrice,
   DEPLOY_CAP,
   MAX_LIFE_LOSS,
-  roundIncome,
   sellPriceOf,
   shopSlots,
 } from './rules';
@@ -72,7 +98,12 @@ export interface BattleReport {
 }
 
 export interface GameState {
-  version: 8;
+  version: 9;
+  /** 選んだ戦術（null = なし） */
+  band: BandId | null;
+  bandState: BandState;
+  /** 懸賞：提示中の候補と、選んだ懸賞（3〜4ラウンドに出現） */
+  bounty: { offer: string[] | null; picked: string | null };
   seed: number;
   rngState: number;
   round: number;
@@ -132,6 +163,7 @@ export type Action =
   | { type: 'turn'; uid: number; dir: Direction }
   | { type: 'choose'; index: number }
   | { type: 'skipChoice' }
+  | { type: 'pickBounty'; index: number }
   | { type: 'refresh' }
   | { type: 'levelUp' }
   | { type: 'toggleFreeze' }
@@ -150,6 +182,8 @@ export interface ActionResult {
 export interface GameOptions {
   /** 盟約BAN：'random' = 核心盟約3つ・追加盟約4つをランダムに、'none' = なし */
   ban?: 'random' | 'none';
+  /** 戦術 */
+  band?: BandId | null;
 }
 
 /** ラウンドの敵グループ（シードとラウンドで決まる） */
@@ -158,8 +192,8 @@ export function roundGroupOf(state: Pick<GameState, 'seed' | 'enemyTypes'>, roun
 }
 
 /** ラウンドの敵の出現（敵グループを反映） */
-export function roundSpecOf(state: Pick<GameState, 'seed' | 'enemyTypes'>, round: number): RoundSpec {
-  return roundSpec(round, roundGroupOf(state, round));
+export function roundSpecOf(state: Pick<GameState, 'seed' | 'enemyTypes'> & { bounty?: GameState['bounty'] }, round: number): RoundSpec {
+  return withBounty(roundSpec(round, roundGroupOf(state, round)), getBounty(state.bounty?.picked));
 }
 
 export const BAN_CORE_COUNT = 3;
@@ -170,13 +204,17 @@ const BAN_EXEMPT: AllianceId[] = ['invest', 'mani', 'empty'];
 export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: GameOptions = {}): GameState {
   const pool: Record<string, number> = {};
   for (const u of UNITS) pool[u.id] = POOL_COPIES[u.tier];
+  const band = opts.band ?? null;
   const state: GameState = {
-    version: 8,
+    version: 9,
+    band,
+    bandState: newBandState(),
+    bounty: { offer: null, picked: null },
     seed,
     rngState: seed,
     round: 1,
-    life: START_LIFE,
-    gold: roundIncome(1),
+    life: getBand(band)?.life ?? START_LIFE,
+    gold: bandIncome({ band }, 1),
     level: 1,
     levelDiscount: 0,
     shop: [],
@@ -217,6 +255,7 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
     });
   }
   rollShop(state);
+  bandRoundStart(state);
   return state;
 }
 
@@ -276,7 +315,7 @@ export function priceOf(state: GameState, defId: string): number {
   let price = buyPrice(def.tier) - (discount ? Number(discount.blackboard.price) : 0);
   if (state.rewards.allDiscount) price -= 1;
   else if (state.rewards.visiDiscount && def.bonds.includes('visi')) price -= 1;
-  return Math.max(0, price);
+  return bandPrice(state, defId, Math.max(0, price));
 }
 
 export function sellPrice(o: OwnedUnit): number {
@@ -286,6 +325,7 @@ export function sellPrice(o: OwnedUnit): number {
 function spend(state: GameState, amount: number) {
   state.gold -= amount;
   state.round_.spent += amount;
+  bandOnSpend(state, amount);
 }
 
 // ------------------------------------------------------------
@@ -318,6 +358,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       spend(state, price);
       state.shop[action.slot] = null;
       state.log.push(`${def.name} を招集（-${price}）`);
+      bandOnBuy(state, defId);
       gainUnit(state, defId);
       return { state };
     }
@@ -325,6 +366,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       const f = findOwned(state, action.uid);
       if (!f) return fail('ユニットが見つかりません');
       const def = getUnit(f.unit.defId);
+      if (bandOnSell(state, f.unit)) return { state };
       triggerGarrisons(state, 'SERVER_CHESS_SOLD', [{ unit: f.unit, where: f.where }]);
       if (f.where === 'board') state.board.splice(f.index, 1);
       else state.bench[f.index] = null;
@@ -414,6 +456,14 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       state.bench = compactBench(state.bench);
       return { state };
     }
+    case 'pickBounty': {
+      const id = state.bounty.offer?.[action.index];
+      if (!id) return fail('懸賞の候補がありません');
+      state.bounty = { offer: null, picked: id };
+      const b = getBounty(id)!;
+      notify(state, `懸賞：${ENEMIES[b.enemy]?.name ?? b.enemy}（撃破で資金+${b.coin}）を選択`);
+      return { state };
+    }
     case 'skipChoice': {
       if (!state.choices.length) return fail('選択肢がありません');
       state.choices.shift();
@@ -441,6 +491,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       state.frozen = false;
       state.round_.refreshes++;
       rollShop(state);
+      bandAfterRefresh(state);
       state.log.push(label);
       const active = currentActive(state);
       if (active.has('mira')) {
@@ -461,6 +512,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       state.level++;
       state.levelDiscount = 0;
       state.log.push(`管理レベル${state.level}に上昇（-${cost}）`);
+      bandOnLevelUp(state);
       return { state };
     }
     case 'toggleFreeze': {
@@ -469,6 +521,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
     }
     case 'battle': {
       if (state.choices.length) return fail(CHOICE_LOCK_MESSAGE);
+      if (state.bounty.offer) return fail('懸賞の対象を先に選んでください');
       if (benchOverflow(state) > 0) return fail(`控えが上限を${benchOverflow(state)}名超えています。配置するか売却してください`);
       normalizePositions(state.board);
       resolveBattle(state);
@@ -491,7 +544,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
 function startRound(state: GameState, round: number): void {
   state.round = round;
   state.phase = 'prep';
-  const income = roundIncome(round);
+  const income = bandIncome(state, round);
   state.gold += income + state.pendingGold + state.extraRoundGold;
   if (state.pendingGold) notify(state, `追加資金+${state.pendingGold}`);
   if (state.extraRoundGold) notify(state, `倹約家の人形：資金+${state.extraRoundGold}`);
@@ -503,6 +556,20 @@ function startRound(state: GameState, round: number): void {
   state.frozen = false;
   triggerGarrisons(state, 'SERVER_PREP_START', allTargets(state));
   stackRewards(state, currentActive(state));
+  bandRoundStart(state);
+  if (round === BOUNTY_OFFER_ROUND && !state.bounty.picked) state.bounty.offer = rollBountyOffer(state);
+}
+
+/** 懸賞の候補：I〜IIIの各段階から1つずつ。このゲームで選ばれた敵グループの種類を優先する */
+function rollBountyOffer(state: GameState): string[] {
+  return withRng(state, (rng) =>
+    [1, 2, 3].flatMap((tier) => {
+      const all = BOUNTIES.filter((b) => b.tier === tier);
+      const preferred = all.filter((b) => state.enemyTypes.includes(b.group));
+      const cands = preferred.length ? preferred : all;
+      return cands.length ? [cands[rng.int(cands.length)].id] : [];
+    }),
+  );
 }
 
 /** ユニットを盤面のマス・控えの枠へ移動する。移動先にユニットがいれば入れ替える */
@@ -601,25 +668,34 @@ export function previewBattleStacks(state: GameState): Partial<Record<AllianceId
 
 function prepFinish(state: GameState): void {
   triggerGarrisons(state, 'SERVER_PREP_FIN', allTargets(state));
+  bandPrepFinish(state);
   deputBonus(state);
   onDeployStacks(state);
 }
 
 function resolveBattle(state: GameState): void {
-  // 使い切れなかった資金は繰り越さない（戦闘後に得た資金は次のラウンドで使える）
-  if (state.gold > 0) notify(state, `残った資金${state.gold}は失われた`);
-  state.gold = 0;
+  // 使い切れなかった資金は繰り越さない（戦闘後に得た資金は次のラウンドで使える）。戦術【複利】なら繰り越す
+  if (bandKeepsGold(state)) {
+    state.bandState.carried = state.gold;
+  } else {
+    if (state.gold > 0) notify(state, `残った資金${state.gold}は失われた`);
+    state.gold = 0;
+  }
   const before = { ...state.stacks };
   prepFinish(state);
 
   const bench = benchUnits(state);
-  const { statuses, inputs, globals } = buildSimInputs(state.board, bench, state.stacks, { banned: state.banned, roundGained: state.round_.gained });
+  const { statuses, inputs, globals } = buildSimInputs(state.board, bench, state.stacks, { banned: state.banned, roundGained: state.round_.gained, band: state.band });
   const spec = roundSpecOf(state, state.round);
   const sim = simulateBattle(inputs, spec, { globals, activeAlliances: activeAllianceIds(statuses), stacks: state.stacks, record: true });
   const afterPrep = { ...state.stacks };
   const active = activeAllianceIds(evaluateAlliances(state.board, bench, state.banned));
   for (const [b, n] of Object.entries(sim.stackGains) as [AllianceId, number][]) addStacks(state, b, n, active);
 
+  if (sim.bountyGold > 0) {
+    state.pendingGold += sim.bountyGold;
+    notify(state, `懸賞の敵を撃破：次のラウンドに資金+${sim.bountyGold}`);
+  }
   const lost = Math.min(sim.lifeLoss, MAX_LIFE_LOSS);
   state.life = Math.max(0, state.life - lost);
   itemBattleEnd(state);
@@ -646,7 +722,7 @@ function resolveBattle(state: GameState): void {
     stacksFromPrep: diff(before, afterPrep),
     stacksFromBattle: diff(afterPrep, state.stacks),
     alliances: statuses,
-    nextIncome: last ? null : { base: roundIncome(state.round + 1), extra: state.pendingGold },
+    nextIncome: last ? null : { base: bandIncome(state, state.round + 1), extra: state.pendingGold },
   };
   state.history.push({ round: state.round, killed: sim.cleared, lifeLost: lost });
   notify(state, 

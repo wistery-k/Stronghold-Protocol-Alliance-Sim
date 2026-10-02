@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { battleSetup, evaluateAlliances } from '../src/core/alliance';
 import { behindOf, frontOf, sameRow } from '../src/core/board';
-import { applyAction, createGame, levelUpCost, priceOf, type GameState } from '../src/core/game';
+import { applyAction, createGame, levelUpCost, priceOf, roundSpecOf, type GameState } from '../src/core/game';
 import { UNITS, getUnit } from '../src/core/data/units';
 import { BENCH_SIZE, DEPLOY_CAP, roundIncome } from '../src/core/rules';
 import type { OwnedItem, OwnedUnit } from '../src/core/types';
@@ -413,5 +413,73 @@ describe('凍結', () => {
     s = applyAction(s, { type: 'next' }).state;
     expect(s.shop[0]).not.toBeNull();
     expect(s.shop.slice(1)).toEqual(before.slice(1));
+  });
+});
+
+describe('戦術と懸賞', () => {
+  const advance = (s: GameState) => {
+    s = applyAction(s, { type: 'battle' }).state;
+    return applyAction(s, { type: 'next' }).state;
+  };
+
+  it('戦術で初期耐久値が決まる', () => {
+    expect(createGame(1, { band: 'sarkazb' }).life).toBe(45);
+    expect(createGame(1, { band: 'lisa' }).life).toBe(20);
+  });
+
+  it('3ラウンド開始時に懸賞が提示され、選ぶまで戦闘できない。選んだ敵は3・4ラウンドに出る', () => {
+    let s = createGame(3);
+    s = advance(advance(s));
+    expect(s.round).toBe(3);
+    expect(s.bounty.offer?.length).toBe(3);
+    expect(applyAction(s, { type: 'battle' }).error).toBeDefined();
+    s = applyAction(s, { type: 'pickBounty', index: 0 }).state;
+    expect(s.bounty.offer).toBe(null);
+    const spec3 = roundSpecOf(s, 3);
+    expect(spec3.spawns.some((x) => x.bounty)).toBe(true);
+    expect(roundSpecOf(s, 4).spawns.some((x) => x.bounty)).toBe(true);
+    expect(roundSpecOf(s, 5).spawns.some((x) => x.bounty)).toBe(false);
+  });
+
+  it('リー：1・2ラウンドの資金を3ラウンドにまとめて支給し、2等級と4等級を獲得', () => {
+    let s = createGame(1, { band: 'lmlee' });
+    expect(s.gold).toBe(0);
+    s = advance(s);
+    expect(s.gold).toBe(0);
+    s = advance(s);
+    expect(s.gold).toBe(4 + 5 + 6);
+    const tiers = owned(s).map((o) => getUnit(o.defId).tier).sort();
+    expect(tiers).toEqual([2, 4]);
+  });
+
+  it('キャノット：資金を繰り越し、5以上なら利子+1', () => {
+    let s = createGame(1, { band: 'cannot' });
+    s = advance(s);
+    expect(s.gold).toBe(4 + 5 + 0); // 4は5未満なので利子なし
+    s = advance(s);
+    expect(s.gold).toBe(9 + 6 + 1);
+  });
+
+  it('スキウルス：毎ラウンド最初のイェラグは資金1', () => {
+    const s = withShop(createGame(1, { band: 'sciurus' }), ['マッターホルン', 'スノーハンター']);
+    expect(priceOf(s, id('マッターホルン'))).toBe(1);
+    const s2 = applyAction(s, { type: 'buy', slot: 0 }).state;
+    expect(s2.gold).toBe(99);
+    expect(priceOf(s2, id('スノーハンター'))).toBeGreaterThan(1);
+  });
+
+  it('キララ：資金を20使うごとにオペレーターを獲得', () => {
+    let s = withShop(createGame(1, { band: 'kirara' }), [], 100);
+    while (s.bandState.spent < 19) s = applyAction(s, { type: 'refresh' }).state;
+    expect(owned(s).length).toBe(0);
+    s = applyAction(s, { type: 'refresh' }).state;
+    expect(owned(s).length).toBe(1);
+  });
+
+  it('ワルファリン：戦闘開始時に等級ごとに1名の盟約の加算数+2', () => {
+    let s = createGame(1, { band: 'bldsk' });
+    s = { ...s, board: [{ ...ou(1, 'マッターホルン'), pos: 31, dir: 'right' }] };
+    s = applyAction(s, { type: 'battle' }).state;
+    expect(s.stacks.kjerag ?? 0).toBeGreaterThan(1);
   });
 });

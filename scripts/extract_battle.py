@@ -29,6 +29,8 @@ ENEMY_NAME_OVERRIDES = {
     'enemy_9015_acstmb': '「冑を砕く鎚」',
 }
 
+# 懸賞は、序盤（3〜4ラウンド）向けの enemyeffect_10〜15_4〜6（I〜III）を使う
+
 # ステージファイルの敵は「枠」で、ラウンドごとに選ばれた敵グループの敵に置き換わる
 SLOT_ROLES = {
     'enemy_1007_slime': 'normal',
@@ -48,6 +50,16 @@ GROUP_NAMES = {
     'DOT': '持続',
     'INVISIBLE': '潜行',
     'REFLECTION': '屈折',
+}
+
+# 懸賞の分類 → 敵グループ（懸賞は、そのゲームで選ばれた敵グループの種類から提示する）
+BOUNTY_GROUPS = {
+    '飞行': 'FLY',
+    '频次': 'TIMES',
+    '损伤': 'ELEMENT',
+    '持续': 'DOT',
+    '隐匿': 'INVISIBLE',
+    '折射': 'REFLECTION',
 }
 
 # 元素損傷の種類（図鑑の説明のタグ → シミュレーターの名前）
@@ -276,10 +288,31 @@ def main():
             'spawns': spawns,
         })
 
-    out = {'ranges': ranges, 'unitRanges': unit_ranges, 'enemies': enemies, 'groups': groups, 'firstHalfRounds': FIRST_HALF_ROUNDS, 'rounds': rounds}
+    # ---------------- 懸賞（倒すと資金を得る追加の敵。I〜IIIの3段階） ----------------
+    bounties = []
+    for eff_id, info in act['effectInfoDataDict'].items():
+        m = re.match(r'^悬赏·(.+?)(I{1,3})$', info['effectName'])
+        if not m or not re.match(r'^enemyeffect_1[0-5]_[4-6]$', eff_id) or m.group(1) not in BOUNTY_GROUPS:
+            continue
+        buff = (act['effectBuffInfoDataDict'].get(eff_id) or [{}])[0]
+        bb = {b['key']: b for b in buff.get('blackboard', [])}
+        if buff.get('key') != 'add_enemy_kill_gain_coin' or 'enemy_id' not in bb:
+            continue
+        key = bb['enemy_id']['valueStr']
+        if not add_enemy(key):
+            continue
+        bounties.append({
+            'id': eff_id,
+            'enemy': key,
+            'tier': len(m.group(2)),
+            'group': BOUNTY_GROUPS[m.group(1)],
+            'coin': int(bb['coin']['value']),
+        })
+
+    out = {'ranges': ranges, 'unitRanges': unit_ranges, 'enemies': enemies, 'groups': groups, 'firstHalfRounds': FIRST_HALF_ROUNDS, 'rounds': rounds, 'bounties': bounties}
     dest = Path(__file__).resolve().parent.parent / 'src/core/data/battledata.json'
     dest.write_text(json.dumps(out, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
-    print(f'wrote {dest} ({len(ranges)} ranges, {len(enemies)} enemies, {len(groups)} groups, {len(rounds)} rounds)')
+    print(f'wrote {dest} ({len(ranges)} ranges, {len(enemies)} enemies, {len(groups)} groups, {len(rounds)} rounds, {len(bounties)} bounties)')
 
 
 if __name__ == '__main__':
