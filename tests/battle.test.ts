@@ -251,6 +251,10 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.colds).toBeGreaterThan(0);
     expect(r.freezes).toBeGreaterThan(0);
     expect(r.stackGains.kjerag ?? 0).toBeGreaterThan(0);
+    // 内訳：誰の特性で得たか
+    const src = r.stackSources.filter((x) => x.bond === 'kjerag');
+    expect(src.reduce((sum, x) => sum + x.amount, 0)).toBe(r.stackGains.kjerag);
+    expect(src.every((x) => x.cause === '範囲内の凍結')).toBe(true);
   });
 
   it('ウタゲのスキルは配置時に発動し、HPが減って効果時間が減っていく', () => {

@@ -118,6 +118,8 @@ export interface BattleResult {
   /** 残っている敵の合計HP（0.5秒ごと） */
   timeline: { t: number; hp: number; alive: number }[];
   stackGains: Partial<Record<AllianceId, number>>;
+  /** 戦闘中に加算数を得た内訳 */
+  stackSources: StackSource[];
   /** 寒冷・凍結にした回数 */
   colds: number;
   freezes: number;
@@ -334,7 +336,27 @@ interface GarrisonEvent {
   /** 確率（期待値で、累積が1に達するたびに発生） */
   prob: number;
   acc: number;
+  /** 特性の持ち主 */
+  uid: number;
+  name: string;
 }
+
+/** 戦闘中に加算数を得た内訳（ユニット・盟約・きっかけごと） */
+export interface StackSource {
+  uid: number;
+  name: string;
+  bond: AllianceId;
+  amount: number;
+  cause: string;
+}
+
+const STACK_CAUSE: Record<GarrisonEvent['kind'], string> = {
+  useskill: 'スキル発動',
+  kill: '撃破',
+  ammo: '弾薬消費',
+  dead: '撤退',
+  freeze: '範囲内の凍結',
+};
 
 function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
   const { def, star } = input;
@@ -380,6 +402,8 @@ function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
       gained: 0,
       prob: Number(bb.prob ?? 1),
       acc: 0,
+      uid: input.uid,
+      name: def.name,
     });
   }
   return out;
@@ -664,6 +688,7 @@ interface EngineResult {
   timeline: { t: number; hp: number; alive: number }[];
   phaseLog: { t: number; note: string }[];
   stackGains: Partial<Record<AllianceId, number>>;
+  stackSources: StackSource[];
   frames: ReplayFrame[];
   fx: FxEvent[];
   killTime: number | null;
@@ -679,6 +704,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const active = opts.activeAlliances ?? new Set<AllianceId>();
   const stacks = opts.stacks ?? {};
   const stackGains: Partial<Record<AllianceId, number>> = {};
+  const stackSources: StackSource[] = [];
+  const addSource = (uid: number, name: string, bond: AllianceId, amount: number, cause: string) => {
+    const x = stackSources.find((y) => y.uid === uid && y.bond === bond && y.cause === cause);
+    if (x) x.amount += amount;
+    else stackSources.push({ uid, name, bond, amount, cause });
+  };
 
   const toSet = (pos: number | undefined, dir: Direction | undefined, id: string | null) =>
     pos === undefined || !id ? null : new Set(rangeCells(pos, dir ?? DEFAULT_DIRECTION, rangeGrid(id)));
@@ -906,7 +937,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         : ev.bonds.filter((b) => active.has(b));
     if (targets.length === 0) return;
     ev.gained += amount;
-    for (const b of targets) stackGains[b] = (stackGains[b] ?? 0) + amount;
+    for (const b of targets) {
+      stackGains[b] = (stackGains[b] ?? 0) + amount;
+      addSource(ev.uid, ev.name, b, amount, STACK_CAUSE[ev.kind]);
+    }
   };
 
   const phaseLog: EngineResult['phaseLog'] = [];
@@ -1300,7 +1334,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // 不屈Lv2：地上オペレーターが倒れると全員のSP回復
     if (ground && g.indom?.sp) for (const o of rt) if (o.alive && o !== u) o.sp += g.indom.sp;
     // 戦術【崇高な犠牲】：エーギルが倒れると、その等級だけエーギルの加算数
-    if (g.egirSacrifice?.has(u.input.uid)) stackGains.egir = (stackGains.egir ?? 0) + u.input.def.tier;
+    if (g.egirSacrifice?.has(u.input.uid) && active.has('egir')) {
+      stackGains.egir = (stackGains.egir ?? 0) + u.input.def.tier;
+      addSource(u.input.uid, u.input.def.name, 'egir', u.input.def.tier, '戦術【崇高な犠牲】');
+    }
     // 戦術【食腐の蝶】：倒れるたびに、場に残る味方の攻撃力上昇
     if (g.qalaisa) for (const o of rt) if (o.alive && o !== u) o.qalaisaStacks = Math.min(g.qalaisa.max, o.qalaisaStacks + 1);
     // 戦術【命結の秘】：戦闘中に最初に倒れた数名は即座に復活
@@ -2050,7 +2087,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       c: Math.floor(cost),
     });
   }
-  return { t, enemies, units: rt, timeline, phaseLog, stackGains, frames, fx, killTime, colds, freezes, opBursts, enBursts };
+  return { t, enemies, units: rt, timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, colds, freezes, opBursts, enBursts };
 }
 
 // ------------------------------------------------------------
@@ -2150,6 +2187,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     perUnit,
     timeline: r.timeline,
     stackGains: r.stackGains,
+    stackSources: r.stackSources,
     colds: r.colds,
     freezes: r.freezes,
     opBursts: r.opBursts,

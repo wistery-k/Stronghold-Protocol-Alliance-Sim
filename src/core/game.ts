@@ -55,7 +55,7 @@ import {
   unitAvailable,
 } from './items';
 import { getItem, itemState } from './data/items';
-import { ALLIANCE_IDS, CORE_IDS } from './data/alliances';
+import { ALLIANCES, ALLIANCE_IDS, CORE_IDS } from './data/alliances';
 import { autoCell, bestDirection, canPlace, normalizePositions, unitAt } from './board';
 import {
   BENCH_SIZE,
@@ -691,6 +691,10 @@ function resolveBattle(state: GameState): void {
   const afterPrep = { ...state.stacks };
   const active = activeAllianceIds(evaluateAlliances(state.board, bench, state.banned));
   for (const [b, n] of Object.entries(sim.stackGains) as [AllianceId, number][]) addStacks(state, b, n, active);
+  // 戦闘中に堅守特性で得た加算数をログに出す（ユニット・きっかけごと）
+  for (const src of sim.stackSources ?? []) {
+    notify(state, `戦闘中：${src.name}（${src.cause}）：【${ALLIANCES[src.bond].name}】+${src.amount}`);
+  }
 
   if (sim.bountyGold > 0) {
     state.pendingGold += sim.bountyGold;
