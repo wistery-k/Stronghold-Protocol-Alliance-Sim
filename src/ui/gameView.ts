@@ -77,6 +77,44 @@ function cachedPrediction(inputs: SimUnitInput[], spec: RoundSpec, opts: SimOpti
   return result;
 }
 
+/** 資金が残っている時の戦闘開始の確認 */
+let confirmBattle = false;
+
+function battleDialog(state: GameState, dispatch: (a: Action) => void, select: (uid: number | null) => void, selectedUid: number | null): HTMLElement | null {
+  if (!confirmBattle) return null;
+  const close = () => {
+    confirmBattle = false;
+    select(selectedUid);
+  };
+  return h(
+    'div',
+    { class: 'modal-backdrop', onclick: (e: Event) => { if (e.target === e.currentTarget) close(); } },
+    h(
+      'div',
+      { class: 'modal panel', role: 'dialog', 'aria-modal': 'true' },
+      h('h2', null, '本当に戦闘を開始しますか？'),
+      h('p', null, `資金が ${state.gold} 残っています。`),
+      h(
+        'div',
+        { class: 'row' },
+        h(
+          'button',
+          {
+            class: 'btn primary',
+            onclick: () => {
+              confirmBattle = false;
+              select(null);
+              dispatch({ type: 'battle' });
+            },
+          },
+          '戦闘開始',
+        ),
+        h('button', { class: 'btn', onclick: close }, 'キャンセル'),
+      ),
+    ),
+  );
+}
+
 /** 装備がいっぱいのオペレーターに装備しようとした時の確認 */
 let pendingEquip: { itemUid: number; unitUid: number } | null = null;
 
@@ -317,13 +355,32 @@ function prepView(p: GameViewProps): HTMLElement {
     'div',
     { class: 'game' },
     equipDialog(state, dispatch, () => select(selectedUid)),
+    battleDialog(state, dispatch, select, selectedUid),
     topBar(
       state,
       h(
         'div',
         { class: 'actions' },
         blockReason ? h('span', { class: 'ng small' }, blockReason) : null,
-        h('button', { class: 'btn primary big', onclick: () => { select(null); dispatch({ type: 'battle' }); }, disabled: !!blockReason, title: blockReason ?? undefined }, '戦闘開始'),
+        h(
+          'button',
+          {
+            class: 'btn primary big',
+            onclick: () => {
+              // 資金が残っていれば確認する
+              if (state.gold > 0) {
+                confirmBattle = true;
+                select(selectedUid);
+                return;
+              }
+              select(null);
+              dispatch({ type: 'battle' });
+            },
+            disabled: !!blockReason,
+            title: blockReason ?? undefined,
+          },
+          '戦闘開始',
+        ),
       ),
     ),
     h(
