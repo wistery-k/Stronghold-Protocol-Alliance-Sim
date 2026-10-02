@@ -2545,6 +2545,7 @@
    "tier": 1,
    "profession": "sniper",
    "subProfession": "fastshot",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "laterano",
@@ -2651,6 +2652,7 @@
    "tier": 1,
    "profession": "defender",
    "subProfession": "protector",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "kjerag",
@@ -2751,6 +2753,7 @@
    "tier": 1,
    "profession": "caster",
    "subProfession": "chain",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "yan"
@@ -2850,6 +2853,7 @@
    "tier": 1,
    "profession": "defender",
    "subProfession": "shotprotector",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "egir"
@@ -2957,6 +2961,7 @@
    "tier": 1,
    "profession": "medic",
    "subProfession": "incantationmedic",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "victoria",
@@ -3061,6 +3066,7 @@
    "tier": 1,
    "profession": "sniper",
    "subProfession": "closerange",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "siracusa"
@@ -3158,6 +3164,7 @@
    "tier": 1,
    "profession": "vanguard",
    "subProfession": "pioneer",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "solo",
@@ -3258,6 +3265,7 @@
    "tier": 1,
    "profession": "sniper",
    "subProfession": "loopshooter",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "preci"
@@ -3359,6 +3367,7 @@
    "tier": 1,
    "profession": "defender",
    "subProfession": "guardian",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "stead"
@@ -3458,6 +3467,7 @@
    "tier": 1,
    "profession": "guard",
    "subProfession": "centurion",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "sargon"
@@ -3555,6 +3565,7 @@
    "tier": 1,
    "profession": "supporter",
    "subProfession": "slower",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "deput"
@@ -3652,6 +3663,7 @@
    "tier": 1,
    "profession": "caster",
    "subProfession": "splashcaster",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "skillful"
@@ -3749,6 +3761,7 @@
    "tier": 1,
    "profession": "caster",
    "subProfession": "mystic",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "arcane",
@@ -3851,6 +3864,7 @@
    "tier": 1,
    "profession": "guard",
    "subProfession": "musha",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "raid"
@@ -3952,6 +3966,7 @@
    "tier": 1,
    "profession": "vanguard",
    "subProfession": "charger",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "kazimierz",
@@ -4050,6 +4065,7 @@
    "tier": 1,
    "profession": "defender",
    "subProfession": "shotprotector",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "indom"
@@ -4159,6 +4175,7 @@
    "tier": 2,
    "profession": "sniper",
    "subProfession": "reaperrange",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "laterano",
@@ -4269,6 +4286,7 @@
    "tier": 2,
    "profession": "medic",
    "subProfession": "physician",
+   "position": "ranged",
    "damageType": "heal",
    "bonds": [
     "visi"
@@ -4366,6 +4384,7 @@
    "tier": 2,
    "profession": "supporter",
    "subProfession": "slower",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "yan",
@@ -4472,6 +4491,7 @@
    "tier": 2,
    "profession": "medic",
    "subProfession": "wandermedic",
+   "position": "ranged",
    "damageType": "heal",
    "bonds": [
     "kjerag",
@@ -4598,6 +4618,7 @@
    "tier": 2,
    "profession": "medic",
    "subProfession": "chainhealer",
+   "position": "ranged",
    "damageType": "heal",
    "bonds": [
     "sargon"
@@ -4707,6 +4728,7 @@
    "tier": 2,
    "profession": "guard",
    "subProfession": "centurion",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "egir"
@@ -4812,6 +4834,7 @@
    "tier": 2,
    "profession": "defender",
    "subProfession": "protector",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "sargon",
@@ -4918,6 +4941,7 @@
    "tier": 2,
    "profession": "guard",
    "subProfession": "reaper",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "raid"
@@ -5031,6 +5055,7 @@
    "tier": 2,
    "profession": "caster",
    "subProfession": "funnel",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "victoria",
@@ -5135,6 +5160,7 @@
    "tier": 2,
    "profession": "specialist",
    "subProfession": "dollkeeper",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "mira"
@@ -5228,6 +5254,7 @@
    "tier": 2,
    "profession": "specialist",
    "subProfession": "executor",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "kazimierz",
@@ -5360,6 +5387,7 @@
    "tier": 2,
    "profession": "specialist",
    "subProfession": "skywalker",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "swift",
@@ -5460,6 +5488,7 @@
    "tier": 2,
    "profession": "medic",
    "subProfession": "ringhealer",
+   "position": "ranged",
    "damageType": "heal",
    "bonds": [
     "deput",
@@ -5558,6 +5587,7 @@
    "tier": 2,
    "profession": "guard",
    "subProfession": "lord",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "siracusa"
@@ -5657,6 +5687,7 @@
    "tier": 2,
    "profession": "defender",
    "subProfession": "unyield",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "stead",
@@ -5761,6 +5792,7 @@
    "tier": 2,
    "profession": "defender",
    "subProfession": "fortress",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "kazimierz",
@@ -5857,6 +5889,7 @@
    "tier": 2,
    "profession": "specialist",
    "subProfession": "alchemist",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "invest",
@@ -5987,6 +6020,7 @@
    "tier": 3,
    "profession": "sniper",
    "subProfession": "fastshot",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "laterano",
@@ -6087,6 +6121,7 @@
    "tier": 3,
    "profession": "guard",
    "subProfession": "lord",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "skillful"
@@ -6188,6 +6223,7 @@
    "tier": 3,
    "profession": "guard",
    "subProfession": "instructor",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "yan",
@@ -6288,6 +6324,7 @@
    "tier": 3,
    "profession": "specialist",
    "subProfession": "merchant",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "yan",
@@ -6392,6 +6429,7 @@
    "tier": 3,
    "profession": "guard",
    "subProfession": "fearless",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "egir",
@@ -6503,6 +6541,7 @@
    "tier": 3,
    "profession": "defender",
    "subProfession": "primprotector",
+   "position": "melee",
    "damageType": "arts",
    "bonds": [
     "sargon"
@@ -6614,6 +6653,7 @@
    "tier": 3,
    "profession": "caster",
    "subProfession": "phalanx",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "victoria"
@@ -6719,6 +6759,7 @@
    "tier": 3,
    "profession": "supporter",
    "subProfession": "underminer",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "egir",
@@ -6837,6 +6878,7 @@
    "tier": 3,
    "profession": "sniper",
    "subProfession": "reaperrange",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "swift",
@@ -6951,6 +6993,7 @@
    "tier": 3,
    "profession": "sniper",
    "subProfession": "hunter",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "kjerag",
@@ -7051,6 +7094,7 @@
    "tier": 3,
    "profession": "defender",
    "subProfession": "guardian",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "kazimierz",
@@ -7163,6 +7207,7 @@
    "tier": 3,
    "profession": "caster",
    "subProfession": "funnel",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "sargon",
@@ -7261,6 +7306,7 @@
    "tier": 3,
    "profession": "supporter",
    "subProfession": "underminer",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "kjerag",
@@ -7371,6 +7417,7 @@
    "tier": 3,
    "profession": "defender",
    "subProfession": "protector",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "stead",
@@ -7477,6 +7524,7 @@
    "tier": 3,
    "profession": "sniper",
    "subProfession": "fastshot",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "kazimierz",
@@ -7597,6 +7645,7 @@
    "tier": 3,
    "profession": "vanguard",
    "subProfession": "pioneer",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "siracusa",
@@ -7699,6 +7748,7 @@
    "tier": 3,
    "profession": "vanguard",
    "subProfession": "tactician",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "siracusa",
@@ -7865,6 +7915,7 @@
    "tier": 3,
    "profession": "caster",
    "subProfession": "funnel",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "kjerag",
@@ -7969,6 +8020,7 @@
    "tier": 3,
    "profession": "sniper",
    "subProfession": "fastshot",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "laterano",
@@ -8075,6 +8127,7 @@
    "tier": 4,
    "profession": "defender",
    "subProfession": "shotprotector",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "laterano",
@@ -8189,6 +8242,7 @@
    "tier": 4,
    "profession": "caster",
    "subProfession": "splashcaster",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "laterano",
@@ -8305,6 +8359,7 @@
    "tier": 4,
    "profession": "vanguard",
    "subProfession": "agent",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "visi",
@@ -8409,6 +8464,7 @@
    "tier": 4,
    "profession": "sniper",
    "subProfession": "fastshot",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "preci"
@@ -8506,6 +8562,7 @@
    "tier": 4,
    "profession": "vanguard",
    "subProfession": "charger",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "victoria",
@@ -8619,6 +8676,7 @@
    "tier": 4,
    "profession": "specialist",
    "subProfession": "stalker",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "egir",
@@ -8727,6 +8785,7 @@
    "tier": 4,
    "profession": "caster",
    "subProfession": "blastcaster",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "siracusa",
@@ -8833,6 +8892,7 @@
    "tier": 4,
    "profession": "supporter",
    "subProfession": "craftsman",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "victoria",
@@ -8941,6 +9001,7 @@
    "tier": 4,
    "profession": "specialist",
    "subProfession": "hookmaster",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "egir"
@@ -9054,6 +9115,7 @@
    "tier": 4,
    "profession": "supporter",
    "subProfession": "underminer",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "kjerag",
@@ -9152,6 +9214,7 @@
    "tier": 4,
    "profession": "caster",
    "subProfession": "splashcaster",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "swift",
@@ -9258,6 +9321,7 @@
    "tier": 4,
    "profession": "specialist",
    "subProfession": "executor",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "siracusa",
@@ -9366,6 +9430,7 @@
    "tier": 4,
    "profession": "defender",
    "subProfession": "protector",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "yan"
@@ -9463,6 +9528,7 @@
    "tier": 4,
    "profession": "defender",
    "subProfession": "unyield",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "solo"
@@ -9564,6 +9630,7 @@
    "tier": 4,
    "profession": "vanguard",
    "subProfession": "pioneer",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "kazimierz"
@@ -9671,6 +9738,7 @@
    "tier": 4,
    "profession": "sniper",
    "subProfession": "longrange",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "kazimierz",
@@ -9769,6 +9837,7 @@
    "tier": 4,
    "profession": "medic",
    "subProfession": "ringhealer",
+   "position": "ranged",
    "damageType": "heal",
    "bonds": [
     "deput",
@@ -9861,6 +9930,7 @@
    "tier": 4,
    "profession": "guard",
    "subProfession": "lord",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "kjerag"
@@ -9972,6 +10042,7 @@
    "tier": 4,
    "profession": "guard",
    "subProfession": "centurion",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "sargon"
@@ -10087,6 +10158,7 @@
    "tier": 4,
    "profession": "caster",
    "subProfession": "phalanx",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "sargon",
@@ -10191,6 +10263,7 @@
    "tier": 4,
    "profession": "supporter",
    "subProfession": "bard",
+   "position": "ranged",
    "damageType": "heal",
    "bonds": [
     "empty"
@@ -10296,6 +10369,7 @@
    "tier": 4,
    "profession": "medic",
    "subProfession": "physician",
+   "position": "ranged",
    "damageType": "heal",
    "bonds": [
     "mira"
@@ -10393,6 +10467,7 @@
    "tier": 5,
    "profession": "guard",
    "subProfession": "reaper",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "laterano",
@@ -10553,6 +10628,7 @@
    "tier": 5,
    "profession": "medic",
    "subProfession": "incantationmedic",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "sargon",
@@ -10675,6 +10751,7 @@
    "tier": 5,
    "profession": "caster",
    "subProfession": "primcaster",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "victoria",
@@ -10785,6 +10862,7 @@
    "tier": 5,
    "profession": "guard",
    "subProfession": "crusher",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "egir"
@@ -10894,6 +10972,7 @@
    "tier": 5,
    "profession": "guard",
    "subProfession": "reaper",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "indom",
@@ -11008,6 +11087,7 @@
    "tier": 5,
    "profession": "guard",
    "subProfession": "artsfghter",
+   "position": "melee",
    "damageType": "arts",
    "bonds": [
     "raid",
@@ -11128,6 +11208,7 @@
    "tier": 5,
    "profession": "defender",
    "subProfession": "fortress",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "victoria"
@@ -11235,6 +11316,7 @@
    "tier": 5,
    "profession": "supporter",
    "subProfession": "slower",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "siracusa",
@@ -11337,6 +11419,7 @@
    "tier": 5,
    "profession": "defender",
    "subProfession": "guardian",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "stead",
@@ -11429,6 +11512,7 @@
    "tier": 5,
    "profession": "caster",
    "subProfession": "splashcaster",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "yan",
@@ -11533,6 +11617,7 @@
    "tier": 5,
    "profession": "specialist",
    "subProfession": "dollkeeper",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "egir",
@@ -11639,6 +11724,7 @@
    "tier": 5,
    "profession": "vanguard",
    "subProfession": "counsellor",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "kjerag",
@@ -11754,6 +11840,7 @@
    "tier": 5,
    "profession": "specialist",
    "subProfession": "alchemist",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "swift",
@@ -11872,6 +11959,7 @@
    "tier": 5,
    "profession": "guard",
    "subProfession": "fighter",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "invest"
@@ -11979,6 +12067,7 @@
    "tier": 5,
    "profession": "guard",
    "subProfession": "librator",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "kazimierz"
@@ -12092,6 +12181,7 @@
    "tier": 5,
    "profession": "supporter",
    "subProfession": "slower",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "siracusa",
@@ -12196,6 +12286,7 @@
    "tier": 5,
    "profession": "caster",
    "subProfession": "splashcaster",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "visi"
@@ -12321,6 +12412,7 @@
    "tier": 5,
    "profession": "caster",
    "subProfession": "primcaster",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "swift"
@@ -12432,6 +12524,7 @@
    "tier": 5,
    "profession": "medic",
    "subProfession": "physician",
+   "position": "ranged",
    "damageType": "heal",
    "bonds": [
     "yan",
@@ -12534,6 +12627,7 @@
    "tier": 6,
    "profession": "sniper",
    "subProfession": "longrange",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "laterano",
@@ -12664,6 +12758,7 @@
    "tier": 6,
    "profession": "caster",
    "subProfession": "phalanx",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "kjerag",
@@ -12776,6 +12871,7 @@
    "tier": 6,
    "profession": "defender",
    "subProfession": "primprotector",
+   "position": "melee",
    "damageType": "arts",
    "bonds": [
     "yan",
@@ -12881,6 +12977,7 @@
    "tier": 6,
    "profession": "supporter",
    "subProfession": "bard",
+   "position": "ranged",
    "damageType": "heal",
    "bonds": [
     "egir"
@@ -12988,6 +13085,7 @@
    "tier": 6,
    "profession": "caster",
    "subProfession": "chain",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "sargon",
@@ -13103,6 +13201,7 @@
    "tier": 6,
    "profession": "guard",
    "subProfession": "hammer",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "sargon",
@@ -13215,6 +13314,7 @@
    "tier": 6,
    "profession": "guard",
    "subProfession": "artsfghter",
+   "position": "melee",
    "damageType": "arts",
    "bonds": [
     "victoria",
@@ -13345,6 +13445,7 @@
    "tier": 6,
    "profession": "medic",
    "subProfession": "incantationmedic",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "victoria",
@@ -13461,6 +13562,7 @@
    "tier": 6,
    "profession": "supporter",
    "subProfession": "ritualist",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "laterano"
@@ -13568,6 +13670,7 @@
    "tier": 6,
    "profession": "vanguard",
    "subProfession": "tactician",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "mani"
@@ -13671,6 +13774,7 @@
    "tier": 6,
    "profession": "sniper",
    "subProfession": "bombarder",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "preci",
@@ -13804,6 +13908,7 @@
    "tier": 6,
    "profession": "specialist",
    "subProfession": "geek",
+   "position": "ranged",
    "damageType": "physical",
    "bonds": [
     "laterano"
@@ -13917,6 +14022,7 @@
    "tier": 6,
    "profession": "medic",
    "subProfession": "healer",
+   "position": "ranged",
    "damageType": "heal",
    "bonds": [
     "deput"
@@ -14020,6 +14126,7 @@
    "tier": 6,
    "profession": "guard",
    "subProfession": "lord",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "yan",
@@ -14130,6 +14237,7 @@
    "tier": 6,
    "profession": "supporter",
    "subProfession": "slower",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "arcane",
@@ -14238,6 +14346,7 @@
    "tier": 6,
    "profession": "guard",
    "subProfession": "fearless",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "kazimierz",
@@ -14406,6 +14515,7 @@
    "tier": 6,
    "profession": "caster",
    "subProfession": "funnel",
+   "position": "ranged",
    "damageType": "arts",
    "bonds": [
     "siracusa"
@@ -14525,6 +14635,7 @@
    "tier": 6,
    "profession": "guard",
    "subProfession": "sword",
+   "position": "melee",
    "damageType": "physical",
    "bonds": [
     "kjerag",
@@ -14664,6 +14775,7 @@
    "tier": 6,
    "profession": "medic",
    "subProfession": "wandermedic",
+   "position": "ranged",
    "damageType": "heal",
    "bonds": [
     "deput"

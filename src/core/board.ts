@@ -47,7 +47,7 @@ export const enemyPassable = (pos: number) => ['ground', 'spawn', 'goal'].includ
 
 /** 近距離職（地上マスにしか置けない職分ではなく、高台に置けない職分） */
 export function isMelee(defId: string): boolean {
-  return ['vanguard', 'guard', 'defender', 'specialist'].includes(getUnit(defId).profession);
+  return getUnit(defId).position === 'melee';
 }
 
 /** そのオペレーターを置けるマスか */

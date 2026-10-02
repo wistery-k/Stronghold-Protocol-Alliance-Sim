@@ -98,6 +98,8 @@ export interface UnitDef {
   tier: Tier;
   profession: Profession;
   subProfession: string;
+  /** 近距離（地上）か遠距離（高台） */
+  position: 'melee' | 'ranged';
   damageType: DamageType;
   bonds: AllianceId[];
   /** 精鋭化に必要な枚数（通常3） */

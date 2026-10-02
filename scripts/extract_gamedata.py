@@ -403,6 +403,8 @@ def main():
             'tier': shop['chessLevel'],
             'profession': PROFESSION[ch['profession']],
             'subProfession': sub,
+            # 近距離・遠距離（職業の既定と違う職分があるので本家の値を使う）
+            'position': 'melee' if ch['position'] == 'MELEE' else 'ranged',
             'damageType': dmg,
             'bonds': bonds,
             'mergeCount': merge,

@@ -52,7 +52,7 @@ export interface SpawnSpec {
   spawn: number;
 }
 
-/** 敵グループの種類（力押しは常に出る。ほかの6種から3種がゲーム開始時に選ばれる） */
+/** 敵グループの種類（主力部隊は常に出る。ほかの6種から3種がゲーム開始時に選ばれる） */
 export type EnemyGroupType = 'SPECIAL' | 'FLY' | 'TIMES' | 'ELEMENT' | 'DOT' | 'INVISIBLE' | 'REFLECTION';
 
 export interface EnemyGroupEntry {
@@ -106,7 +106,7 @@ function entryCandidates(type: EnemyGroupType, round: number): number[] {
 }
 
 /**
- * ラウンドの敵グループを決める。力押しと選ばれた3種から1つ、その中から組み合わせを1つ（重み付き）。
+ * ラウンドの敵グループを決める。主力部隊と選ばれた3種から1つ、その中から組み合わせを1つ（重み付き）。
  * シードとラウンドだけで決まるので、予測と実際の戦闘で同じになる。
  */
 export function pickRoundGroup(seed: number, round: number, types: EnemyGroupType[]): RoundGroup {

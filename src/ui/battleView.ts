@@ -301,6 +301,12 @@ const TILE_FILL: Record<string, string> = {
   goal: 'var(--tile-goal)',
 };
 
+/** 敵を表す円の半径（最大HPが大きいほど大きい） */
+function enemyRadius(m: { boss: boolean; maxHp: number }): number {
+  if (m.boss) return 32;
+  return Math.max(9, Math.min(26, 9 + 3.2 * Math.log(Math.max(1, m.maxHp) / 400)));
+}
+
 export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   const frames = r.frames ?? [];
   const meta = new Map(r.enemies.map((e) => [e.id, e]));
@@ -320,6 +326,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   // オペレーター
   const unitNodes = new Map<number, SVGElement>();
   const unitBars = new Map<number, SVGElement>();
+  const unitSp = new Map<number, { bar: SVGElement; label: SVGElement }>();
   for (const u of units) {
     if (u.pos === undefined) continue;
     const def = getUnit(u.defId);
@@ -336,6 +343,12 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     const bar = s('rect', { x: x + 14, y: y + S - 22, width: S - 28, height: 6, class: 'rp-unit-hp' });
     g.append(bar);
     unitBars.set(u.uid, bar);
+    // SP・スキル残り時間・残り弾薬
+    g.append(s('rect', { x: x + 14, y: y + S - 14, width: S - 28, height: 4, class: 'rp-hp-bg' }));
+    const spBar = s('rect', { x: x + 14, y: y + S - 14, width: 0, height: 4, class: 'rp-unit-sp' });
+    const spLabel = s('text', { x: x + S - 12, y: y + 24, 'text-anchor': 'end', class: 'rp-unit-skill' }, '');
+    g.append(spBar, spLabel);
+    unitSp.set(u.uid, { bar: spBar, label: spLabel });
     unitNodes.set(u.uid, g);
     svg.append(g);
   }
@@ -348,7 +361,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     let n = enemyNodes.get(id);
     if (n) return n;
     const m = meta.get(id)!;
-    const rad = m.boss ? 30 : 17;
+    const rad = enemyRadius(m);
     const bar = s('rect', { x: -rad, y: -rad - 12, width: rad * 2, height: 6, class: 'rp-hp' });
     const g = s(
       'g',
@@ -396,8 +409,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       const x = nb ? e[1] + (nb[1] - e[1]) * f : e[1];
       const y = nb ? e[2] + (nb[2] - e[2]) * f : e[2];
       n.g.setAttribute('transform', `translate(${(x / 100) * S + S / 2},${(y / 100) * S + S / 2})`);
-      const m = meta.get(e[0])!;
-      const rad = m.boss ? 30 : 17;
+      const rad = enemyRadius(meta.get(e[0])!);
       n.bar.setAttribute('width', String(Math.max(0, (e[3] / 100) * rad * 2)));
       n.g.style.display = '';
       seen.add(e[0]);
@@ -405,11 +417,18 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';
     const skill = new Set(a.s);
     for (const [uid, g] of unitNodes) g.classList.toggle('skill', skill.has(uid));
-    const hp = new Map(a.u ?? []);
+    const states = new Map((a.u ?? []).map((x) => [x[0], x]));
     for (const [uid, bar] of unitBars) {
-      const v = hp.get(uid) ?? 100;
+      const st = states.get(uid);
+      const v = st?.[1] ?? 100;
       bar.setAttribute('width', String(Math.max(0, ((S - 28) * Math.max(0, v)) / 100)));
       unitNodes.get(uid)?.classList.toggle('down', v < 0);
+      const sp = unitSp.get(uid);
+      if (!sp || !st) continue;
+      const [, , gauge, mode, val] = st;
+      sp.bar.setAttribute('width', String(mode === 3 || v < 0 ? 0 : ((S - 28) * gauge) / 100));
+      sp.bar.classList.toggle('active', mode === 1 || mode === 2);
+      sp.label.textContent = v < 0 ? '' : mode === 1 ? `${(val / 10).toFixed(0)}秒` : mode === 2 ? `弾${val}` : '';
     }
     timeLabel.textContent = `${t.toFixed(1)}秒`;
     slider.value = String(Math.round(t * 10));
@@ -461,6 +480,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵　大きい丸はボス。光っているオペレーターはスキル発動中、薄いオペレーターは戦闘不能'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは戦闘不能'),
   );
 }

@@ -26,14 +26,33 @@ export function rollItemShop(state: GameState): void {
   });
 }
 
-/** 同じ装備が2つ揃ったら精鋭化する（控えにあるものだけ） */
+/**
+ * 同じ装備が2つ揃ったら精鋭化する。
+ * 控えの装備に加え、オペレーターが装備している同じ非精鋭の装備とも合成し、精鋭化した装備は控えに置く
+ */
 function mergeItems(state: GameState, itemId: string): void {
   const def = getItem(itemId);
   const same = storedItems(state).filter((i) => i.itemId === itemId && i.star === 1);
-  if (same.length < def.mergeCount) return;
-  const [keep, ...rest] = same;
-  const remove = new Set(rest.slice(0, def.mergeCount - 1).map((i) => i.uid));
+  if (!same.length) return;
+  const equipped = allOwned(state).flatMap((o) => (o.items ?? []).filter((i) => i.itemId === itemId && i.star === 1).map((it) => ({ o, it })));
+  if (same.length + equipped.length < def.mergeCount) return;
+  // 新しく入った装備（最後の1つ）を残す
+  const keep = same[same.length - 1];
+  let need = def.mergeCount - 1;
+  const remove = new Set<number>();
+  for (const i of same) {
+    if (need <= 0) break;
+    if (i === keep) continue;
+    remove.add(i.uid);
+    need--;
+  }
   state.bench = state.bench.map((i) => (i && remove.has(i.uid) ? null : i));
+  for (const { o, it } of equipped) {
+    if (need <= 0) break;
+    o.items = (o.items ?? []).filter((x) => x !== it);
+    state.log.push(`${getUnit(o.defId).name} の ${def.normal.name} と合成`);
+    need--;
+  }
   keep.star = 2;
   state.log.push(`${def.normal.name} を精鋭化！`);
 }
@@ -84,7 +103,16 @@ export function returnItems(state: GameState, o: OwnedUnit): void {
  * 控えの装備をオペレーターに装備する。消耗型の装備は効果を発動して消滅する。
  * エラーならメッセージを返す
  */
-export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit): string | undefined {
+/** 装備がいっぱいで、どれかを外す（破棄する）必要があるか */
+export function equipNeedsDiscard(state: GameState, itemUid: number, unit: OwnedUnit): boolean {
+  const item = state.bench.find((i) => isItemEntry(i) && i.uid === itemUid) as OwnedItem | undefined;
+  if (!item) return false;
+  const def = getItem(item.itemId);
+  const anyone = !!findBuff(itemState(def, item.star), 'equip_round_start_upgrade_char');
+  return !isConsumable(def) && !anyone && (unit.items?.length ?? 0) >= MAX_EQUIP;
+}
+
+export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit, discardUid?: number): string | undefined {
   const idx = state.bench.findIndex((i) => isItemEntry(i) && i.uid === itemUid);
   if (idx < 0) return '装備が見つかりません';
   const item = state.bench[idx] as OwnedItem;
@@ -92,7 +120,13 @@ export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit): s
   const st = itemState(def, item.star);
   const consumable = isConsumable(def);
   const anyone = !!findBuff(st, 'equip_round_start_upgrade_char');
-  if (!consumable && !anyone && (unit.items?.length ?? 0) >= MAX_EQUIP) return `装備は1人${MAX_EQUIP}つまでです`;
+  if (!consumable && !anyone && (unit.items?.length ?? 0) >= MAX_EQUIP) {
+    // 指定された装備を破棄して付け替える
+    const old = unit.items?.find((i) => i.uid === discardUid);
+    if (!old) return `装備は1人${MAX_EQUIP}つまでです`;
+    unit.items = unit.items!.filter((i) => i !== old);
+    state.log.push(`${itemState(getItem(old.itemId), old.star).name} を破棄`);
+  }
   if (anyone && unit.star === 2) return 'すでに精鋭化しています';
 
   state.bench[idx] = null;

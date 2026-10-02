@@ -40,6 +40,11 @@ describe('マップ', () => {
     expect(canPlace(0, ranged)).toBe(false); // 壁
     expect(canPlace(SPAWNS[0], melee)).toBe(false);
     expect(canPlace(GOAL, melee)).toBe(false);
+    // 職業の既定と違う近遠（錬金術師は遠距離、工匠は近距離）
+    const tin = UNITS.find((u) => u.name === 'ブリキ')!;
+    expect(canPlace(high, tin.id)).toBe(true);
+    const cat = UNITS.find((u) => u.name === 'キャサリン')!;
+    expect(canPlace(high, cat.id)).toBe(false);
   });
 });
 
@@ -119,11 +124,11 @@ describe('マップ戦闘', () => {
 });
 
 describe('敵グループ', () => {
-  it('力押しと6種のグループがある', () => {
+  it('主力部隊と6種のグループがある', () => {
     expect(Object.keys(ENEMY_GROUPS).sort()).toEqual(['DOT', 'ELEMENT', 'FLY', 'INVISIBLE', 'REFLECTION', 'SPECIAL', 'TIMES']);
   });
 
-  it('ゲーム開始時に3種が選ばれ、ラウンドの敵はそのグループか力押しから出る', () => {
+  it('ゲーム開始時に3種が選ばれ、ラウンドの敵はそのグループか主力部隊から出る', () => {
     const s = createGame(42);
     expect(s.enemyTypes.length).toBe(3);
     for (let r = 1; r <= 13; r++) {

@@ -900,7 +900,7 @@ aside {
 .alliance details[open] > summary::before {
   content: '▾';
 }
-.alliance.banned {
+.alliance.banned:not(.active) {
   opacity: 0.5;
 }
 
@@ -1203,4 +1203,48 @@ aside {
 body.dragging,
 body.dragging * {
   cursor: grabbing !important;
+}
+
+/* 確認ダイアログ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal {
+  max-width: 560px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+.discard-option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rp-unit-sp {
+  fill: var(--core);
+}
+.rp-unit-sp.active {
+  fill: var(--accent);
+}
+.rp-unit-skill {
+  font-size: 14px;
+  font-weight: 700;
+  fill: var(--accent);
+}
+.modal .cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.discard-option .btn {
+  white-space: normal;
+  line-height: 1.4;
 }

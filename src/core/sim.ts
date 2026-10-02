@@ -72,8 +72,11 @@ export interface ReplayFrame {
   t: number;
   e: [number, number, number, number][];
   s: number[];
-  /** オペレーターの残りHP（%）。倒れていれば -1 */
-  u?: [number, number][];
+  /**
+   * オペレーターの状態 [uid, 残りHP%（倒れていれば -1）, ゲージ%, 状態, 値]。
+   * 状態 0: SP溜め中（ゲージ=SP%）、1: スキル中（ゲージ=残り時間%、値=残り秒×10）、2: 弾薬スキル中（値=残り弾数）、3: スキルなし・常時
+   */
+  u?: [number, number, number, number, number][];
 }
 
 export interface BattleResult {
@@ -219,7 +222,6 @@ function flagFactor(mods: Modifier, t: number): number {
 // 職種ごとの攻撃の仕方（近似）
 // ------------------------------------------------------------
 
-const MELEE = new Set(['vanguard', 'guard', 'defender', 'specialist']);
 /** 範囲攻撃（対象の周囲1マスにも同じダメージ） */
 const SPLASH_SUB = new Set(['splashcaster', 'bombarder', 'blastcaster', 'fortress']);
 /** 攻撃範囲内の敵すべてを攻撃 */
@@ -293,6 +295,9 @@ export interface SimOptions {
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
   Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack'>>;
 
+/** 遠距離の敵が攻撃する時に足を止める秒数 */
+const RANGED_ATTACK_STALL = 0.5;
+
 /** 素質で攻撃した敵の特殊能力を無効化する秒数（通常・精鋭） */
 const TALENT_NEUTRALIZE: Record<string, [number, number]> = {
   char_140_whitew: [1, 5], // ラップランド：精神摧毀
@@ -330,6 +335,8 @@ interface Enemy {
   atkTimer: number;
   /** 脆弱（被ダメージ増加）の終わる時刻 */
   vulnUntil: number;
+  /** 遠距離攻撃のモーションで足を止めている時刻まで */
+  stallUntil: number;
   /** 復活待ち（攻撃回数で倒せる状態）なら復活する時刻 */
   reviveAt: number | null;
   revived: boolean;
@@ -437,7 +444,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       firstEndDone: false,
       events: garrisonEvents(input),
       result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0, kills: 0, taken: 0, healed: 0, downAt: null },
-      melee: MELEE.has(input.def.profession),
+      melee: input.def.position === 'melee',
       blocker,
       block: blocker ? st.stats.block : 0,
       rangeNormal: field ? toSet(input.pos, input.dir, ids.range) : null,
@@ -488,6 +495,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       neutralUntil: -1,
       atkTimer: 0,
       vulnUntil: -1,
+      stallUntil: -1,
       defense: { def: input.spec.def, res: baseRes(input.spec), damageTaken: 1 },
       phases: [...(input.phases ?? [])].sort((a, b) => b.belowHpRatio - a.belowHpRatio),
       phaseIdx: 0,
@@ -866,6 +874,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (!target || !target.alive) continue;
       hurt(target, a.atk, a.arts, e);
       e.atkTimer = a.interval;
+      // 遠距離攻撃の間は一瞬足を止める
+      if (a.kind === 'ranged' && e.blockedBy === null) e.stallUntil = t + RANGED_ATTACK_STALL;
     }
   };
 
@@ -895,6 +905,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           e.maxHp = e.input.spec.hp;
         } else continue;
       }
+      if (t < e.stallUntil) continue;
       const path = e.input.path;
       const speed = e.input.spec.speed * moveMultiplier;
       const curTile = path[Math.min(Math.round(e.d), path.length - 1)];
@@ -926,8 +937,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const moveMultiplier = opts.moveMultiplier ?? 0.5;
 
-  const unitFrame = (): [number, number][] =>
-    rt.filter((u) => u.input.pos !== undefined).map((u) => [u.input.uid, u.alive ? Math.round((u.hp / u.maxHp) * 100) : -1]);
+  const unitFrame = (): [number, number, number, number, number][] =>
+    rt
+      .filter((u) => u.input.pos !== undefined)
+      .map((u) => {
+        const hp = u.alive ? Math.round((u.hp / u.maxHp) * 100) : -1;
+        const s = u.skill;
+        if (s.passive || s.spCost <= 0) return [u.input.uid, hp, 0, 3, 0];
+        if (u.ammoLeft > 0) return [u.input.uid, hp, 100, 2, u.ammoLeft];
+        if (u.skillLeft > 0) return [u.input.uid, hp, Math.round((u.skillLeft / Math.max(0.01, s.duration)) * 100), 1, Math.round(u.skillLeft * 10)];
+        return [u.input.uid, hp, Math.min(100, Math.round((u.sp / s.spCost) * 100)), 0, 0];
+      });
 
   const steps = Math.round(timeLimit / dt);
   const sampleEvery = Math.max(1, Math.round(0.5 / dt));
@@ -1120,7 +1140,9 @@ export function battleTimeLimit(spec: RoundSpec): number {
   for (const e of roundEnemies(spec)) {
     if (e.spec.boss || !e.path) continue;
     const speed = Math.max(0.01, e.spec.speed * spec.moveMultiplier);
-    limit = Math.max(limit, e.spawnAt + (e.path.length - 1) / speed + 5);
+    // 遠距離の敵は攻撃のたびに足を止めるので、そのぶん余裕を持たせる
+    const stall = e.spec.attack?.kind === 'ranged' ? 1 + RANGED_ATTACK_STALL / Math.max(0.5, e.spec.attack.interval) : 1;
+    limit = Math.max(limit, e.spawnAt + ((e.path.length - 1) / speed) * stall + 5);
   }
   return Math.ceil(limit);
 }

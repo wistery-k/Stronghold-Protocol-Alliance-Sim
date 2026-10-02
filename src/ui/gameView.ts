@@ -17,8 +17,10 @@ import {
   deployCapOf,
 } from '../core/game';
 import { BENCH_SIZE, MAX_ROUND, REFRESH_COST, TIER_ODDS } from '../core/rules';
-import { getItem } from '../core/data/items';
-import { isItemEntry } from '../core/types';
+import { getItem, itemState } from '../core/data/items';
+import { equipNeedsDiscard } from '../core/items';
+import { getUnit } from '../core/data/units';
+import { isItemEntry, type OwnedItem } from '../core/types';
 import { benchOverflow } from '../core/acquire';
 import { battleTimeLimit, simulateBattle, type BattleResult, type SimOptions, type SimUnitInput } from '../core/sim';
 import type { RoundSpec } from '../core/data/battle';
@@ -73,6 +75,58 @@ function cachedPrediction(inputs: SimUnitInput[], spec: RoundSpec, opts: SimOpti
   const result = simulateBattle(inputs, spec, opts);
   if (key) predictionCache = { key, result };
   return result;
+}
+
+/** 装備がいっぱいのオペレーターに装備しようとした時の確認 */
+let pendingEquip: { itemUid: number; unitUid: number } | null = null;
+
+function equipDialog(state: GameState, dispatch: (a: Action) => void, rerender: () => void): HTMLElement | null {
+  if (!pendingEquip) return null;
+  const { itemUid, unitUid } = pendingEquip;
+  const f = findOwned(state, unitUid);
+  const item = state.bench.find((b) => isItemEntry(b) && b.uid === itemUid) as OwnedItem | undefined;
+  if (!f || !item) {
+    pendingEquip = null;
+    return null;
+  }
+  const close = () => {
+    pendingEquip = null;
+    rerender();
+  };
+  const name = (i: OwnedItem) => itemState(getItem(i.itemId), i.star).name;
+  return h(
+    'div',
+    { class: 'modal-backdrop', onclick: (e: Event) => { if (e.target === e.currentTarget) close(); } },
+    h(
+      'div',
+      { class: 'modal panel', role: 'dialog', 'aria-modal': 'true' },
+      h('h2', null, `${getUnit(f.unit.defId).name}の装備は2つまでです`),
+      h('p', { class: 'small' }, `「${name(item)}」を装備するために、どちらかを破棄しますか？（破棄した装備は戻りません）`),
+      h(
+        'div',
+        { class: 'cards' },
+        (f.unit.items ?? []).map((old) =>
+          h(
+            'div',
+            { class: 'discard-option' },
+            itemCard(old.itemId, { star: old.star }),
+            h(
+              'button',
+              {
+                class: 'btn danger',
+                onclick: () => {
+                  pendingEquip = null;
+                  dispatch({ type: 'equip', itemUid, unitUid, discard: old.uid });
+                },
+              },
+              `${name(old)}を破棄して装備`,
+            ),
+          ),
+        ),
+      ),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: close }, 'キャンセル')),
+    ),
+  );
 }
 
 const lastClick: { uid: number | null; at: number } = { uid: null, at: 0 };
@@ -148,7 +202,16 @@ function prepView(p: GameViewProps): HTMLElement {
     },
     onHover: (enter: boolean) => hover(enter ? uid : null),
     items: findOwned(state, uid)?.unit.items,
-    onItemDrop: (itemUid: number) => dispatch({ type: 'equip', itemUid, unitUid: uid }),
+    onItemDrop: (itemUid: number) => {
+      const f = findOwned(state, uid);
+      // 装備がいっぱいなら、どちらを破棄するか選ばせる
+      if (f && equipNeedsDiscard(state, itemUid, f.unit)) {
+        pendingEquip = { itemUid, unitUid: uid };
+        select(selectedUid);
+        return;
+      }
+      dispatch({ type: 'equip', itemUid, unitUid: uid });
+    },
   });
 
   // 控えにはオペレーターと装備を一緒に置く
@@ -253,6 +316,7 @@ function prepView(p: GameViewProps): HTMLElement {
   return h(
     'div',
     { class: 'game' },
+    equipDialog(state, dispatch, () => select(selectedUid)),
     topBar(
       state,
       h(
@@ -313,7 +377,7 @@ function prepView(p: GameViewProps): HTMLElement {
           h(
             'p',
             { class: 'small muted', title: 'ラウンドごとにこの中から1グループが選ばれます' },
-            `このゲームの敵：力押し・${state.enemyTypes.map(groupName).join('・')}`,
+            `このゲームの敵：主力部隊・${state.enemyTypes.map(groupName).join('・')}`,
           ),
         ),
         detailPanel,
@@ -384,6 +448,7 @@ function resultView(p: GameViewProps): HTMLElement {
               )
             : h('p', { class: 'small muted' }, '加算数の増加なし'),
         ),
+        h('section', { class: 'panel' }, h('h2', null, '敵の構成'), roundInfo(roundSpec(b.round, b.group), b.sim.timeLimit, b.group)),
         h('section', { class: 'panel' }, h('h2', null, '発動した盟約'), alliancePanel(b.alliances.filter((a) => a.level > 0), state.stacks)),
       ),
     ),

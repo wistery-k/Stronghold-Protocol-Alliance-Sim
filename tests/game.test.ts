@@ -282,13 +282,32 @@ describe('装備', () => {
   it('精鋭化すると、合成したオペレーター全員の装備が控えに戻る', () => {
     let s = createGame(1);
     const a: OwnedUnit = { ...ou(1, 'グム'), items: [{ uid: 101, itemId: '1_01', star: 1 }] };
-    const b: OwnedUnit = { ...ou(2, 'グム'), pos: 28, items: [{ uid: 102, itemId: '1_03', star: 1 }] };
+    const b: OwnedUnit = { ...ou(2, 'グム'), pos: 28, items: [{ uid: 102, itemId: '1_05', star: 1 }] };
     s = { ...s, nextUid: 200, bench: [a, ...Array(BENCH_SIZE - 1).fill(null)], board: [b] };
     s = applyAction(withShop(s, ['グム']), { type: 'buy', slot: 0 }).state;
     const elite = owned(s).find((o) => o.star === 2)!;
     expect(elite?.star).toBe(2);
     expect(elite.items ?? []).toEqual([]);
-    expect(benchItems(s).map((i) => i.itemId).sort()).toEqual(['1_01', '1_03']);
+    expect(benchItems(s).map((i) => i.itemId).sort()).toEqual(['1_01', '1_05']);
+  });
+
+  it('非精鋭の装備を得た時、オペレーターが同じ非精鋭の装備を持っていれば合成して控えに置く', () => {
+    let s = createGame(1);
+    const a: OwnedUnit = { ...ou(1, 'グム'), pos: 28, items: [{ uid: 101, itemId: '1_01', star: 1 }] };
+    s = { ...s, board: [a], itemShop: '1_01', gold: 50 };
+    s = applyAction(s, { type: 'buyItem' }).state;
+    expect(s.board[0].items ?? []).toEqual([]);
+    expect(benchItems(s).map((i) => [i.itemId, i.star])).toEqual([['1_01', 2]]);
+  });
+
+  it('装備が2つのオペレーターには、どちらかを破棄して装備できる', () => {
+    let s = createGame(1);
+    const a: OwnedUnit = { ...ou(1, 'グム'), pos: 28, items: [{ uid: 101, itemId: '1_02', star: 1 }, { uid: 102, itemId: '1_05', star: 1 }] };
+    s = { ...s, board: [a], bench: [{ uid: 103, itemId: '1_01', star: 1 }, ...Array(BENCH_SIZE - 1).fill(null)] };
+    expect(applyAction(s, { type: 'equip', itemUid: 103, unitUid: 1 }).error).toBe('装備は1人2つまでです');
+    const r = applyAction(s, { type: 'equip', itemUid: 103, unitUid: 1, discard: 101 });
+    expect(r.error).toBeUndefined();
+    expect(r.state.board[0].items!.map((i) => i.itemId).sort()).toEqual(['1_01', '1_05']);
   });
 
   it('ヴィクトリアの鉄鎚・〇〇はショップに並ばない', () => {

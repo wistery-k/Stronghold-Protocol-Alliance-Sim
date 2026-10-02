@@ -86,7 +86,7 @@ export interface GameState {
   frozen: boolean;
   /** 盟約BANされた盟約 */
   banned: AllianceId[];
-  /** ゲーム開始時に抽選された特殊敵の種類（力押しは常に出る） */
+  /** ゲーム開始時に抽選された特殊敵の種類（主力部隊は常に出る） */
   enemyTypes: EnemyGroupType[];
   /** ラウンド開始時の追加資金（倹約家の人形） */
   extraRoundGold: number;
@@ -120,7 +120,7 @@ export type Action =
   | { type: 'buy'; slot: number }
   | { type: 'buyItem' }
   | { type: 'sellItem'; uid: number }
-  | { type: 'equip'; itemUid: number; unitUid: number }
+  | { type: 'equip'; itemUid: number; unitUid: number; discard?: number }
   | { type: 'moveItem'; uid: number; index: number }
   | { type: 'sell'; uid: number }
   | { type: 'deploy'; uid: number; pos?: number }
@@ -362,7 +362,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
     case 'equip': {
       const f = findOwned(state, action.unitUid);
       if (!f) return fail('オペレーターが見つかりません');
-      const err = equipItem(state, action.itemUid, f.unit);
+      const err = equipItem(state, action.itemUid, f.unit, action.discard);
       if (err) return fail(err);
       return { state };
     }
@@ -550,7 +550,7 @@ function moveUnit(
 }
 
 function placeError(defId: string): string {
-  return getUnit(defId) && ['vanguard', 'guard', 'defender', 'specialist'].includes(getUnit(defId).profession)
+  return getUnit(defId)?.position === 'melee'
     ? 'そのマスには置けません（近距離オペレーターは地上マスのみ）'
     : 'そのマスには置けません';
 }
