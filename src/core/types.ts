@@ -148,6 +148,20 @@ export interface Modifier {
   firstSkillEndSp?: number;
   /** 攻撃した敵の特殊能力を無効化する秒数（秘術法陣・ラップランドの素質） */
   neutralize?: number;
+  /** 最大HP（割合、加算） */
+  hpPct?: number;
+  /** 防御力（割合、加算） */
+  defPct?: number;
+  /** 術耐性（固定値） */
+  resFlat?: number;
+  /** 被ダメージ軽減（割合、加算） */
+  damageReduce?: number;
+  /** 敵に狙われやすさ（警報器） */
+  taunt?: number;
+  /** 攻撃するたびに最大HPのこの割合を回復（眠れる眷属） */
+  lifeOnHit?: number;
+  /** 毎秒最大HPのこの割合を回復（ペガサスの兜＋槍） */
+  regenPct?: number;
 }
 
 export interface EnemyPhase {

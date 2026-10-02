@@ -150,3 +150,47 @@ describe('敵グループ', () => {
     expect(withItem).toBeGreaterThan(plain * 2);
   });
 });
+
+describe('敵の攻撃と回復', () => {
+  const tank = () => UNITS.find((u) => u.profession === 'defender')!;
+  const sniper = () => byProf('sniper');
+  const medic = () => UNITS.find((u) => u.damageType === 'heal' && u.subProfession === 'physician')!;
+
+  it('近接の敵はブロックしている相手だけを攻撃する', () => {
+    const spec = oneEnemy('test_melee', false, { attack: { kind: 'melee', atk: 2000, interval: 1, range: 0, arts: false } });
+    const r = run([{ uid: 1, defId: tank().id, star: 2, pos: 31, dir: 'right' }, { uid: 2, defId: sniper().id, star: 2, pos: 22, dir: 'down' }], spec);
+    const t = r.perUnit.find((u) => u.uid === 1)!;
+    const s = r.perUnit.find((u) => u.uid === 2)!;
+    expect(t.taken).toBeGreaterThan(0);
+    expect(s.taken).toBe(0);
+  });
+
+  it('ブロックしている相手が倒れると敵は再び進む', () => {
+    const spec = oneEnemy('test_strong', false, { attack: { kind: 'melee', atk: 99999, interval: 1, range: 0, arts: false } });
+    const r = run([{ uid: 1, defId: tank().id, star: 1, pos: 31, dir: 'right' }], spec);
+    expect(r.perUnit[0].downAt).not.toBeNull();
+    expect(r.leaked).toBe(1);
+  });
+
+  it('遠距離の敵は範囲内で最後に配置された（右・下の）相手を狙う', () => {
+    const spec = oneEnemy('test_ranged', false, { speed: 0.01, attack: { kind: 'ranged', atk: 200, interval: 5, range: 99, arts: true } });
+    const a: OwnedUnit = { uid: 1, defId: sniper().id, star: 2, pos: 22, dir: 'down' }; // (4,2)
+    const b: OwnedUnit = { uid: 2, defId: sniper().id, star: 2, pos: 25, dir: 'down' }; // (7,2) 右
+    const c: OwnedUnit = { uid: 3, defId: sniper().id, star: 2, pos: 16, dir: 'down' }; // (7,1) 右・上
+    const r = run([a, b, c], spec);
+    // 右の列（下→上）から順に倒され、最後に左の列
+    const down = (uid: number) => r.perUnit.find((u) => u.uid === uid)!.downAt!;
+    expect(down(3)).toBeGreaterThan(down(2));
+    expect(down(1)).toBeGreaterThan(down(3));
+  });
+
+  it('医療は傷ついた味方を回復する', () => {
+    const spec = oneEnemy('test_poke', false, { attack: { kind: 'melee', atk: 1500, interval: 2, range: 0, arts: false } });
+    const board: OwnedUnit[] = [
+      { uid: 1, defId: tank().id, star: 2, pos: 31, dir: 'right' },
+      { uid: 2, defId: medic().id, star: 2, pos: 22, dir: 'down' },
+    ];
+    const r = run(board, spec);
+    expect(r.perUnit.find((u) => u.uid === 2)!.healed).toBeGreaterThan(0);
+  });
+});

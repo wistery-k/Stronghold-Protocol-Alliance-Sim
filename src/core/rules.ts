@@ -52,5 +52,7 @@ export const POOL_COPIES: Record<Tier, number> = { 1: 12, 2: 10, 3: 9, 4: 8, 5: 
 const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
 export const ENEMY_SPEED_SCALE = Number(env.SP_SPEED ?? 1);
 export const ENEMY_HP_SCALE = Number(env.SP_HP ?? 0.5);
+/** 敵の攻撃力の倍率 */
+export const ENEMY_ATK_SCALE = Number(env.SP_ATK ?? 1);
 
 export const CHOICE_LOCK_MESSAGE = '無料獲得の候補を先に選んでください';

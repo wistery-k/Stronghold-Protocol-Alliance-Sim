@@ -170,7 +170,7 @@ export function alliancePanel(statuses: AllianceStatus[], stacks: Partial<Record
           tiers.map((t, i) =>
             h(
               'li',
-              { class: `${i < st.level ? 'on' : ''}${t.notSimulated ? ' nosim' : ''}`, title: t.notSimulated ? 'DPSチェックでは再現していません' : undefined },
+              { class: `${i < st.level ? 'on' : ''}${t.notSimulated ? ' nosim' : ''}`, title: t.notSimulated ? '戦闘では再現していません' : undefined },
               h('span', { class: 'need' }, `${t.count}`),
               t.text,
             ),
@@ -266,6 +266,14 @@ function modifierText(m: Modifier): string[] {
   if (m.spOnSkillEnd) out.push(`スキル終了時SP+${Math.round(m.spOnSkillEnd * 10) / 10}（期待値）`);
   if (m.ammoPct) out.push(`弾薬+${pct(m.ammoPct)}`);
   if (m.weakDamage) out.push('弱点ダメージ');
+  if (m.hpPct) out.push(`最大HP${m.hpPct > 0 ? '+' : ''}${pct(m.hpPct)}`);
+  if (m.defPct) out.push(`防御力+${pct(m.defPct)}`);
+  if (m.resFlat) out.push(`術耐性+${m.resFlat}`);
+  if (m.damageReduce) out.push(`被ダメージ-${pct(m.damageReduce)}`);
+  if (m.taunt) out.push('狙われやすい');
+  if (m.neutralize) out.push(`攻撃した敵の特殊能力を${m.neutralize}秒無効化`);
+  if (m.lifeOnHit) out.push(`攻撃ごとに最大HPの${pct(m.lifeOnHit)}回復`);
+  if (m.regenPct) out.push(`毎秒最大HPの${pct(m.regenPct)}回復`);
   return out;
 }
 

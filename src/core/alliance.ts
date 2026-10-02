@@ -108,6 +108,12 @@ export interface BattleGlobals {
   kazimierzPulse?: { members: Set<number>; scale: number; interval: number };
   /** 黄砂のコンパス＋サルゴンの渋茶：サルゴンのスキル発動で全サルゴンのSP回復 */
   sargonSpOnSkill?: { members: Set<number>; sp: number };
+  /** 堅守Lv2：所属者以外の被ダメージを肩代わりし、被弾時に反撃 */
+  stead?: { members: Set<number>; share: number; reflect: number; vuln: number; vulnDuration: number; cooldown: number };
+  /** エーギルLv2：最初に倒れたエーギルが復活 */
+  egirRevive?: { members: Set<number>; count: number };
+  /** 不屈：地上オペレーターが倒れた時、確率で再配置（Lv2で全員のSP回復） */
+  indom?: { prob: number; sp: number };
 }
 
 export interface BattleOptions {
@@ -207,7 +213,7 @@ export function garrisonBattleModifier(g: GarrisonData, stacks: Partial<Record<A
   return null;
 }
 
-/** DPS チェックに反映している堅守特性かどうか（UI表示用） */
+/** 戦闘に反映している堅守特性かどうか（UI表示用） */
 export function isGarrisonImplemented(g: GarrisonData): boolean {
   if (g.event === 'IN_BATTLE') {
     if (g.effect === 'GAIN_BUFF') {
@@ -397,7 +403,27 @@ export function battleSetup(
     }
   }
   // 孤高
-  if (lv('solo') >= 1) apply(members('solo'), { atkPct: v('solo', 'atk'), startSp: v('solo', 'sp') });
+  if (lv('solo') >= 1) apply(members('solo'), { atkPct: v('solo', 'atk'), startSp: v('solo', 'sp'), hpPct: v('solo', 'max_hp') });
+
+  // 耐久系の盟約
+  if (lv('stead') >= 1) apply(all, { hpPct: v('stead', 'base_max_hp') + v('stead', 'max_hp_per_stack') * sk('stead') });
+  if (lv('stead') >= 2) {
+    globals.stead = {
+      members: members('stead'),
+      share: v('stead', 'damage_resistance'),
+      reflect: v('stead', 'base_damage_value') + v('stead', 'damage_value_per_stack') * sk('stead'),
+      vuln: v('stead', 'damage_scale'),
+      vulnDuration: v('stead', 'weak[limit]'),
+      cooldown: v('stead', 'cd_duration'),
+    };
+  }
+  if (lv('deput') >= 1) apply(all, { defPct: v('deput', 'base_def') + v('deput', 'def_per_stack') * sk('deput') });
+  if (lv('egir') >= 1) apply(members('egir'), { hpPct: v('egir', 'base_max_hp') + v('egir', 'max_hp_per_stack') * sk('egir') });
+  if (lv('egir') >= 2) globals.egirRevive = { members: members('egir'), count: v('egir', 'max_free_respawn_cnt') };
+  if (lv('empty') >= 1) apply(all, { damageReduce: v('empty', 'damage_resistance') });
+  if (lv('indom') >= 1) {
+    globals.indom = { prob: v('indom', 'base_prob') + v('indom', 'prob_per_stack') * sk('indom'), sp: lv('indom') >= 2 ? v('indom', 'sp') : 0 };
+  }
 
   // 装備
   for (const o of board) {
@@ -410,7 +436,23 @@ export function battleSetup(
         switch (b.key) {
           case 'attr_common_global_buff':
           case 'act1autochess_equip_acarm044_global_buff':
-            apply([o.uid], { atkPct: n('atk'), aspd: n('attack_speed') });
+            apply([o.uid], { atkPct: n('atk'), aspd: n('attack_speed'), hpPct: n('max_hp'), defPct: n('def'), resFlat: n('magic_resistance') });
+            break;
+          case 'act1autochess_equip_acarm056_global_buff':
+            apply([o.uid], { hpPct: n('max_hp') });
+            break;
+          case 'act1autochess_equip_acarm049_global_buff':
+            // ゴリアテの兜：前方1マスに味方がいなければさらに上昇
+            apply([o.uid], { hpPct: n('init_max_hp') + (frontOf(board, o) ? 0 : n('ex_max_hp')) });
+            break;
+          case 'act1autochess_equip_acarm054_global_buff':
+            apply([o.uid], { taunt: n('taunt_level') });
+            break;
+          case 'act1vautochess_equip_acarm025_global_buff':
+            apply([o.uid], { lifeOnHit: n('hp_ratio') });
+            break;
+          case 'act2autochess_equip_acarm118_global_buff':
+            if (has('6_01')) apply([o.uid], { regenPct: n('hp_recovery_per_sec_by_max_hp_ratio') });
             break;
           case 'act1autochess_equip_acarm050_global_buff':
             apply([o.uid], { spRegen: n('sp_recovery_per_sec') });

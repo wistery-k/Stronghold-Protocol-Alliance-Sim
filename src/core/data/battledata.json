@@ -2880,7 +2880,14 @@
    "flying": true,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 220,
+    "interval": 2.15,
+    "range": 1.8,
+    "arts": true
+   }
   },
   "enemy_10083_hlbird": {
    "name": "「サンクタの翼」",
@@ -2904,7 +2911,14 @@
    "flying": true,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 220,
+    "interval": 3.0,
+    "range": 2.0,
+    "arts": false
+   }
   },
   "enemy_1355_mrfly": {
    "name": "バリケード",
@@ -2952,7 +2966,14 @@
    "flying": true,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 1000,
+    "interval": 3.0,
+    "range": 1.3,
+    "arts": false
+   }
   },
   "enemy_1407_hummbd": {
    "name": "スコープ",
@@ -2964,7 +2985,14 @@
    "flying": true,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 250,
+    "interval": 3.0,
+    "range": 2.0,
+    "arts": false
+   }
   },
   "enemy_1005_yokai_3": {
    "name": "飛龍",
@@ -2976,7 +3004,14 @@
    "flying": true,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 660,
+    "interval": 3.8,
+    "range": 2.0,
+    "arts": false
+   }
   },
   "enemy_1112_emppnt": {
    "name": "帝国砲撃誘導機",
@@ -2988,7 +3023,14 @@
    "flying": true,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 1000,
+    "interval": 5.0,
+    "range": 2.0,
+    "arts": false
+   }
   },
   "enemy_1041_lazerd_2": {
    "name": "アーツバードA2",
@@ -3000,7 +3042,14 @@
    "flying": true,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 600,
+    "interval": 3.5,
+    "range": 3.0,
+    "arts": true
+   }
   },
   "enemy_1042_frostd": {
    "name": "コキュートス",
@@ -3024,7 +3073,14 @@
    "flying": true,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 500,
+    "interval": 3.0,
+    "range": 2.5,
+    "arts": false
+   }
   },
   "enemy_1196_msfyin_2": {
    "name": "紅木瑞印",
@@ -3051,6 +3107,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 390,
+    "interval": 1.5,
+    "range": 0,
+    "arts": false
+   },
    "deadSpawn": {
     "enemy": "enemy_1196_msfyin_2",
     "count": 2
@@ -3081,6 +3144,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 310,
+    "interval": 1.5,
+    "range": 0,
+    "arts": false
+   },
    "deadSpawn": {
     "enemy": "enemy_1196_msfyin",
     "count": 2
@@ -3111,6 +3181,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 320,
+    "interval": 1.4,
+    "range": 0,
+    "arts": false
+   },
    "deadSpawn": {
     "enemy": "enemy_1198_msfshu",
     "count": 3
@@ -3127,6 +3204,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 180,
+    "interval": 2.0,
+    "range": 0,
+    "arts": true
+   },
    "revive": {
     "hits": 5,
     "interval": 10.0
@@ -3143,6 +3227,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 150,
+    "interval": 2.0,
+    "range": 0,
+    "arts": true
+   },
    "revive": {
     "hits": 5,
     "interval": 10.0
@@ -3159,6 +3250,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 350,
+    "interval": 3.5,
+    "range": 0,
+    "arts": true
+   },
    "revive": {
     "hits": 10,
     "interval": 10.0
@@ -3189,6 +3287,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1100,
+    "interval": 2.2,
+    "range": 0,
+    "arts": false
+   },
    "deadSpawn": {
     "enemy": "enemy_1208_msfji",
     "count": 4
@@ -3219,6 +3324,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 700,
+    "interval": 4.0,
+    "range": 0,
+    "arts": false
+   },
    "deadSpawn": {
     "enemy": "enemy_1200_msfjin",
     "count": 1
@@ -3235,6 +3347,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1100,
+    "interval": 5.0,
+    "range": 0,
+    "arts": false
+   },
    "revive": {
     "hits": 15,
     "interval": 15.0
@@ -3265,6 +3384,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 410,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   },
    "deadSpawn": {
     "enemy": "enemy_1198_msfshu_2",
     "count": 3
@@ -3280,7 +3406,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 200,
+    "interval": 2.5,
+    "range": 2.2,
+    "arts": true
+   }
   },
   "enemy_1158_divman": {
    "name": "潜水員",
@@ -3292,7 +3425,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 240,
+    "interval": 2.7,
+    "range": 1.9,
+    "arts": false
+   }
   },
   "enemy_1160_hvyslr": {
    "name": "水兵",
@@ -3304,7 +3444,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 800,
+    "interval": 3.5,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1305_mhslim_2": {
    "name": "猛焔オリジムシ",
@@ -3316,7 +3463,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 80,
+    "interval": 2.0,
+    "range": 1.8,
+    "arts": true
+   }
   },
   "enemy_1305_mhslim": {
    "name": "灼熱オリジムシ",
@@ -3328,7 +3482,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 50,
+    "interval": 2.0,
+    "range": 1.8,
+    "arts": true
+   }
   },
   "enemy_2025_syufo": {
    "name": "掠海のフローター",
@@ -3352,7 +3513,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 250,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1161_tidmag_2": {
    "name": "造波術師隊長",
@@ -3364,7 +3532,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 260,
+    "interval": 2.5,
+    "range": 2.2,
+    "arts": true
+   }
   },
   "enemy_1160_hvyslr_2": {
    "name": "水兵長",
@@ -3376,7 +3551,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1000,
+    "interval": 3.5,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1439_dslntf": {
    "name": "元核のマレフィセント",
@@ -3388,7 +3570,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 400,
+    "interval": 3.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1148_dssbr": {
    "name": "淵海のスライダー",
@@ -3400,7 +3589,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 280,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1148_dssbr_2": {
    "name": "富栄養化したスライダー",
@@ -3412,7 +3608,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 360,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1275_dwlock_2": {
    "name": "サルカズ王庭軍精鋭術師",
@@ -3424,7 +3627,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 500,
+    "interval": 4.0,
+    "range": 2.5,
+    "arts": true
+   }
   },
   "enemy_1229_darmy": {
    "name": "サルカズ王庭軍戦士",
@@ -3436,7 +3646,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 240,
+    "interval": 2.5,
+    "range": 0,
+    "arts": true
+   }
   },
   "enemy_1229_darmy_2": {
    "name": "サルカズ王庭軍戦士隊長",
@@ -3448,7 +3665,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 380,
+    "interval": 2.5,
+    "range": 0,
+    "arts": true
+   }
   },
   "enemy_9007_acelem": {
    "name": "仮想敵：淤困",
@@ -3472,7 +3696,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 140,
+    "interval": 1.0,
+    "range": 1.6,
+    "arts": true
+   }
   },
   "enemy_1433_dsbasi": {
    "name": "単核のプレデター",
@@ -3484,7 +3715,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 280,
+    "interval": 1.1,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1433_dsbasi_2": {
    "name": "異光体プレデター",
@@ -3496,7 +3734,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 350,
+    "interval": 1.1,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1272_nhtank": {
    "name": "枯朽サルカズ戦車",
@@ -3520,7 +3765,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 380,
+    "interval": 2.5,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1267_nhpbr_2": {
    "name": "枯朽サルカズ戦士隊長",
@@ -3532,7 +3784,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 450,
+    "interval": 2.5,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1270_nhstlk": {
    "name": "逐腐獣",
@@ -3544,7 +3803,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 550,
+    "interval": 1.8,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1234_dsubrl_2": {
    "name": "富栄養化したミキサー",
@@ -3556,7 +3822,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 160,
+    "interval": 1.0,
+    "range": 1.6,
+    "arts": true
+   }
   },
   "enemy_10122_uacann_2": {
    "name": "集团军重型火炮",
@@ -3568,7 +3841,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 500,
+    "interval": 5.0,
+    "range": 10.0,
+    "arts": false
+   }
   },
   "enemy_1272_nhtank_2": {
    "name": "枯朽サルカズ精鋭戦車",
@@ -3592,7 +3872,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 700,
+    "interval": 1.8,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_9006_actoxi": {
    "name": "仮想敵：蚀裂",
@@ -3604,7 +3891,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 400,
+    "interval": 1.5,
+    "range": 0,
+    "arts": true
+   }
   },
   "enemy_1299_ymkilr": {
    "name": "山海衆精鋭",
@@ -3617,6 +3911,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 800,
+    "interval": 2.5,
+    "range": 0,
+    "arts": false
+   },
    "stealth": true
   },
   "enemy_1043_zomsbr": {
@@ -3629,7 +3930,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 250,
+    "interval": 1.8,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1019_jshoot": {
    "name": "迷彩射撃兵",
@@ -3642,6 +3950,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 260,
+    "interval": 2.7,
+    "range": 2.2,
+    "arts": false
+   },
    "stealth": true
   },
   "enemy_10034_cnvsax": {
@@ -3668,6 +3983,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 720,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   },
    "stealth": true
   },
   "enemy_10043_sailor": {
@@ -3680,7 +4002,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 350,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_10042_prtrop": {
    "name": "橋架け船大工",
@@ -3693,6 +4022,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 600,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   },
    "stealth": true
   },
   "enemy_1389_winbab_2": {
@@ -3706,6 +4042,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 650,
+    "interval": 3.0,
+    "range": 3.5,
+    "arts": false
+   },
    "stealth": true
   },
   "enemy_1381_winman": {
@@ -3718,7 +4061,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 300,
+    "interval": 1.7,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1019_jshoot_2": {
    "name": "迷彩射撃隊長",
@@ -3731,6 +4081,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 310,
+    "interval": 2.7,
+    "range": 2.2,
+    "arts": false
+   },
    "stealth": true
   },
   "enemy_1299_ymkilr_2": {
@@ -3744,6 +4101,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1000,
+    "interval": 2.5,
+    "range": 0,
+    "arts": false
+   },
    "stealth": true
   },
   "enemy_1422_lrsldr_2": {
@@ -3756,7 +4120,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 350,
+    "interval": 3.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1404_msnip": {
    "name": "重型クロスボウ強襲者",
@@ -3769,6 +4140,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 400,
+    "interval": 3.5,
+    "range": 2.5,
+    "arts": true
+   },
    "stealth": true
   },
   "enemy_1009_lurker": {
@@ -3782,6 +4160,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 300,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   },
    "stealth": true
   },
   "enemy_9008_acbunn": {
@@ -3795,6 +4180,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 360,
+    "interval": 4.0,
+    "range": 2.0,
+    "arts": true
+   },
    "stealth": true
   },
   "enemy_10031_cnvsld": {
@@ -3808,6 +4200,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 300,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   },
    "stealth": true
   },
   "enemy_1174_duholy": {
@@ -3821,6 +4220,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 900,
+    "interval": 4.0,
+    "range": 0,
+    "arts": false
+   },
    "refract": 70.0
   },
   "enemy_1166_dusbr": {
@@ -3834,6 +4240,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 280,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   },
    "refract": 70.0
   },
   "enemy_1170_dushld": {
@@ -3847,6 +4260,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 700,
+    "interval": 4.0,
+    "range": 0,
+    "arts": false
+   },
    "refract": 70.0
   },
   "enemy_1168_dumage": {
@@ -3860,6 +4280,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 300,
+    "interval": 3.0,
+    "range": 2.5,
+    "arts": true
+   },
    "refract": 70.0
   },
   "enemy_1165_duhond": {
@@ -3873,6 +4300,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 300,
+    "interval": 1.4,
+    "range": 0,
+    "arts": false
+   },
    "refract": 70.0
   },
   "enemy_1169_duphlx": {
@@ -3886,6 +4320,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 300,
+    "interval": 2.5,
+    "range": 0,
+    "arts": false
+   },
    "refract": 70.0
   },
   "enemy_1174_duholy_2": {
@@ -3899,6 +4340,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1100,
+    "interval": 4.0,
+    "range": 0,
+    "arts": false
+   },
    "refract": 70.0
   },
   "enemy_1166_dusbr_2": {
@@ -3912,6 +4360,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 380,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   },
    "refract": 70.0
   },
   "enemy_1170_dushld_2": {
@@ -3925,6 +4380,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 900,
+    "interval": 4.0,
+    "range": 0,
+    "arts": false
+   },
    "refract": 70.0
   },
   "enemy_1169_duphlx_2": {
@@ -3938,6 +4400,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 450,
+    "interval": 2.5,
+    "range": 0,
+    "arts": false
+   },
    "refract": 70.0
   },
   "enemy_1172_dugago": {
@@ -3964,6 +4433,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1000,
+    "interval": 5.5,
+    "range": 0,
+    "arts": false
+   },
    "refract": 70.0
   },
   "enemy_1010_demon_2": {
@@ -3976,7 +4452,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 750,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1071_dftman": {
    "name": "サルカズ刀術師",
@@ -3988,7 +4471,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 300,
+    "interval": 2.5,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1010_demon": {
    "name": "サルカズ大剣士",
@@ -4000,7 +4490,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 600,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1045_hammer": {
    "name": "クラッシャー",
@@ -4012,7 +4509,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1000,
+    "interval": 3.5,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1046_agent": {
    "name": "歩兵",
@@ -4024,7 +4528,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 280,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1118_lidbox_2": {
    "name": "重罪拳闘士囚人",
@@ -4036,7 +4547,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 400,
+    "interval": 1.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1116_liprr": {
    "name": "一般囚人",
@@ -4048,7 +4566,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 280,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1116_liprr_2": {
    "name": "重罪囚人",
@@ -4060,7 +4585,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 380,
+    "interval": 2.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1325_cbgpro_2": {
    "name": "精鋭軍用猟犬",
@@ -4072,7 +4604,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 360,
+    "interval": 1.5,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1000_gopro_2": {
    "name": "上級猟犬",
@@ -4084,7 +4623,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 260,
+    "interval": 1.4,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1325_cbgpro": {
    "name": "軍用猟犬",
@@ -4096,7 +4642,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 290,
+    "interval": 1.5,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1121_lifbos": {
    "name": "凶悪犯",
@@ -4108,7 +4661,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 800,
+    "interval": 3.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1006_shield_3": {
    "name": "重装連隊長",
@@ -4120,7 +4680,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1000,
+    "interval": 2.6,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1402_tgshd_2": {
    "name": "重装偵察兵",
@@ -4132,7 +4699,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 700,
+    "interval": 3.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1329_cbshld": {
    "name": "アーク鏡衛",
@@ -4145,6 +4719,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 700,
+    "interval": 3.0,
+    "range": 0,
+    "arts": false
+   },
    "defReduce": {
     "max": 80,
     "def": -50.0,
@@ -4161,7 +4742,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 310,
+    "interval": 1.8,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1249_lysdb_2": {
    "name": "ライン生命警備課上級職員",
@@ -4174,6 +4762,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 485,
+    "interval": 2.8,
+    "range": 0,
+    "arts": false
+   },
    "hitShield": 1
   },
   "enemy_1045_hammer_2": {
@@ -4186,7 +4781,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1500,
+    "interval": 3.5,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1061_zomshd": {
    "name": "寄生重装兵",
@@ -4198,7 +4800,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 600,
+    "interval": 2.6,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1387_winshd": {
    "name": "訪問団の盾兵",
@@ -4210,7 +4819,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 500,
+    "interval": 3.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1381_winman_2": {
    "name": "訪問団の老兵",
@@ -4222,7 +4838,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 400,
+    "interval": 1.7,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1121_lifbos_2": {
    "name": "伝説の凶悪犯",
@@ -4234,7 +4857,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1000,
+    "interval": 3.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1119_vofsd": {
    "name": "巨漢囚人",
@@ -4246,7 +4876,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 600,
+    "interval": 3.3,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1320_wdrrl_2": {
    "name": "サルカズ悖理暴虐兵士長",
@@ -4258,7 +4895,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1200,
+    "interval": 2.9,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_10124_uashld_2": {
    "name": "集团军中坚盾卫",
@@ -4270,7 +4914,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 950,
+    "interval": 3.8,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1328_cbjedi": {
    "name": "アーク鋒衛",
@@ -4282,7 +4933,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 700,
+    "interval": 3.0,
+    "range": 0,
+    "arts": true
+   }
   },
   "enemy_1355_mrfly_2": {
    "name": "バリケードP",
@@ -4306,7 +4964,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 400,
+    "interval": 3.5,
+    "range": 0,
+    "arts": true
+   }
   },
   "enemy_10065_ftzlc": {
    "name": "バクダンダネ",
@@ -4318,7 +4983,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 240,
+    "interval": 1.7,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1283_sgkill": {
    "name": "マフィアの掃除人",
@@ -4330,7 +5002,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 800,
+    "interval": 3.0,
+    "range": 1.8,
+    "arts": false
+   }
   },
   "enemy_1175_dushdo_2": {
    "name": "ダブリンヘタイロイ上級影刃",
@@ -4343,6 +5022,13 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 580,
+    "interval": 2.1,
+    "range": 0,
+    "arts": true
+   },
    "stealth": true
   },
   "enemy_1254_lypa_2": {
@@ -4355,7 +5041,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 850,
+    "interval": 1.3,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1425_lrcmra_2": {
    "name": "冒涜のキメラ",
@@ -4367,7 +5060,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 1200,
+    "interval": 5.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1329_cbshld_2": {
    "name": "アーク鏡衛隊長",
@@ -4380,6 +5080,13 @@
    "boss": false,
    "elite": false,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 900,
+    "interval": 3.0,
+    "range": 0,
+    "arts": false
+   },
    "defReduce": {
     "max": 85,
     "def": -50.0,
@@ -4396,7 +5103,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 360,
+    "interval": 1.8,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1252_lysytb_2": {
    "name": "Dor-β号複製体",
@@ -4408,7 +5122,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 420,
+    "interval": 3.2,
+    "range": 2.2,
+    "arts": false
+   }
   },
   "enemy_1072_dlancer": {
    "name": "サルカズ突撃兵",
@@ -4420,7 +5141,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 450,
+    "interval": 4.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1007_slime": {
    "name": "オリジムシ",
@@ -4432,7 +5160,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 130,
+    "interval": 1.7,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1422_lrsldr": {
    "name": "枯朽サルカズ先鋒",
@@ -4444,7 +5179,14 @@
    "flying": false,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 300,
+    "interval": 3.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1427_lrnazg": {
    "name": "「霊骸布」",
@@ -4456,7 +5198,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 900,
+    "interval": 5.0,
+    "range": 1.3,
+    "arts": false
+   }
   },
   "enemy_1425_lrcmra": {
    "name": "大罪のキメラ",
@@ -4468,7 +5217,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 800,
+    "interval": 5.0,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_1040_bombd": {
    "name": "バクダンバチ",
@@ -4480,7 +5236,14 @@
    "flying": true,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 800,
+    "interval": 5.0,
+    "range": 2.0,
+    "arts": false
+   }
   },
   "enemy_1006_shield_2": {
    "name": "重装隊長",
@@ -4492,7 +5255,14 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "melee",
+    "atk": 600,
+    "interval": 2.6,
+    "range": 0,
+    "arts": false
+   }
   },
   "enemy_9013_acstmk": {
    "name": "仮想敵：冑",
@@ -4504,7 +5274,14 @@
    "flying": false,
    "boss": true,
    "elite": false,
-   "lifeReduce": 2
+   "lifeReduce": 2,
+   "attack": {
+    "kind": "ranged",
+    "atk": 650,
+    "interval": 4.0,
+    "range": 8.0,
+    "arts": false
+   }
   },
   "enemy_10027_vtsk": {
    "name": "「帝国の甲冑」",
@@ -4528,7 +5305,14 @@
    "flying": false,
    "boss": true,
    "elite": false,
-   "lifeReduce": 2
+   "lifeReduce": 2,
+   "attack": {
+    "kind": "ranged",
+    "atk": 750,
+    "interval": 4.0,
+    "range": 8.0,
+    "arts": false
+   }
   },
   "enemy_9014_acstma": {
    "name": "「冑を斬る剣」",

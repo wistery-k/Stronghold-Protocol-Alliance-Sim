@@ -1173,3 +1173,11 @@ aside {
     height: 360px;
   }
 }
+
+/* リプレイ：オペレーターのHP */
+.rp-unit-hp {
+  fill: var(--ok);
+}
+.rp-unit.down {
+  opacity: 0.25;
+}

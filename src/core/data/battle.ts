@@ -34,6 +34,8 @@ export interface EnemySpec {
   deadSpawn?: { enemy: string; count: number };
   /** 倒れると「hits 回の攻撃で倒せる」状態になり、interval 秒後に復活する（1回だけ） */
   revive?: { hits: number; interval: number };
+  /** 攻撃。近接はブロックしている相手を、遠距離は範囲内の相手を攻撃する。無ければ攻撃しない */
+  attack?: { kind: 'melee' | 'ranged'; atk: number; interval: number; range: number; arts: boolean };
 }
 
 /** 敵の枠の役割（雑魚・エリート・強敵） */

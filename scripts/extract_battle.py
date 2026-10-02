@@ -160,6 +160,22 @@ def main():
             'elite': level_type == 'ELITE',
             'lifeReduce': ed['lifePointReduce']['m_value'] if ed['lifePointReduce']['m_defined'] else 1,
         }
+        # 攻撃（近接はブロックしている相手、遠距離は範囲内の相手を攻撃）
+        apply_way = ed['applyWay']['m_value'] if ed['applyWay']['m_defined'] else 'MELEE'
+        atk = enemy_value(at, 'atk', 0) or 0
+        if apply_way in ('MELEE', 'RANGED') and atk > 0:
+            bat = enemy_value(at, 'baseAttackTime', 2.0) or 2.0
+            aspd = enemy_value(at, 'attackSpeed', 100.0) or 100.0
+            radius = ed['rangeRadius']['m_value'] if ed['rangeRadius']['m_defined'] else -1
+            dtypes = ((cn_handbook.get(key) or cn_handbook.get(re.sub(r'_\d$', '', key)) or {}).get('damageType') or ['PHYSIC'])
+            e['attack'] = {
+                'kind': 'ranged' if apply_way == 'RANGED' else 'melee',
+                'atk': atk,
+                'interval': round(bat * 100 / aspd, 3),
+                # 範囲が決まっていない遠距離（直線攻撃など）は2.5マスとみなす
+                'range': (radius if radius > 0 else 2.5) if apply_way == 'RANGED' else 0,
+                'arts': dtypes[0] == 'MAGIC',
+            }
         # 隠匿（ブロックされるまで狙えない）
         if abilities and abilities[0].startswith('<$ba.invisible>'):
             e['stealth'] = True

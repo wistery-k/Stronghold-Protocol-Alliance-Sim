@@ -1,12 +1,12 @@
 import { bondKey, type BattleGlobals } from './alliance';
 import { ENEMY_PATHS, canBlockAt, cellPos, cellX, cellY, rangeCells, DEFAULT_DIRECTION } from './board';
 import { ENEMIES, rangeGrid, unitRangeIds, type EnemySpec, type RoundSpec } from './data/battle';
-import { ENEMY_HP_SCALE, ENEMY_SPEED_SCALE } from './rules';
+import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE, ENEMY_SPEED_SCALE } from './rules';
 import { unitState } from './data/units';
 import type { AllianceId, DamageType, Direction, EnemyDef, EnemyPhase, GarrisonData, Modifier, SkillData, Star, UnitDef } from './types';
 
 // 戦闘シミュレーション（時間刻み）。
-// - マップ戦闘：敵が経路を進み、地上のオペレーターがブロックし、攻撃範囲内の敵を攻撃する。敵は攻撃してこない。
+// - マップ戦闘：敵が経路を進み、地上のオペレーターがブロックし、攻撃範囲内の敵を攻撃する。敵も攻撃し、医療が回復する。
 // - 単体標的（DPSチェック）：動かない標的1体を全員が攻撃する（テスト・比較用）。
 // 本家のスキルデータ（blackboard）から攻撃力・攻撃速度・倍率などを読み取って近似する。
 // 確率効果は期待値で扱うので結果は決定的。
@@ -36,6 +36,12 @@ export interface SimUnitResult {
   hits: number;
   skillCasts: number;
   kills: number;
+  /** 受けたダメージ */
+  taken: number;
+  /** 回復した量（医療） */
+  healed: number;
+  /** 倒れた時刻（倒れなければ null） */
+  downAt: number | null;
 }
 
 export interface SimResult {
@@ -66,6 +72,8 @@ export interface ReplayFrame {
   t: number;
   e: [number, number, number, number][];
   s: number[];
+  /** オペレーターの残りHP（%）。倒れていれば -1 */
+  u?: [number, number][];
 }
 
 export interface BattleResult {
@@ -276,7 +284,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack'>>;
 
 /** 素質で攻撃した敵の特殊能力を無効化する秒数（通常・精鋭） */
 const TALENT_NEUTRALIZE: Record<string, [number, number]> = {
@@ -311,6 +319,10 @@ interface Enemy {
   reduceStacks: number;
   /** 特殊能力が無効になっている時刻まで */
   neutralUntil: number;
+  /** 攻撃のクールダウン */
+  atkTimer: number;
+  /** 脆弱（被ダメージ増加）の終わる時刻 */
+  vulnUntil: number;
   /** 復活待ち（攻撃回数で倒せる状態）なら復活する時刻 */
   reviveAt: number | null;
   revived: boolean;
@@ -343,6 +355,15 @@ interface Runtime {
   attacks: number;
   /** 攻撃した敵の特殊能力を無効化する秒数 */
   neutralize: number;
+  hp: number;
+  maxHp: number;
+  def: number;
+  res: number;
+  alive: boolean;
+  /** 戦闘開始時の配置順（左の列から、同じ列は上から）。大きいほど後に配置 */
+  order: number;
+  /** 堅守の反撃のクールダウン */
+  reflectReadyAt: number;
   /** シラクーザの恐怖の発生の累積（期待値） */
   fearAcc: number;
   firstEndDone: boolean;
@@ -394,9 +415,16 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       attacks: 0,
       fearAcc: 0,
       neutralize: Math.max(input.mods.neutralize ?? 0, TALENT_NEUTRALIZE[input.def.charId]?.[input.star - 1] ?? 0),
+      hp: st.stats.hp * (1 + (input.mods.hpPct ?? 0)),
+      maxHp: st.stats.hp * (1 + (input.mods.hpPct ?? 0)),
+      def: st.stats.def * (1 + (input.mods.defPct ?? 0)),
+      res: Math.min(95, st.stats.res + (input.mods.resFlat ?? 0)),
+      alive: true,
+      order: 0,
+      reflectReadyAt: 0,
       firstEndDone: false,
       events: garrisonEvents(input),
-      result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0, kills: 0 },
+      result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0, kills: 0, taken: 0, healed: 0, downAt: null },
       melee: MELEE.has(input.def.profession),
       blocker,
       block: blocker ? st.stats.block : 0,
@@ -405,6 +433,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       blocked: [],
     };
   });
+
+  // 戦闘開始時の配置順：絶対方角で左の列から、同じ列は上から
+  [...rt]
+    .filter((u) => u.input.pos !== undefined)
+    .sort((a, b) => cellX(a.input.pos!) - cellX(b.input.pos!) || cellY(a.input.pos!) - cellY(b.input.pos!))
+    .forEach((u, i) => (u.order = i + 1));
 
   const baseRes = (s: EnemyInputSpec) => Math.min(100, s.res + (s.refract ?? 0));
 
@@ -432,6 +466,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       reviveAt: null,
       revived: false,
       neutralUntil: -1,
+      atkTimer: 0,
+      vulnUntil: -1,
       defense: { def: input.spec.def, res: baseRes(input.spec), damageTaken: 1 },
       phases: [...(input.phases ?? [])].sort((a, b) => b.belowHpRatio - a.belowHpRatio),
       phaseIdx: 0,
@@ -558,6 +594,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const type = bestType(def.damageType, raw, e.defense, mods);
     const dmg = hitDamage(raw, type, e.defense, mods, type === 'arts' ? artsVuln(e) : 0) * flagFactor(mods, t);
     deal(u, e, dmg);
+    if (type !== 'heal' && mods.lifeOnHit) healUnit(u, u, u.maxHp * mods.lifeOnHit);
     if (type !== 'heal') {
       if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken);
       if (g.siracusa?.members.has(uid) && t < g.siracusa.procWindow) deal(u, e, g.siracusa.procProb * g.siracusa.procDmg * e.defense.damageTaken);
@@ -633,7 +670,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const main = pickTargets(u, true)[0]?.[0];
       if (main) for (const e of enemies) if (e.alive && Math.hypot(e.x - main.x, e.y - main.y) <= spore.radius) neutralize(e, spore.duration);
     }
-    if (s.instant) {
+    if (s.instant && def.damageType === 'heal') {
+      if (field) healAction(u, baseAtk(def, star, mods, outerAtkPct + s.atkPct), s.atkScale, true);
+      endSkill(u);
+    } else if (s.instant) {
       const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
       for (const [e, m] of pickTargets(u, true)) for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m);
       endSkill(u);
@@ -656,15 +696,158 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     rt.find(
       (u) =>
         u.blocker &&
+        u.alive &&
         u.input.pos === tile &&
         u.blocked.reduce((s, b) => s + b.input.spec.blockCnt, 0) + e.input.spec.blockCnt <= u.block + (u.skillLeft > 0 || u.ammoLeft > 0 ? u.skill.blockAdd : 0),
     );
+
+  // ------------------------------------------------------------
+  // 敵の攻撃・オペレーターの被弾と回復
+  // ------------------------------------------------------------
+  let indomAcc = 0;
+  let egirRevives = g.egirRevive?.count ?? 0;
+
+  /** 防御・術耐性・被ダメージ軽減を通したダメージ */
+  const mitigate = (u: Runtime, raw: number, arts: boolean) => {
+    const dmg = arts ? Math.max(raw * (1 - u.res / 100), raw * MIN_DAMAGE_RATIO) : Math.max(raw - u.def, raw * MIN_DAMAGE_RATIO);
+    return dmg * Math.max(0, 1 - (u.input.mods.damageReduce ?? 0));
+  };
+
+  const unitDown = (u: Runtime) => {
+    const ground = u.melee;
+    // 不屈Lv2：地上オペレーターが倒れると全員のSP回復
+    if (ground && g.indom?.sp) for (const o of rt) if (o.alive && o !== u) o.sp += g.indom.sp;
+    // エーギルLv2：最初に倒れたエーギル数名は即座に復活
+    if (g.egirRevive?.members.has(u.input.uid) && egirRevives > 0) {
+      egirRevives--;
+      u.hp = u.maxHp;
+      return;
+    }
+    // 不屈：確率で即座に再配置（期待値：累積が1に達するたび）
+    if (ground && g.indom && g.indom.prob > 0) {
+      indomAcc += g.indom.prob;
+      if (indomAcc >= 1) {
+        indomAcc -= 1;
+        u.hp = u.maxHp;
+        return;
+      }
+    }
+    u.alive = false;
+    u.hp = 0;
+    u.result.downAt = Math.round(t * 100) / 100;
+    for (const e of u.blocked) e.blockedBy = null;
+    u.blocked = [];
+    u.skillLeft = 0;
+    u.ammoLeft = 0;
+  };
+
+  const takeDamage = (u: Runtime, amount: number) => {
+    if (!u.alive || amount <= 0) return;
+    u.hp -= amount;
+    u.result.taken += amount;
+    if (u.hp <= 1e-6) unitDown(u);
+  };
+
+  /** 堅守Lv2：被弾した【堅守】が攻撃元に術ダメージと脆弱 */
+  const steadReflect = (u: Runtime, src: Enemy) => {
+    const sd = g.stead;
+    if (!sd || !u.alive || !src.alive || t < u.reflectReadyAt) return;
+    u.reflectReadyAt = t + sd.cooldown;
+    deal(u, src, hitDamage(sd.reflect, 'arts', src.defense, {}));
+    src.vulnUntil = t + sd.vulnDuration;
+    src.defense.damageTaken = sd.vuln;
+  };
+
+  const hurt = (u: Runtime, raw: number, arts: boolean, src: Enemy) => {
+    let dmg = mitigate(u, raw, arts);
+    const sd = g.stead;
+    if (sd && sd.members.has(u.input.uid)) steadReflect(u, src);
+    else if (sd) {
+      // 【堅守】以外が受けるダメージの一部を【堅守】が肩代わり
+      const guard = rt.filter((o) => o.alive && sd.members.has(o.input.uid)).sort((a, b) => b.hp / b.maxHp - a.hp / a.maxHp)[0];
+      if (guard) {
+        const moved = dmg * sd.share;
+        dmg -= moved;
+        takeDamage(guard, moved);
+        steadReflect(guard, src);
+      }
+    }
+    takeDamage(u, dmg);
+  };
+
+  const healUnit = (healer: Runtime, target: Runtime, amount: number) => {
+    if (!target.alive || amount <= 0) return;
+    const applied = Math.min(amount, target.maxHp - target.hp);
+    if (applied <= 0) return;
+    target.hp += applied;
+    healer.result.healed += applied;
+  };
+
+  /** 治療の範囲内にいる味方 */
+  const alliesInRange = (u: Runtime, skillActive: boolean) => {
+    const range = skillActive ? u.rangeSkill : u.rangeNormal;
+    return rt.filter((o) => o.alive && o.input.pos !== undefined && !!range?.has(o.input.pos));
+  };
+  const injuredInRange = (u: Runtime, skillActive: boolean) =>
+    alliesInRange(u, skillActive)
+      .filter((o) => o.hp < o.maxHp - 1e-6)
+      .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
+
+  /** 医療の1回の治療行動 */
+  const healAction = (u: Runtime, atk: number, scale: number, skillActive: boolean): boolean => {
+    const list = injuredInRange(u, skillActive);
+    if (!list.length) return false;
+    const sub = u.input.def.subProfession;
+    if (sub === 'chainhealer') {
+      // 3人の間を跳ね、跳ねるたびに治療量-25%
+      list.slice(0, 3).forEach((o, i) => healUnit(u, o, atk * scale * Math.pow(0.75, i)));
+      return true;
+    }
+    const n = Math.max(skillActive ? u.skill.maxTarget : 1, sub === 'ringhealer' ? 3 : 1);
+    for (const o of list.slice(0, n)) {
+      // 療養師：遠くの対象は治療量80%
+      const far = sub === 'healer' && u.input.pos !== undefined && o.input.pos !== undefined && Math.hypot(cellX(o.input.pos) - cellX(u.input.pos), cellY(o.input.pos) - cellY(u.input.pos)) > 1.5;
+      healUnit(u, o, atk * scale * (far ? 0.8 : 1));
+    }
+    return true;
+  };
+
+  /** 敵の攻撃：ブロックされていればブロックしている相手、遠距離は範囲内で最後に配置された相手（警報器を優先） */
+  const enemyAttacks = () => {
+    for (const e of enemies) {
+      const a = e.input.spec.attack;
+      if (!a || !e.alive || e.reviveAt !== null) continue;
+      if (e.atkTimer > 0) {
+        e.atkTimer -= dt;
+        continue;
+      }
+      let target: Runtime | undefined;
+      if (e.blockedBy !== null) target = byUid.get(e.blockedBy);
+      else if (a.kind === 'ranged') {
+        for (const u of rt) {
+          if (!u.alive || u.input.pos === undefined) continue;
+          if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
+          const tu = u.input.mods.taunt ?? 0;
+          const tt = target?.input.mods.taunt ?? 0;
+          if (!target || tu > tt || (tu === tt && u.order > target.order)) target = u;
+        }
+      }
+      if (!target || !target.alive) continue;
+      hurt(target, a.atk, a.arts, e);
+      e.atkTimer = a.interval;
+    }
+  };
 
   const moveEnemies = () => {
     for (const e of enemies) {
       if (!e.spawned && e.input.spawnAt <= t + 1e-9) {
         e.spawned = true;
         e.alive = true;
+      }
+      // 脆弱が切れる
+      if (e.vulnUntil >= 0 && t >= e.vulnUntil) {
+        e.vulnUntil = -1;
+        e.defense.damageTaken = 1;
       }
       // 特殊能力無効化が切れたら屈折が戻る
       if (e.alive && e.neutralUntil >= 0 && t >= e.neutralUntil) {
@@ -712,6 +895,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const moveMultiplier = opts.moveMultiplier ?? 0.5;
 
+  const unitFrame = (): [number, number][] =>
+    rt.filter((u) => u.input.pos !== undefined).map((u) => [u.input.uid, u.alive ? Math.round((u.hp / u.maxHp) * 100) : -1]);
+
   const steps = Math.round(timeLimit / dt);
   const sampleEvery = Math.max(1, Math.round(0.5 / dt));
   const frameEvery = Math.max(1, Math.round(0.2 / dt));
@@ -721,9 +907,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     t = step * dt;
     moveEnemies();
     if (enemies.every((e) => e.spawned && !e.alive)) break;
+    if (field) enemyAttacks();
 
     for (const u of rt) {
+      if (!u.alive) continue;
       const { def, mods, uid, star } = u.input;
+      if (mods.regenPct) healUnit(u, u, u.maxHp * mods.regenPct * dt);
       const stats = unitState(def, star).stats;
       const s = u.skill;
 
@@ -735,7 +924,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
       // スキル発動判定（攻撃役は攻撃範囲に敵がいる時だけ発動する）
       const skillActive = () => u.skillLeft > 0 || u.ammoLeft > 0;
-      if (!s.passive && !skillActive() && u.sp >= s.spCost && s.spCost > 0 && (heal || targetsInRange(u, true).length > 0)) {
+      if (!s.passive && !skillActive() && u.sp >= s.spCost && s.spCost > 0 && (heal ? !field || injuredInRange(u, true).length > 0 : targetsInRange(u, true).length > 0)) {
         castSkill(u, outerAtkPct);
       }
 
@@ -753,6 +942,22 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const hits = activeNow && !s.instant ? s.hits : 1;
       // 陣法術師はスキル中しか攻撃しない
       const canAttack = !heal && !(def.subProfession === 'phalanx' && !activeNow);
+
+      // 医療：治療行動（吟遊者は範囲内の全員を毎秒攻撃力の10%回復）
+      if (heal && field) {
+        if (def.subProfession === 'bard') {
+          for (const o of alliesInRange(u, activeNow)) healUnit(u, o, atk * 0.1 * dt);
+        } else {
+          while (u.atkTimer <= 1e-9) {
+            if (!healAction(u, atk, scale, activeNow)) {
+              u.atkTimer = 0;
+              break;
+            }
+            u.atkTimer += interval;
+            if (s.charge === 'attack' && !activeNow) u.sp += 1;
+          }
+        }
+      }
 
       // 通常攻撃
       while (canAttack && u.atkTimer <= 1e-9) {
@@ -781,8 +986,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
       if (u.atkTimer > 0) u.atkTimer -= dt;
 
-      // 回復職もSPは貯まる（攻撃回復型は攻撃の代わりに時間で貯める）
-      if (heal && s.charge === 'attack' && !activeNow) u.sp += dt / Math.max(0.2, interval);
+      // 単体標的モードでは回復職のSPも時間で貯める
+      if (heal && !field && s.charge === 'attack' && !activeNow) u.sp += dt / Math.max(0.2, interval);
 
       // カジミエーシュLv2の周期ダメージ（近接・ブロック中に周囲の敵へ）
       if (g.kazimierzPulse?.members.has(uid)) {
@@ -816,7 +1021,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       frames.push({
         t: Math.round(t * 100) / 100,
         e: enemies.filter((e) => e.alive).map((e) => [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)]),
-        s: rt.filter((u) => u.skillLeft > 0 || u.ammoLeft > 0).map((u) => u.input.uid),
+        s: rt.filter((u) => u.alive && (u.skillLeft > 0 || u.ammoLeft > 0)).map((u) => u.input.uid),
+        u: unitFrame(),
       });
     }
     if (enemies.every((e) => e.spawned && !e.alive)) {
@@ -831,6 +1037,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       t: Math.round(t * 100) / 100,
       e: enemies.filter((e) => e.alive).map((e) => [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)]),
       s: [],
+      u: unitFrame(),
     });
   }
   return { t, enemies, units: rt, timeline, phaseLog, stackGains, frames, killTime };
@@ -843,7 +1050,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 /** 敵の能力値に調整を掛ける。ボスと「攻撃回数で倒す敵」の HP は本家のまま */
 export function scaledEnemy(enemy: EnemySpec): EnemySpec {
   const hpScale = enemy.boss || enemy.hitsToKill ? 1 : ENEMY_HP_SCALE;
-  return { ...enemy, hp: Math.max(1, Math.round(enemy.hp * hpScale)), speed: enemy.speed * ENEMY_SPEED_SCALE };
+  const attack = enemy.attack ? { ...enemy.attack, atk: enemy.attack.atk * ENEMY_ATK_SCALE } : undefined;
+  return { ...enemy, hp: Math.max(1, Math.round(enemy.hp * hpScale)), speed: enemy.speed * ENEMY_SPEED_SCALE, attack };
 }
 
 /** ラウンドの敵の出現予定（出現マスは本家の出現地点に合わせる） */

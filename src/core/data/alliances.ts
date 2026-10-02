@@ -2,7 +2,7 @@ import { GAMEDATA } from './units';
 import type { AllianceId, CoreAllianceId } from '../types';
 
 // 盟約の名称・発動人数・効果説明。数値は本家データ（gamedata.json の bonds）から読む。
-// 効果のうち DPS チェックに反映しているものは alliance.ts で計算している。
+// 効果のうち戦闘に反映しているものは alliance.ts で計算している。
 
 export type CountMode = 'board' | 'boardAndBench' | 'exactlyOne';
 
@@ -10,7 +10,7 @@ export interface AllianceTier {
   /** 必要人数 */
   count: number;
   text: string;
-  /** DPSチェックで再現していない効果 */
+  /** 戦闘で再現していない効果 */
   notSimulated?: boolean;
 }
 
@@ -113,9 +113,9 @@ export const ALLIANCES: Record<AllianceId, AllianceDef> = {
     describe: (s) => [
       {
         count: 3,
-        text: `【エーギル】の最大HP+${pct(v('egir', 'base_max_hp') + v('egir', 'max_hp_per_stack') * s)}（HPは未再現）。戦闘開始時、左・上の者から順に前方1マスのオペレーターを捕食し、5000の物理ダメージを与えて基礎攻撃力とブロック数を得る。被捕食者の等級ぶん加算数+`,
+        text: `【エーギル】の最大HP+${pct(v('egir', 'base_max_hp') + v('egir', 'max_hp_per_stack') * s)}。戦闘開始時、左・上の者から順に前方1マスのオペレーターを捕食し、5000の物理ダメージを与えて基礎攻撃力とブロック数を得る。被捕食者の等級ぶん加算数+`,
       },
-      { count: 5, text: '最初に倒された【エーギル】3名が即座に復活', notSimulated: true },
+      { count: 5, text: '最初に倒された【エーギル】3名が即座に復活' },
     ],
   },
   siracusa: {
@@ -202,11 +202,10 @@ export const ALLIANCES: Record<AllianceId, AllianceDef> = {
     thresholds: [2, 3],
     countMode: 'board',
     describe: (s) => [
-      { count: 2, text: `すべてのオペレーターの最大HP+${pct(v('stead', 'base_max_hp') + v('stead', 'max_hp_per_stack') * s)}`, notSimulated: true },
+      { count: 2, text: `すべてのオペレーターの最大HP+${pct(v('stead', 'base_max_hp') + v('stead', 'max_hp_per_stack') * s)}` },
       {
         count: 3,
         text: `【堅守】以外が受けるダメージの40%を【堅守】が肩代わり。【堅守】が被弾すると攻撃元に${num(v('stead', 'base_damage_value') + v('stead', 'damage_value_per_stack') * s)}の術ダメージと脆弱40%（5秒）`,
-        notSimulated: true,
       },
     ],
   },
@@ -275,8 +274,8 @@ export const ALLIANCES: Record<AllianceId, AllianceDef> = {
     thresholds: [2, 3],
     countMode: 'board',
     describe: (s) => [
-      { count: 2, text: `地上オペレーターが倒れた時、${pct(v('indom', 'base_prob') + v('indom', 'prob_per_stack') * s)}の確率で即座に再配置`, notSimulated: true },
-      { count: 3, text: '地上オペレーターが倒れた時、すべてのオペレーターのSP+5', notSimulated: true },
+      { count: 2, text: `地上オペレーターが倒れた時、${pct(v('indom', 'base_prob') + v('indom', 'prob_per_stack') * s)}の確率で即座に再配置` },
+      { count: 3, text: '地上オペレーターが倒れた時、すべてのオペレーターのSP+5' },
     ],
   },
   mani: {

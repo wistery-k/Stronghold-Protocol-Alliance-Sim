@@ -70,11 +70,13 @@ function playPrep(s: GameState): GameState {
     s = r.error ? act(s, { type: 'skipChoice' }) : r.state;
   }
 
-  // 編成：ブロック役（近距離）は最大3人、残りは遠距離から強い順
+  // 編成：ブロック役（近距離）は最大3人、医療1人、残りは遠距離から強い順
   const all = [...s.board, ...benchUnits(s)].sort((a, b) => power(b) - power(a));
   const melee = all.filter((o) => isMelee(o.defId)).slice(0, 3);
+  // 敵が攻撃してくるので、医療がいれば1人入れる
+  const healer = all.filter((o) => getUnit(o.defId).damageType === 'heal').slice(0, 1);
   const ranged = all.filter((o) => !isMelee(o.defId) && getUnit(o.defId).damageType !== 'heal');
-  const picked = [...melee, ...ranged].slice(0, deployCapOf(s));
+  const picked = [...melee, ...healer, ...ranged].slice(0, deployCapOf(s));
   const want = new Set(picked.map((o) => o.uid));
   for (const o of [...s.board]) if (!want.has(o.uid)) s = act(s, { type: 'undeploy', uid: o.uid });
   // ブロック役から先に置く（自動配置で経路上の良い位置に入る）

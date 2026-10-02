@@ -17,7 +17,7 @@ import {
 } from '../core/board';
 import { ENEMIES, groupLabel, roundEnemySummary, type EnemySpec, type RoundGroup, type RoundSpec } from '../core/data/battle';
 import { getUnit } from '../core/data/units';
-import { ENEMY_HP_SCALE } from '../core/rules';
+import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE } from '../core/rules';
 import type { BattleResult } from '../core/sim';
 import type { Direction, OwnedUnit, Star } from '../core/types';
 import { makeDropTarget, starBadge, unitCard, type CardOptions } from './components';
@@ -145,7 +145,7 @@ export function roundInfo(spec: RoundSpec, timeLimit: number, group?: RoundGroup
     h(
       'table',
       { class: 'enemy-table' },
-      h('thead', null, h('tr', null, h('th', null, '敵'), h('th', null, '数'), h('th', null, 'HP'), h('th', null, '防御'), h('th', null, '術耐'))),
+      h('thead', null, h('tr', null, h('th', null, '敵'), h('th', null, '数'), h('th', null, 'HP'), h('th', null, '防御'), h('th', null, '術耐'), h('th', { title: '攻撃力（近：ブロックした相手を攻撃、遠：範囲内を攻撃、術：術ダメージ）' }, '攻撃'))),
       h(
         'tbody',
         null,
@@ -158,6 +158,11 @@ export function roundInfo(spec: RoundSpec, timeLimit: number, group?: RoundGroup
             h('td', null, enemy.hitsToKill ? '-' : fmt(enemy.boss ? enemy.hp : enemy.hp * ENEMY_HP_SCALE)),
             h('td', null, enemy.def),
             h('td', null, Math.min(100, enemy.res + (enemy.refract ?? 0))),
+            h(
+              'td',
+              { title: enemy.attack ? `攻撃間隔 ${enemy.attack.interval}秒${enemy.attack.kind === 'ranged' ? `・射程 ${enemy.attack.range}マス` : ''}` : '攻撃しない' },
+              enemy.attack ? `${fmt(enemy.attack.atk * ENEMY_ATK_SCALE)}${enemy.attack.kind === 'ranged' ? '遠' : '近'}${enemy.attack.arts ? '術' : ''}` : '-',
+            ),
           ),
         ),
       ),
@@ -167,12 +172,15 @@ export function roundInfo(spec: RoundSpec, timeLimit: number, group?: RoundGroup
 
 /** 予測結果の1行サマリー */
 export function predictionLine(r: BattleResult) {
-  if (r.cleared) return h('div', { class: 'predict ok' }, `全滅見込み（${r.elapsed}秒）`);
+  const down = downCount(r);
+  const downText = down ? `・戦闘不能${down}人` : '';
+  if (r.cleared) return h('div', { class: 'predict ok' }, `全滅見込み（${r.elapsed}秒${downText}）`);
   return h(
     'div',
     { class: 'predict ng' },
     `突破 ${r.leaked}/${r.total}体の見込み：耐久値-${r.lifeLoss}`,
     r.bossRemaining > 0 ? `（ボス残りHP ${pct(r.bossRemaining)}）` : '',
+    downText,
   );
 }
 
@@ -219,7 +227,7 @@ function remainingChart(r: BattleResult) {
 }
 
 function damageBars(r: BattleResult) {
-  const sorted = [...r.perUnit].sort((a, b) => b.damage - a.damage);
+  const sorted = [...r.perUnit].sort((a, b) => b.damage + (b.healed ?? 0) - (a.damage + (a.healed ?? 0)));
   const max = Math.max(1, ...sorted.map((u) => u.damage));
   const total = Math.max(1, r.totalDamage);
   return h(
@@ -232,11 +240,19 @@ function damageBars(r: BattleResult) {
         h('span', { class: 'bar-name' }, u.name, ' ', starBadge(u.star)),
         h('span', { class: 'bar-track' }, h('span', { class: 'bar-fill', style: `width:${(u.damage / max) * 100}%` })),
         h('span', { class: 'bar-val' }, `${fmt(u.damage)}（${pct(u.damage / total)}）`),
-        h('span', { class: 'bar-sub muted' }, `撃破 ${u.kills}・DPS ${fmt(u.damage / Math.max(1, r.elapsed))}・スキル${u.skillCasts}回`),
+        h(
+          'span',
+          { class: 'bar-sub muted' },
+          `撃破 ${u.kills}・DPS ${fmt(u.damage / Math.max(1, r.elapsed))}・スキル${u.skillCasts}回・被ダメ ${fmt(u.taken ?? 0)}`,
+          u.healed ? `・回復 ${fmt(u.healed)}` : '',
+          u.downAt !== null && u.downAt !== undefined ? h('span', { class: 'ng' }, `・${u.downAt.toFixed(0)}秒で戦闘不能`) : '',
+        ),
       ),
     ),
   );
 }
+
+const downCount = (r: BattleResult) => r.perUnit.filter((u) => u.downAt !== null && u.downAt !== undefined).length;
 
 export function battleSummary(r: BattleResult, units: ReplayUnit[]) {
   return h(
@@ -253,6 +269,7 @@ export function battleSummary(r: BattleResult, units: ReplayUnit[]) {
       h('div', null, h('span', { class: 'muted small' }, '撃破'), h('b', null, `${r.killed}/${r.total}`)),
       h('div', null, h('span', { class: 'muted small' }, '総ダメージ'), h('b', null, fmt(r.totalDamage))),
       h('div', null, h('span', { class: 'muted small' }, '平均DPS'), h('b', null, fmt(r.totalDamage / Math.max(1, r.elapsed)))),
+      h('div', null, h('span', { class: 'muted small' }, '戦闘不能'), h('b', { class: downCount(r) ? 'ng' : '' }, `${downCount(r)}人`)),
       r.bossRemaining > 0 ? h('div', null, h('span', { class: 'muted small' }, 'ボス残りHP'), h('b', { class: 'ng' }, pct(r.bossRemaining))) : null,
     ),
     r.frames ? replayPlayer(r, units) : h('p', { class: 'muted small' }, 'リプレイは戦闘直後のみ表示できます'),
@@ -302,6 +319,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
 
   // オペレーター
   const unitNodes = new Map<number, SVGElement>();
+  const unitBars = new Map<number, SVGElement>();
   for (const u of units) {
     if (u.pos === undefined) continue;
     const def = getUnit(u.defId);
@@ -313,7 +331,11 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       s('rect', { x: x + 8, y: y + 8, width: S - 16, height: S - 16, rx: 8, class: `rp-unit-box tier-${def.tier}` }),
       s('text', { x: x + S / 2, y: y + 44, 'text-anchor': 'middle', class: 'rp-unit-name' }, def.name.length > 6 ? def.name.slice(0, 6) : def.name),
       s('text', { x: x + S / 2, y: y + 70, 'text-anchor': 'middle', class: 'rp-unit-dir' }, DIR_ARROW[u.dir ?? DEFAULT_DIRECTION]),
+      s('rect', { x: x + 14, y: y + S - 22, width: S - 28, height: 6, class: 'rp-hp-bg' }),
     );
+    const bar = s('rect', { x: x + 14, y: y + S - 22, width: S - 28, height: 6, class: 'rp-unit-hp' });
+    g.append(bar);
+    unitBars.set(u.uid, bar);
     unitNodes.set(u.uid, g);
     svg.append(g);
   }
@@ -383,6 +405,12 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';
     const skill = new Set(a.s);
     for (const [uid, g] of unitNodes) g.classList.toggle('skill', skill.has(uid));
+    const hp = new Map(a.u ?? []);
+    for (const [uid, bar] of unitBars) {
+      const v = hp.get(uid) ?? 100;
+      bar.setAttribute('width', String(Math.max(0, ((S - 28) * Math.max(0, v)) / 100)));
+      unitNodes.get(uid)?.classList.toggle('down', v < 0);
+    }
     timeLabel.textContent = `${t.toFixed(1)}秒`;
     slider.value = String(Math.round(t * 10));
   };
@@ -433,6 +461,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵　大きい丸はボス。光っているオペレーターはスキル発動中'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵　大きい丸はボス。光っているオペレーターはスキル発動中、薄いオペレーターは戦闘不能'),
   );
 }
