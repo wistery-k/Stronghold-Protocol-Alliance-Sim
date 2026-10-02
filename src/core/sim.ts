@@ -2421,7 +2421,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         for (const u of rt) {
           if (!u.alive || u.input.pos === undefined) continue;
           if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
-          // 排気格子の上の味方は遠距離攻撃の対象にならない
+          // 換気口の上の味方は遠距離攻撃の対象にならない
           if (unitTile(u) === 'smog') continue;
           const tu = u.input.mods.taunt ?? 0;
           const tt = target?.input.mods.taunt ?? 0;

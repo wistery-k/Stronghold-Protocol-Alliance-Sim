@@ -59,6 +59,7 @@ export function mapGrid(
       tile === 'goal' ? h('span', { class: 'tile-label' }, '防衛') : null,
       tile === 'high' && !o ? h('span', { class: 'tile-label faint' }, '高台') : null,
       SPECIAL_LABEL[tile] && !o ? h('span', { class: 'tile-label faint' }, SPECIAL_LABEL[tile]) : null,
+      tile === 'barricade' ? h('span', { class: 'barricade-box', 'aria-label': '障害物' }) : null,
     );
     if (o) {
       const dir = o.dir ?? DEFAULT_DIRECTION;
@@ -99,6 +100,8 @@ export function mapGrid(
       h('span', { class: 'lg t-ground' }, '地上'),
       h('span', { class: 'lg t-safe' }, '地上（敵は通らない）'),
       h('span', { class: 'lg t-high' }, '高台（遠距離のみ）'),
+      MAP_LAYOUT.some((row) => row.includes('7')) ? h('span', { class: 'lg t-floor' }, '配置不可（敵は通る）') : null,
+      MAP_LAYOUT.some((row) => row.includes('B')) ? h('span', { class: 'lg t-barricade' }, '障害物') : null,
       ...(['infection', 'mire', 'smog', 'deepsea'] as const)
         .filter((tl) => MAP_LAYOUT.some((row) => row.includes(SPECIAL_CODE[tl])))
         .map((tl) => h('span', { class: `lg t-${tl}`, title: TILE_NAME[tl] }, SPECIAL_LABEL[tl]!)),
@@ -110,7 +113,7 @@ export function mapGrid(
 }
 
 /** 特殊なマスの短い名前とマップの記号 */
-const SPECIAL_LABEL: Partial<Record<TileType, string>> = { infection: '源石', mire: '沼地', smog: '格子', deepsea: '深水', floor: '' };
+const SPECIAL_LABEL: Partial<Record<TileType, string>> = { infection: '源石', mire: '沼地', smog: '換気口', deepsea: '深水', floor: '' };
 const SPECIAL_CODE = { infection: 'X', mire: 'M', smog: 'G', deepsea: 'D' } as const;
 
 /** そのマスに置けるかの説明（ドラッグ中の案内用） */
@@ -320,7 +323,8 @@ const TILE_FILL: Record<string, string> = {
   wall: 'var(--tile-wall)',
   spawn: 'var(--tile-spawn)',
   goal: 'var(--tile-goal)',
-  floor: 'var(--tile-floor)',
+  floor: 'var(--tile-ground)',
+  barricade: 'var(--tile-ground)',
   infection: 'var(--tile-infection)',
   mire: 'var(--tile-mire)',
   smog: 'var(--tile-smog)',
@@ -464,6 +468,11 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     svg.append(
       s('rect', { x: cellX(p) * S + 1, y: cellY(p) * S + 1, width: S - 2, height: S - 2, rx: 6, fill: TILE_FILL[t], class: PATH_TILES.has(p) ? 'rp-path' : '' }),
     );
+  }
+  for (let p = 0; p < BOARD_CELLS; p++) {
+    const t = tileAt(p);
+    if (t === 'barricade') svg.append(s('rect', { x: cellX(p) * S + 22, y: cellY(p) * S + 22, width: S - 44, height: S - 44, rx: 4, class: 'rp-barricade' }));
+    if (t === 'floor') svg.append(s('rect', { x: cellX(p) * S + 1, y: cellY(p) * S + 1, width: S - 2, height: S - 2, rx: 6, class: 'rp-floor' }));
   }
   for (const p of SPAWNS) svg.append(s('text', { x: cellX(p) * S + S / 2, y: cellY(p) * S + 58, class: 'rp-label', 'text-anchor': 'middle' }, '出現'));
   svg.append(s('text', { x: cellX(GOAL) * S + S / 2, y: cellY(GOAL) * S + 58, class: 'rp-label', 'text-anchor': 'middle' }, '防衛'));

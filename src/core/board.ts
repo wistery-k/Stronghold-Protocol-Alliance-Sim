@@ -15,8 +15,9 @@ export const DIRECTION_NAME: Record<Direction, string> = { up: '上', right: '�
 /**
  * マップ（9列×4行）。本家の盟約（後期）の配置エリア（act1autochess_m01〜m04・act2autochess_m01〜m04）。
  * 1: 地上（全員配置可・敵が通る） 2: 敵の出現地点 3: 地上（全員配置可・敵は通らない） 4: 配置不可
- * 5: 高台（遠距離のみ配置可） 6: 防衛地点 7: 通路（配置不可・敵が通る）
- * 特殊な地上（全員配置可・敵が通る）: X 活性源石 M 沼地 G 排気格子 D 深水区
+ * 5: 高台（遠距離のみ配置可） 6: 防衛地点 7: 通路（配置不可・敵が通る） B: 障害物（地上に置かれた木箱。配置不可・敵も通れない）
+ * 1人用の配置エリア（マップの左上）と、そこに置かれる木箱（trap_1105_accrate）。出現地点の間の2マスはボス戦以外は塞がれている
+ * 特殊な地上（全員配置可・敵が通る）: X 活性源石 M 沼地 G 換気口 D 深水区
  */
 export interface MapDef {
   id: string;
@@ -25,20 +26,20 @@ export interface MapDef {
 }
 
 export const MAPS: MapDef[] = [
-  { id: 'm1', name: 'マップ1', layout: ['431111172', '431333177', '431333177', '611444112'] },
-  { id: 'm2', name: 'マップ2', layout: ['411111172', '413311177', '413314477', '611114412'] },
-  { id: 'm3', name: 'マップ3', layout: ['444311172', '444313377', '477113377', '611111112'] },
-  { id: 'm4', name: 'マップ4（活性源石）', layout: ['431444172', '4311X1177', '4311X1177', '611444112'] },
-  { id: 'm5', name: 'マップ5（高台）', layout: ['445111372', '445141377', '445141377', '611141112'] },
-  { id: 'm6', name: 'マップ6（沼地）', layout: ['44445M172', '44453M377', '44533M377', '611111112'] },
-  { id: 'm7', name: 'マップ7（排気格子）', layout: ['4311G1172', '431333377', '4313G1177', '611114412'] },
-  { id: 'm8', name: 'マップ8（深水区）', layout: ['4311D1172', '4311D3377', '4313D3377', '611311112'] },
+  { id: 'm1', name: 'マップ1', layout: ['431111172', '431B33174', '431BB3174', '611444112'] },
+  { id: 'm2', name: 'マップ2', layout: ['41BB11172', '41331BB74', '413314474', '611114412'] },
+  { id: 'm3', name: 'マップ3', layout: ['444311172', '444B13374', '477113374', '611111112'] },
+  { id: 'm4', name: 'マップ4（活性源石）', layout: ['4BB444B72', '4311X1174', '4311X1174', '611444112'] },
+  { id: 'm5', name: 'マップ5（高台）', layout: ['445111472', '445141474', '445141474', '611141112'] },
+  { id: 'm6', name: 'マップ6（沼地）', layout: ['44445M172', '44453M3B4', '44533M3B4', '611111112'] },
+  { id: 'm7', name: 'マップ7（換気口）', layout: ['4B11G1172', '4B13333B4', '4313G1174', '611114412'] },
+  { id: 'm8', name: 'マップ8（深水区）', layout: ['4311D1172', '4311D33B4', '4313D33B4', '611311112'] },
 ];
 /** テスト・古いセーブデータ用の以前の仮マップ */
 export const LEGACY_MAP: MapDef = { id: 'legacy', name: '旧マップ', layout: ['444555112', '445553134', '455533134', '611111112'] };
 export const getMap = (id: string | null | undefined): MapDef => MAPS.find((m) => m.id === id) ?? LEGACY_MAP;
 
-export type TileType = 'ground' | 'spawn' | 'safe' | 'wall' | 'high' | 'goal' | 'floor' | 'infection' | 'mire' | 'smog' | 'deepsea';
+export type TileType = 'ground' | 'spawn' | 'safe' | 'wall' | 'high' | 'goal' | 'floor' | 'barricade' | 'infection' | 'mire' | 'smog' | 'deepsea';
 const TILE_CODE: Record<string, TileType> = {
   '1': 'ground',
   '2': 'spawn',
@@ -47,6 +48,7 @@ const TILE_CODE: Record<string, TileType> = {
   '5': 'high',
   '6': 'goal',
   '7': 'floor',
+  B: 'barricade',
   X: 'infection',
   M: 'mire',
   G: 'smog',
@@ -59,10 +61,11 @@ export const TILE_NAME: Record<TileType, string> = {
   wall: '配置できないマス',
   high: '高台マス（遠距離のみ）',
   goal: '防衛地点',
-  floor: '通路（配置できない・敵が通る）',
+  floor: '地上（配置できない・敵が通る）',
+  barricade: '障害物（配置できない・敵も通れない）',
   infection: '活性源石：配置した味方と通る敵は攻撃力+20%・攻撃速度+20、毎秒HPを70失う',
   mire: '沼地：配置した味方は攻撃速度-30、通る敵は移動速度・攻撃速度が下がる',
-  smog: '排気格子：配置した味方は敵の遠距離攻撃の対象にならない',
+  smog: '換気口：配置した味方は敵の遠距離攻撃の対象にならない',
   deepsea: '深水区：通る敵は移動速度・攻撃速度が下がり、毎秒HPを失う',
 };
 /** 地上として扱う（配置でき、敵が通り、ブロックできる）特殊なマス */
