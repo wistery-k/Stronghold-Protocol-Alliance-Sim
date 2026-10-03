@@ -656,3 +656,26 @@ describe('孤高', () => {
     expect(s.stacks.solo ?? 0).toBe(0);
   });
 });
+
+describe('スズランの堅守特性と【投資家】', () => {
+  it('【投資家】が有効なら、スズランが発動する獲得時の特性も2回発動し、ログに出る', () => {
+    const run = (withInvest: boolean) => {
+      const s = createGame(1, { mapId: 'legacy' });
+      s.board = [
+        { ...ou(1, 'スズラン'), pos: 22, dir: 'right' as const },
+        { ...ou(2, 'ウルピスフォリア'), pos: 23 },
+      ];
+      s.bench = s.bench.map(() => null);
+      if (withInvest) ['ブリキ', '琳琅スワイヤー', 'マウンテン'].forEach((n, i) => (s.bench[i] = ou(10 + i, n)));
+      s.stacks = {};
+      s.log = [];
+      triggerGarrisons(s, 'SERVER_PREP_START', allTargets(s));
+      return s;
+    };
+    const plain = run(false);
+    const inv = run(true);
+    expect(plain.stacks.swift).toBe(6);
+    expect(inv.stacks.swift).toBe(12);
+    expect(inv.log.some((l) => String(typeof l === 'string' ? l : JSON.stringify(l)).includes('ウルピスフォリア の獲得時の特性を発動'))).toBe(true);
+  });
+});

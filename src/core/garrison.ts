@@ -266,11 +266,13 @@ function runGarrison(
     case 'SERVER_TRIGGER_FRONT_COUNT': {
       // 前方1マス（精鋭は前方2マスまで）のオペレーターの「獲得時」効果をそれぞれ1回発動
       const reach = g.effect === 'SERVER_TRIGGER_FRONT_COUNT' ? n('count') : 1;
+      // 【投資家】が有効なら「獲得時」の特性は2回（100層で3回）
+      const times = gainTriggerTimes(state, active);
       for (const front of frontsOf(state.board, unit, reach)) {
-        for (const fg of unitState(getUnit(front.defId), front.star).garrisons) {
-          if (fg.event !== 'SERVER_GAIN') continue;
-          runGarrison(state, fg, front, 'board', active);
-        }
+        const gains = unitState(getUnit(front.defId), front.star).garrisons.filter((fg) => fg.event === 'SERVER_GAIN');
+        if (!gains.length) continue;
+        notify(state, `${name}：前方の ${getUnit(front.defId).name} の獲得時の特性を発動${times > 1 ? `（【投資家】で${times}回）` : ''}`);
+        for (const fg of gains) for (let i = 0; i < times; i++) runGarrison(state, fg, front, 'board', active);
       }
       return true;
     }

@@ -3,7 +3,7 @@ import { cellX, cellY } from './board';
 import { notify } from './log';
 import { getBand, type BandId } from './data/bands';
 import { UNITS, getUnit, unitState } from './data/units';
-import { addStacks, currentActive, triggerGarrisons } from './garrison';
+import { addStacks, currentActive, gainTriggerTimes, triggerGarrisons } from './garrison';
 import { gainItem, gainRandomItem, returnItems, unitAvailable } from './items';
 import { ownedBonds } from './alliance';
 import { ALLIANCES } from './data/alliances';
@@ -81,7 +81,7 @@ function gainElite(state: GameState, defId: string, source: string): void {
   putOnBench(state, unit);
   state.round_.gained++;
   notify(state, `${source}：精鋭の ${def.name} を獲得`);
-  triggerGarrisons(state, 'SERVER_GAIN', [{ unit, where: 'bench' }]);
+  triggerGarrisons(state, 'SERVER_GAIN', [{ unit, where: 'bench' }], gainTriggerTimes(state, currentActive(state)));
   state.bench = compactBench(state.bench);
 }
 
@@ -284,8 +284,9 @@ export function bandRoundStart(state: GameState): void {
       const hasGain = (o: OwnedUnit) => unitState(getUnit(o.defId), o.star).garrisons.some((g) => g.event === 'SERVER_GAIN');
       const target = state.board.filter(hasGain).sort((a, b) => cellX(b.pos ?? 0) - cellX(a.pos ?? 0) || cellY(b.pos ?? 0) - cellY(a.pos ?? 0))[0];
       if (target) {
-        notify(state, `${label(state)}${getUnit(target.defId).name} の獲得時の特性を発動`);
-        triggerGarrisons(state, 'SERVER_GAIN', [{ unit: target, where: 'board' }]);
+        const times = gainTriggerTimes(state, currentActive(state));
+        notify(state, `${label(state)}${getUnit(target.defId).name} の獲得時の特性を発動${times > 1 ? `（【投資家】で${times}回）` : ''}`);
+        triggerGarrisons(state, 'SERVER_GAIN', [{ unit: target, where: 'board' }], times);
       }
       break;
     }
