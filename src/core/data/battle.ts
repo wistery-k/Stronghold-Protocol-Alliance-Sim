@@ -18,7 +18,7 @@ export interface EnemySpec {
   elite: boolean;
   /** 防衛マスに到達した時に減る耐久値 */
   lifeReduce: number;
-  /** 隠匿：ブロックされるまで攻撃の対象にならない */
+  /** ステルス：ブロックされるまで攻撃の対象にならない */
   stealth?: boolean;
   /** ブロックできない */
   unblockable?: boolean;
@@ -63,7 +63,7 @@ export interface EnemySpec {
    * 突進中は無敵が切れ、hits 回攻撃されると撃ち落とされる（地上に落ちて動かず、受けるダメージ dmgScale 倍、受けたダメージの一部がボスにも入る）
    */
   dive?: { cooldown: number; init: number; stun: number; dotDps: number; dotDuration: number; hits: number; dmgScale: number };
-  /** 隠匿が解けた後の最初の攻撃の攻撃力倍率（山海衆精鋭） */
+  /** ステルスが解けた後の最初の攻撃の攻撃力倍率（山海衆精鋭） */
   ambush?: number;
   /** 臨戦状態：攻撃を受けると移動速度×speedMult、interval 秒ごとに半径 radius の味方へ攻撃力×ratio の元素損傷（元核のマレフィセント） */
   enrage?: { speedMult: number; element: ElementType | null; ratio: number; interval: number; radius: number };
@@ -80,7 +80,7 @@ export interface EnemySpec {
   statusResist?: number;
 }
 
-/** 元素損傷の種類：灼燃・神経・侵蝕・凋亡（壊死） */
+/** 元素損傷の種類：灼燃・神経・侵蝕・壊死 */
 export type ElementType = 'burning' | 'neural' | 'erosion' | 'apoptosis';
 
 /** 敵の枠の役割（雑魚・エリート・強敵） */

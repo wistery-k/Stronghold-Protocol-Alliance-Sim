@@ -132,8 +132,8 @@ function sargonKpi(sg: NonNullable<BattleResult['sargon']>) {
   );
 }
 
-const ELEM_SHORT = ['灼', '神', '侵', '凋'];
-const ELEM_FULL = ['灼燃損傷', '神経損傷', '侵蝕損傷', '凋亡損傷'];
+const ELEM_SHORT = ['灼', '神', '侵', '壊'];
+const ELEM_FULL = ['灼燃損傷', '神経損傷', '侵蝕損傷', '壊死損傷'];
 
 /** 敵の特殊能力のバッジ */
 function enemyBadges(e: EnemySpec) {
@@ -141,7 +141,7 @@ function enemyBadges(e: EnemySpec) {
   const b = (label: string, title: string, cls = '') => out.push(h('span', { class: `badge ${cls}`, title }, label));
   if (e.boss) b('BOSS', 'ボス');
   if (e.flying) b('飛行', '飛行：ブロックできず、近距離オペレーターは攻撃できない', 'fly');
-  if (e.stealth) b('隠匿', '隠匿：ブロックされている間しか攻撃の対象にならない（特殊能力無効化中は狙える）', 'sp');
+  if (e.stealth) b('ステルス', 'ステルス：ブロックされている間しか攻撃の対象にならない（特殊能力無効化中は狙える）', 'sp');
   if (e.unblockable) b('ブロック不可', 'ブロックできない', 'sp');
   if (e.hitsToKill) b(`${e.hp}回`, `攻撃${e.hp}回で倒れる（ダメージ量は関係ない）`, 'sp');
   if (e.refract) b(`屈折+${e.refract}`, `屈折：術耐性+${e.refract}（特殊能力無効化中は失う）`, 'sp');
@@ -152,7 +152,7 @@ function enemyBadges(e: EnemySpec) {
     const p = e.deathPollution;
     b('汚染', `倒れると半径${p.radius}マスに汚染秽蝕を${p.duration}秒残す（範囲内の味方は毎秒HPを失う：HP50%超で${p.high}、以下で${p.low}）`, 'sp');
   }
-  if (e.ambush) b('奇襲', `隠匿が解けた後の最初の攻撃は攻撃力${Math.round(e.ambush * 100)}%`, 'sp');
+  if (e.ambush) b('奇襲', `ステルスが解けた後の最初の攻撃は攻撃力${Math.round(e.ambush * 100)}%`, 'sp');
   if (e.enrage) {
     const en = e.enrage;
     const el = en.element ? ELEM_FULL[['burning', 'neural', 'erosion', 'apoptosis'].indexOf(en.element)] : '';
@@ -812,6 +812,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・凋亡。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度'),
   );
 }

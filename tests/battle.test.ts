@@ -117,7 +117,7 @@ describe('マップ戦闘', () => {
     expect(r.killed).toBeGreaterThan(0);
   });
 
-  it('隠匿の敵はブロックされるまで遠距離から狙われない', () => {
+  it('ステルスの敵はブロックされるまで遠距離から狙われない', () => {
     const spec = oneEnemy('test_stealth', false, { hp: 100, def: 0, res: 0, stealth: true });
     const sniper = byProf('sniper');
     const r = run([{ uid: 1, defId: sniper.id, star: 2, pos: 22, dir: 'down' }], spec);
@@ -326,7 +326,7 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.opBursts).toBeGreaterThan(0);
   });
 
-  it('ヴィルトゥオーサのスキルで敵が凋亡の元素爆発を起こす', () => {
+  it('ヴィルトゥオーサのスキルで敵が壊死の元素爆発を起こす', () => {
     const spec = oneEnemy('test_virt', false, { speed: 0.3, def: 0, res: 0 });
     spec.timeLimit = 60;
     const r = run([{ uid: 1, defId: unit('ヴィルトゥオーサ').id, star: 2, pos: 22, dir: 'down' }], spec);
@@ -667,7 +667,7 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 4) !== 0))).toBe(true);
   });
 
-  it('山海衆精鋭：隠匿が解けた後の最初の攻撃は攻撃力2倍', () => {
+  it('山海衆精鋭：ステルスが解けた後の最初の攻撃は攻撃力2倍', () => {
     const spec0 = ENEMIES.enemy_1299_ymkilr;
     expect(spec0.ambush).toBe(2);
     const run = (ambush?: number) => {

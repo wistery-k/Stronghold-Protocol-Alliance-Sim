@@ -98,7 +98,7 @@ export interface ReplayFrame {
   sg?: [number, number][];
   /** 【シラクーザ】の攻撃速度上昇を受けているオペレーターの uid */
   sc?: number[];
-  /** オペレーターの元素損傷 [uid, 種類（0灼燃・1神経・2侵蝕・3凋亡）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1以上溜まっているものだけ */
+  /** オペレーターの元素損傷 [uid, 種類（0灼燃・1神経・2侵蝕・3壊死）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1以上溜まっているものだけ */
   ue?: [number, number, number][];
 }
 
@@ -524,16 +524,16 @@ interface ElementTalent {
   /** 攻撃範囲内の味方が受ける元素損傷の減少（常時／蓄積が半分を超えている時） */
   auraElementResist?: number;
   auraElementResistHalf?: number;
-  /** 凋亡損傷を受けた時のSP回復 */
+  /** 壊死損傷を受けた時のSP回復 */
   spOnApoptosis?: number;
-  /** 攻撃範囲内の敵に毎秒攻撃力のこの割合の凋亡損傷、範囲内の敵が受ける凋亡損傷の倍率 */
+  /** 攻撃範囲内の敵に毎秒攻撃力のこの割合の壊死損傷、範囲内の敵が受ける壊死損傷の倍率 */
   auraApoptosis?: number;
   auraApoptosisTaken?: number;
   /** 敵の灼燃の爆発時：元素ダメージ（攻撃力倍率）と自身のHP回復 */
   onBurnBurst?: { scale: number; heal: number };
-  /** 凋亡の爆発中の敵を攻撃すると毎秒攻撃力のこの割合の元素ダメージ */
+  /** 壊死の爆発中の敵を攻撃すると毎秒攻撃力のこの割合の元素ダメージ */
   nymphDot?: number;
-  /** 範囲内で凋亡が爆発するたびに攻撃力上昇 */
+  /** 範囲内で壊死が爆発するたびに攻撃力上昇 */
   atkPerApoptosisBurst?: { atk: number; max: number };
   /** ブロック中：庇護（被ダメージ減少）と、ブロック中の敵への毎秒の術ダメージ・灼燃損傷 */
   protectWhileBlocking?: number;
@@ -730,7 +730,7 @@ interface Enemy {
   elemSrc: Partial<Record<ElementType, Runtime>>;
   /** 侵蝕の爆発で永久に下がった防御力 */
   erosionDef: number;
-  /** ニンフの素質：凋亡の爆発中に毎秒受ける元素ダメージ */
+  /** ニンフの素質：壊死の爆発中に毎秒受ける元素ダメージ */
   nymphDot: { src: Runtime; dps: number } | null;
   /** 復活待ち（攻撃回数で倒せる状態）なら復活する時刻 */
   reviveAt: number | null;
@@ -761,7 +761,7 @@ interface Enemy {
   stunUntil: number;
   /** 恐怖（ブロックされず、攻撃せず、来た道を逃げる） */
   fearUntil: number;
-  /** 山海衆精鋭：隠匿が解けた後の最初の攻撃がまだ残っている */
+  /** 山海衆精鋭：ステルスが解けた後の最初の攻撃がまだ残っている */
   ambushReady: boolean;
   /** 元核のマレフィセント：臨戦状態と、次に元素損傷を与えるまでの時間 */
   enraged: boolean;
@@ -816,7 +816,7 @@ interface Runtime {
   elem: Partial<Record<ElementType, number>>;
   elemBurst: Partial<Record<ElementType, number>>;
   erosionDef: number;
-  /** 素質・スキルの層（ニンフ：凋亡の爆発ごとの攻撃力、フィラエ：元素損傷を受けた時の攻撃力） */
+  /** 素質・スキルの層（ニンフ：壊死の爆発ごとの攻撃力、フィラエ：元素損傷を受けた時の攻撃力） */
   talentStacks: number;
   philaeBoost: boolean;
   counterReadyAt: number;
@@ -1010,7 +1010,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const baseRes = (s: EnemyInputSpec) => Math.min(100, s.res + (s.refract ?? 0));
 
-  // ---- 特殊能力無効化：屈折・隠匿・盾・復活・分裂を一時的に失う ----
+  // ---- 特殊能力無効化：屈折・ステルス・盾・復活・分裂を一時的に失う ----
   const neutral = (e: Enemy) => t < e.neutralUntil;
   /** 屈折込みの現在の術耐性 */
   const currentRes = (e: Enemy) => {
@@ -1436,7 +1436,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
       // 熾炎ブレイズのスキル中：灼燃の爆発中の敵に追加で元素ダメージ
       if (skillOn && ELEMENT_TALENT[def.charId]?.onBurnBurst && enBursting(e, 'burning')) deal(u, e, atk * (u.skill.bb['attack@atk_scale'] ?? 0));
-      // ニンフの素質：凋亡の爆発中の敵を攻撃すると、爆発が終わるまで毎秒元素ダメージ
+      // ニンフの素質：壊死の爆発中の敵を攻撃すると、爆発が終わるまで毎秒元素ダメージ
       const nymphTal = ELEMENT_TALENT[def.charId]?.nymphDot;
       if (nymphTal && enBursting(e, 'apoptosis')) e.nymphDot = { src: u, dps: atk * nymphTal };
       // 寒冷の付与（スキル中の攻撃・装備）
@@ -1469,7 +1469,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (!e.alive) return false;
       if (!field) return true;
       if (isFlying(e) && u.melee) return false;
-      // 隠匿：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
+      // ステルス：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
       if (isStealthed(e)) return false;
       // ボスの手下は無敵（攻撃の対象にならない。突進中・撃ち落とされた後は狙える）
       if (e.input.spec.roam && (e.minion === 'roam' || e.minion === 'back')) return false;
@@ -1623,14 +1623,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
       const cands = pickTargets(u, true).map(([e]) => e);
       if (kind === 'virtuosa') {
-        // 凋亡の爆発中でない敵1体に術ダメージと凋亡損傷
+        // 壊死の爆発中でない敵1体に術ダメージと壊死損傷
         const target = cands.find((e) => !enBursting(e, 'apoptosis')) ?? cands[0];
         if (target) {
           strike(u, target, atk, s.bb.atk_scale ?? 1);
           addEnElement(target, 'apoptosis', atk * (s.bb.ep_damage_ratio ?? 0), u);
         }
       } else if (kind === 'nymph') {
-        // 対象と周囲の敵に術ダメージ、与えたダメージの一部を凋亡損傷に
+        // 対象と周囲の敵に術ダメージ、与えたダメージの一部を壊死損傷に
         const main = cands[0];
         if (main) {
           emit([1, uid, Math.round(main.x * 100), Math.round(main.y * 100), Math.round((s.bb.projectile_range ?? 1.5) * 100)]);
@@ -2064,7 +2064,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (!o.alive || amount <= 0 || opBursting(o, type)) return;
     amount *= opElementTaken(o);
     const tal = ELEMENT_TALENT[o.input.def.charId];
-    // フィラエ：凋亡損傷を受けるとSP回復、スキル中に元素損傷を受けると攻撃力上昇
+    // フィラエ：壊死損傷を受けるとSP回復、スキル中に元素損傷を受けると攻撃力上昇
     if (tal?.spOnApoptosis && type === 'apoptosis') o.sp += tal.spOnApoptosis;
     if (PHILAE[o.input.def.charId] && o.skillLeft > 0) o.philaeBoost = true;
     o.elem[type] = (o.elem[type] ?? 0) + amount;
@@ -2086,7 +2086,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
 
-  /** 凋亡の爆発で付く虚弱（攻撃力-50%から徐々に回復） */
+  /** 壊死の爆発で付く虚弱（攻撃力-50%から徐々に回復） */
   const weakFactor = (e: Enemy) => {
     const until = e.elemBurst.apoptosis ?? -1;
     if (t >= until) return 1;
@@ -2095,7 +2095,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const enBursting = (e: Enemy, type: ElementType) => t < (e.elemBurst[type] ?? -1);
   const addEnElement = (e: Enemy, type: ElementType, amount: number, src: Runtime) => {
     if (!e.alive || amount <= 0 || enBursting(e, type)) return;
-    // ヴィルトゥオーサの素質：範囲内の敵が受ける凋亡損傷が上昇
+    // ヴィルトゥオーサの素質：範囲内の敵が受ける壊死損傷が上昇
     if (type === 'apoptosis') {
       for (const u of rt) {
         const tal = ELEMENT_TALENT[u.input.def.charId];
@@ -2180,7 +2180,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           addEnElement(e, 'burning', atk * tal.blockedDot.burn * dt, o);
         }
       }
-      // ヴィルトゥオーサの素質：攻撃範囲内の敵に毎秒凋亡損傷
+      // ヴィルトゥオーサの素質：攻撃範囲内の敵に毎秒壊死損傷
       if (tal?.auraApoptosis) {
         const atk = baseAtk(o.input.def, o.input.star, o.input.mods);
         for (const e of enemies) if (e.alive && covers(o.rangeNormal, e)) addEnElement(e, 'apoptosis', atk * tal.auraApoptosis * dt, o);
@@ -2188,7 +2188,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     for (const e of enemies) {
       if (!e.alive) continue;
-      // 凋亡の爆発中は毎秒800の元素ダメージ
+      // 壊死の爆発中は毎秒800の元素ダメージ
       if (enBursting(e, 'apoptosis') && e.elemSrc.apoptosis) deal(e.elemSrc.apoptosis, e, 800 * dt);
       if (e.nymphDot && enBursting(e, 'apoptosis')) deal(e.nymphDot.src, e, e.nymphDot.dps * dt);
       else e.nymphDot = null;
@@ -2775,7 +2775,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (!target || !target.alive) continue;
       if (a.kind === 'ranged') emit([3, e.id, target.input.uid, a.arts ? 1 : 0]);
       const free = lib && !e.confined;
-      // 山海衆精鋭：隠匿が解けた後の最初の攻撃は攻撃力上昇
+      // 山海衆精鋭：ステルスが解けた後の最初の攻撃は攻撃力上昇
       const ambush = e.input.spec.ambush && e.ambushReady ? e.input.spec.ambush : 1;
       if (e.input.spec.ambush) e.ambushReady = false;
       hurt(target, enemyAtk(e, a.atk * (free ? 1 + lib.atk : 1) * ambush) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
@@ -2836,7 +2836,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.alive = false;
     blast(to.pos, to.stun, to.dotDps, to.dotDuration);
   };
-  /** 隠匿中は次の攻撃の倍率を戻す。臨戦状態の敵は周囲に元素損傷を与え続ける */
+  /** ステルス中は次の攻撃の倍率を戻す。臨戦状態の敵は周囲に元素損傷を与え続ける */
   const tickEnemyStates = () => {
     for (const e of enemies) {
       if (!e.alive || !e.spawned) continue;

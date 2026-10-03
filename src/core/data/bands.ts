@@ -108,7 +108,7 @@ export const BANDS: BandDef[] = [
   { id: 'qalaisa', leader: 'カライシャ', name: '屍喰らいの蝶', life: 26, impl: 'full', description: 'オペレーターが倒れると、場に残るオペレーターの攻撃力+20%（最大200%。そのオペレーターが倒れるか戦闘終了まで）' },
   { id: 'chen', leader: 'チェン', name: '己の長所で', life: 22, impl: 'full', description: '全オペレーターの物理・術ダメージが弱点ダメージになる（敵の防御力と術耐性に応じて有利な方になる）' },
   { id: 'damaztic', leader: '「変形者」', name: '変形同構', life: 29, impl: 'full', description: '5ラウンドごとに特殊装備「変形同位体」を獲得' },
-  { id: 'pith', leader: 'Pith', name: '優等生', life: 24, impl: 'none', note: '専用オペレーターは未実装', description: '1ラウンド目に、神経・灼熱・凋亡損傷を与える専用オペレーター（調和盟約）を1名獲得' },
+  { id: 'pith', leader: 'Pith', name: '優等生', life: 24, impl: 'none', note: '専用オペレーターは未実装', description: '1ラウンド目に、神経・灼熱・壊死損傷を与える専用オペレーター（調和盟約）を1名獲得' },
   {
     id: 'dusk',
     leader: 'シー',

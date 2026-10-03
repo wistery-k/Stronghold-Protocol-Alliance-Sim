@@ -4,7 +4,7 @@
 
 - ラウンドごとの敵の出現（険境シミュレーションのステージ。敵は役割ごとの「枠」）
 - 敵グループ（主力部隊＋特殊敵6種。ゲーム開始時に3種を抽選し、ラウンドごとに1グループが枠に入る）
-- 敵の能力値（HP・防御力・術耐性・移動速度・飛行・耐久値の減少量・隠匿などの特殊能力）
+- 敵の能力値（HP・防御力・術耐性・移動速度・飛行・耐久値の減少量・ステルスなどの特殊能力）
 - オペレーターの攻撃範囲（通常時・スキル中）
 
 使い方:
@@ -252,7 +252,7 @@ def main():
         # 抵抗：異常状態（寒冷・凍結など）の時間が短くなる
         if 'buff.one_minus_status_resistance' in bb:
             e['statusResist'] = -bb['buff.one_minus_status_resistance']['value']
-        # 隠匿が解けた後の最初の攻撃の倍率（山海衆精鋭・密使）
+        # ステルスが解けた後の最初の攻撃の倍率（山海衆精鋭・密使）
         sk_inv = next((x for x in (ed.get('skills') or []) if x.get('prefabKey') == 'InvisibleCombat'), None)
         if sk_inv:
             sbb = {b['key']: b['value'] for b in (sk_inv.get('blackboard') or [])}
@@ -272,7 +272,7 @@ def main():
         taunt = enemy_value(at, 'tauntLevel', 0) or 0
         if taunt:
             e['taunt'] = int(taunt)
-        # 隠匿（ブロックされるまで狙えない）
+        # ステルス（ブロックされるまで狙えない）
         if abilities and abilities[0].startswith('<$ba.invisible>'):
             e['stealth'] = True
         if any('无法被阻挡' in a for a in abilities):
