@@ -252,6 +252,10 @@ def main():
         # 抵抗：異常状態（寒冷・凍結など）の時間が短くなる
         if 'buff.one_minus_status_resistance' in bb:
             e['statusResist'] = -bb['buff.one_minus_status_resistance']['value']
+        # 挑発レベル（高いほど味方に優先して狙われる）
+        taunt = enemy_value(at, 'tauntLevel', 0) or 0
+        if taunt:
+            e['taunt'] = int(taunt)
         # 隠匿（ブロックされるまで狙えない）
         if abilities and abilities[0].startswith('<$ba.invisible>'):
             e['stealth'] = True

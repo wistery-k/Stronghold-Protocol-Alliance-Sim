@@ -456,7 +456,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -559,8 +559,8 @@ const HUNTER_AMMO = 8;
 const BOMB_SPEED = 1;
 /** ボスの手下が突進する速さ（マス/秒。仮） */
 const DIVE_SPEED = 1;
-/** 撃ち落とされた手下が受けたダメージのうち、ボスにも入る割合（「一定比例」。仮） */
-const MINION_DAMAGE_SHARE = 0.5;
+/** 撃ち落とされた手下が受けたダメージのうち、ボスにも入る割合 */
+const MINION_DAMAGE_SHARE = 1;
 /** 呪癒師：与ダメージのうち味方の回復に回る割合 */
 const INCANTATION_HEAL = 0.5;
 /** 旋輪射手：旋回投擲物の速度（マス/秒）。射出時15、回収時3.75。手元に戻るまで次の攻撃はできない */
@@ -1410,8 +1410,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const isFlying = (e: Enemy) => !!e.input.spec.flying && e.minion !== 'down';
   const remaining = (e: Enemy) => {
     const sp = e.input.spec;
-    // 経路を進まない敵（大型のボス・飛び回る手下・弾）は防衛地点までの直線距離
-    if (sp.large || sp.roam || sp.projectile) return Math.hypot(e.x - cellX(GOAL), e.y - cellY(GOAL));
+    // 経路を持たない敵（飛び回る手下・弾）は、同じ挑発レベルどうしの比較用に防衛地点までの直線距離
+    if (sp.roam || sp.projectile) return Math.hypot(e.x - cellX(GOAL), e.y - cellY(GOAL));
     return e.input.path ? e.input.path.length - 1 - e.d : 0;
   };
 
@@ -1432,11 +1432,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (u.melee && e.blockedBy === u.input.uid) return true;
       return covers(range, e);
     });
-    // ボスの弾（挑発）を最優先、次にブロック中の敵、次に防衛地点に近い敵
+    // ブロック中の敵を最優先、次に挑発レベルの高い敵、次に防衛地点までの経路が短い敵
     return list.sort(
       (a, b) =>
-        Number(!!b.input.spec.projectile) - Number(!!a.input.spec.projectile) ||
         Number(b.blockedBy === u.input.uid) - Number(a.blockedBy === u.input.uid) ||
+        (b.input.spec.taunt ?? 0) - (a.input.spec.taunt ?? 0) ||
         remaining(a) - remaining(b),
     );
   };
@@ -2703,6 +2703,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     lifeReduce: 0,
     hitsToKill: true,
     projectile: true,
+    // 味方から狙われやすい（挑発レベル+1）
+    taunt: 1,
   });
   /** ボスが弾を撃つ（攻撃力が最も高い味方へ1発。ゲーム内の「HPが低下すると追加で発射」は誤りで、発射数は増えない） */
   const fireBombs = (boss: Enemy) => {

@@ -3331,6 +3331,7 @@
     "range": 0,
     "arts": false
    },
+   "taunt": 1,
    "deadSpawn": {
     "enemy": "enemy_1200_msfjin",
     "count": 1
@@ -4291,6 +4292,7 @@
     "range": 0,
     "arts": false
    },
+   "taunt": 1,
    "refract": 70.0
   },
   "enemy_1166_dusbr": {
@@ -4411,6 +4413,7 @@
     "range": 0,
     "arts": false
    },
+   "taunt": 1,
    "refract": 70.0
   },
   "enemy_1166_dusbr_2": {
@@ -5045,7 +5048,8 @@
     "interval": 3.8,
     "range": 0,
     "arts": false
-   }
+   },
+   "taunt": 1
   },
   "enemy_1328_cbjedi": {
    "name": "アーク鋒衛",
@@ -5511,7 +5515,8 @@
     "dotDuration": 10.0,
     "hits": 15,
     "dmgScale": 1.3
-   }
+   },
+   "taunt": 1
   },
   "enemy_9015_acstmb": {
    "name": "「冑を砕く鎚」",
@@ -5542,7 +5547,8 @@
     "dotDuration": 10.0,
     "hits": 15,
     "dmgScale": 1.3
-   }
+   },
+   "taunt": 1
   },
   "enemy_1204_msfhu": {
    "name": "青磁の茶器",
