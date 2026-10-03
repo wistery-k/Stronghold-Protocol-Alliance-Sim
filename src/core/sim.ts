@@ -2898,11 +2898,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
             if (titiOn(u)) sleepEnemy(e, s.bb['attack@sleep'] ?? s.bb.sleep ?? 5, u);
           }
         }
-        // 呪癒師：攻撃時、攻撃範囲内のランダムな味方1人を与ダメージの50%回復（ランダムは期待値として範囲内の味方で等分）
+        // 呪癒師：攻撃時、与ダメージの50%で味方1人を回復（他の医療と同じく、範囲内で回復を受け付ける味方のうちHP割合が最も低い味方）
         if (field && def.subProfession === 'incantationmedic') {
           const dealt = u.result.damage - dealtBefore;
-          const allies = alliesInRange(u, activeNow);
-          if (dealt > 0 && allies.length) for (const o of allies) healUnit(u, o, (dealt * INCANTATION_HEAL) / allies.length);
+          const target = injuredInRange(u, activeNow)[0];
+          if (dealt > 0 && target) healUnit(u, target, dealt * INCANTATION_HEAL);
         }
         // ミヅキ：攻撃範囲内でHPが最も少ない敵に追加の術ダメージ
         if (cid(u) === 'char_437_mizuki') {
