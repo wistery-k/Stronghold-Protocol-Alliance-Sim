@@ -1280,12 +1280,9 @@ aside {
   stroke: #8a5a00;
   stroke-width: 1.5;
 }
-.rp-enemy.stealth {
+.rp-enemy.stealth,
+.rp-unit.stealth {
   opacity: 0.45;
-}
-/* 味方のステルス：角丸の四角形だけ半透明（名前・ゲージはそのまま） */
-.rp-unit.stealth .rp-unit-box {
-  opacity: 0.4;
 }
 .fx-stun {
   fill: rgba(255, 200, 40, 0.18);
