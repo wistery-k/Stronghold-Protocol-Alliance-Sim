@@ -231,7 +231,7 @@ export function parseSkill(s: SkillData): SkillModel {
     // 1未満の倍率は副次効果（範囲ダメージ等）のことが多いので、主攻撃には使わない
     atkScale: Math.max(1, get('atk_scale', 'attack@atk_scale') ?? 1),
     hits,
-    maxTarget: Math.max(1, Math.round(get('max_target', 'attack@max_target') ?? 1)),
+    maxTarget: Math.max(1, Math.round(get('attack@max_target', 'max_target') ?? 1)),
     blockAdd: Math.max(0, Math.round(get('block_cnt') ?? 0)),
     instant: !passive && !onDeploy && duration <= 0 && ammo <= 0,
     defPct: !enemyAura && (get('def') ?? 0) < 10 ? get('def') ?? 0 : 0,
@@ -343,7 +343,7 @@ const SELF_HEAL_SUB: Record<string, { hp: number; perTarget: boolean }> = {
 // ------------------------------------------------------------
 
 interface GarrisonEvent {
-  kind: 'useskill' | 'kill' | 'ammo' | 'dead' | 'freeze';
+  kind: 'useskill' | 'kill' | 'ammo' | 'dead' | 'freeze' | 'sleepstun';
   bonds: AllianceId[] | 'maxstack';
   count: number;
   max: number;
@@ -372,6 +372,7 @@ const STACK_CAUSE: Record<GarrisonEvent['kind'], string> = {
   ammo: '弾薬消費',
   dead: '撤退',
   freeze: '範囲内の凍結',
+  sleepstun: '範囲内の睡眠・スタン',
 };
 
 function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
@@ -393,7 +394,9 @@ function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
               ? 'dead'
               : key === 'act1autochess_gar_event_enemy_abflag_inrange' && Number(bb.check_ab_flag) === 16
                 ? 'freeze'
-                : null;
+                : key === 'act2autochess_gar_event_allyenemy_sleepstun_inrange'
+                  ? 'sleepstun'
+                  : null;
     if (!kind) continue;
     if (bb.conditionkey === 'character_same_row' && rowCount < Number(bb.check_count ?? 0)) continue;
     let count: number;
@@ -717,6 +720,10 @@ interface Enemy {
   stolenAtk: number;
   /** 素質の継続術ダメージ（攻撃者ごと） */
   dots: Map<Runtime, { until: number; dps: number }>;
+  /** 睡眠：終わる時刻・眠った時刻・眠らせたオペレーター（行動せず、通常は攻撃の対象にならない） */
+  sleepUntil: number;
+  sleepAt: number;
+  sleepBy: Runtime | null;
   /** 囚人：拘束中か、拘束中に攻撃した回数 */
   confined: boolean;
   confAttacks: number;
@@ -774,6 +781,8 @@ interface Runtime {
   inspireUntil: number;
   /** HP再配分までの時間（エテルナ） */
   redistTimer: number;
+  /** 睡眠（ティティのスキル：致命傷を受けた味方が眠る。HPが全回復するかスキル終了まで） */
+  sleepUntil: number;
   /** 戦術【食腐の蝶】：味方が倒れるたびに得た攻撃力の層 */
   qalaisaStacks: number;
   /** 戦術【薬枚実験】：護盾（被弾1回を無効化）と確率の累積 */
@@ -888,6 +897,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       inspireAtk: 0,
       inspireUntil: -1,
       redistTimer: 0,
+      sleepUntil: -1,
       mberryShield: 0,
       mberryAcc: 0,
       lastAttackAt: -99,
@@ -965,6 +975,59 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   // ---- 寒冷・凍結 ----
   const isFrozen = (e: Enemy) => t < e.frozenUntil;
+
+  // ---- 睡眠（ティティ） ----
+  const asleep = (e: Enemy) => t < e.sleepUntil;
+  const TITI = 'char_4056_titi';
+  const titiOn = (u: Runtime) => cid(u) === TITI && u.alive && u.skillLeft > 0 && u.skillLeft < 9000;
+  /** 範囲内で敵・味方が睡眠・スタン状態になった（ティティの堅守特性） */
+  const onSleepStun = (tile: number) => {
+    for (const u of rt) {
+      if (!u.alive || !u.rangeNormal?.has(tile)) continue;
+      for (const ev of u.events) if (ev.kind === 'sleepstun') gainStacks(ev);
+    }
+  };
+  const sleepEnemy = (e: Enemy, seconds: number, src: Runtime) => {
+    if (!e.alive || asleep(e) || e.reviveAt !== null || seconds <= 0) return;
+    e.sleepAt = t;
+    e.sleepUntil = t + seconds;
+    e.sleepBy = src;
+    if (field) onSleepStun(enemyTile(e));
+  };
+  /** 睡眠から目覚めた・睡眠中に倒された：スキル中なら睡眠時間に応じた術ダメージと、周囲の別の敵1体を睡眠 */
+  const sleepBurst = (e: Enemy) => {
+    const src = e.sleepBy;
+    e.sleepBy = null;
+    if (!src || !titiOn(src)) return;
+    const bb = src.skill.bb;
+    const dur = bb.sleep ?? 5;
+    const ratio = Math.min(1, Math.max(0, (t - e.sleepAt) / dur));
+    const scale = (bb.min_atk_scale ?? 1) + ((bb.max_atk_scale ?? 1) - (bb.min_atk_scale ?? 1)) * ratio;
+    const atk = baseAtk(src.input.def, src.input.star, src.input.mods, src.skill.atkPct);
+    if (e.alive) deal(src, e, hitDamage(atk * scale, 'arts', effDefense(e), src.input.mods));
+    const r = bb.range_radius ?? 1.5;
+    const next = enemies.find((o) => o !== e && o.alive && o.spawned && !asleep(o) && Math.hypot(o.x - e.x, o.y - e.y) <= r);
+    if (next) sleepEnemy(next, dur, src);
+  };
+  const tickSleep = () => {
+    for (const e of enemies) {
+      if (e.sleepUntil < 0 || !e.alive) continue;
+      if (t >= e.sleepUntil) {
+        e.sleepUntil = -1;
+        sleepBurst(e);
+        continue;
+      }
+      // ティティの素質：場にいる間、睡眠中の敵は毎秒攻撃力の30%の術ダメージ
+      for (const u of rt) {
+        if (cid(u) !== TITI || !u.alive || !u.tb[0].damage_atk_scale) continue;
+        deal(u, e, hitDamage(baseAtk(u.input.def, u.input.star, u.input.mods) * u.tb[0].damage_atk_scale * dt, 'arts', effDefense(e), u.input.mods));
+      }
+    }
+    for (const u of rt) {
+      // 眠った味方：HPが全回復するかスキル終了で目覚める
+      if (u.sleepUntil >= 0 && (t >= u.sleepUntil || u.hp >= u.maxHp - 1e-6 || !u.alive)) u.sleepUntil = -1;
+    }
+  };
   const isChilled = (e: Enemy) => t < e.coldUntil || isFrozen(e);
   /** 確率の効果（期待値で、累積が1に達するたびに発生） */
   const chance = (u: Runtime, prob: number, f: () => void) => {
@@ -1072,6 +1135,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       dots: new Map(),
       confined: !!input.spec.liberty,
       confAttacks: 0,
+      sleepUntil: -1,
+      sleepAt: -1,
+      sleepBy: null,
     });
   const enemies: Enemy[] = enemyInputs.map((input, i) => newEnemy(input, i + 1)).sort((a, b) => a.input.spawnAt - b.input.spawnAt);
 
@@ -1134,6 +1200,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     e.alive = false;
     e.reviveAt = null;
+    if (asleep(e)) {
+      e.sleepUntil = -1;
+      sleepBurst(e);
+    }
     // 枯朽サルカズ戦士：倒れると汚染秽蝕を残す
     const dp = e.input.spec.deathPollution;
     if (dp && field && !neutral(e)) {
@@ -1264,6 +1334,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (e.input.spec.flying && u.melee) return false;
       // 隠匿：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
       if (isStealthed(e)) return false;
+      // 睡眠中の敵は狙えない（ティティの素質は例外）
+      if (asleep(e) && cid(u) !== TITI) return false;
       // 近距離は、範囲外でもブロックしている敵を攻撃できる
       if (u.melee && e.blockedBy === u.input.uid) return true;
       return !!range && range.has(enemyTile(e));
@@ -1640,7 +1712,19 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       amount -= absorbed;
       if (amount <= 0) return;
     }
+    // 眠っている味方は攻撃の対象にならない（ダメージを受けない）
+    if (t < u.sleepUntil) return;
     u.hp -= amount;
+    // ティティのスキル：範囲内の味方が致命傷を受けると、HPが全回復するかスキル終了まで睡眠
+    if (u.hp <= 1e-6 && field && u.input.pos !== undefined) {
+      const titi = rt.find((o) => titiOn(o) && (o.rangeSkill ?? o.rangeNormal)?.has(u.input.pos!));
+      if (titi) {
+        u.hp = 1;
+        u.sleepUntil = t + titi.skillLeft;
+        onSleepStun(u.input.pos);
+        return;
+      }
+    }
     // スルト：余燼の間はHP1で耐える
     if (u.ts.surtrUntil !== null) u.hp = Math.max(1, u.hp);
     // エンテレケイア：HPが25%を下回ると1度だけHP回復
@@ -1766,7 +1850,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   // ------------------------------------------------------------
   const elemMax = (o: Runtime) => Math.max(0, ...(Object.values(o.elem) as number[]));
   const opBursting = (o: Runtime, type: ElementType) => t < (o.elemBurst[type] ?? -1);
-  const stunned = (o: Runtime) => t < (o.elemBurst.neural ?? -1) || t < o.ts.selfFrozenUntil;
+  const stunned = (o: Runtime) => t < (o.elemBurst.neural ?? -1) || t < o.ts.selfFrozenUntil || t < o.sleepUntil;
   /** 元素損傷の回復（多い種類から） */
   const healElement = (o: Runtime, amount: number) => {
     for (const type of (Object.keys(o.elem) as ElementType[]).sort((a, b) => (o.elem[b] ?? 0) - (o.elem[a] ?? 0))) {
@@ -1802,6 +1886,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     o.elemBurst[type] = t + OP_BURST_DURATION[type];
     opBursts++;
     if (type === 'neural') {
+      // 神経損傷の爆発：スタン（ティティの堅守特性の対象）
+      if (field && o.input.pos !== undefined) onSleepStun(o.input.pos);
       takeDamage(o, 1000);
       for (const e of o.blocked) e.blockedBy = null;
       o.blocked = [];
@@ -2458,7 +2544,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const lib = e.input.spec.liberty;
       // 解放後の囚人はHPが回復する
       if (lib?.regen && !e.confined) e.hp = Math.min(e.maxHp, e.hp + lib.regen * dt);
-      if (isFrozen(e)) continue;
+      if (isFrozen(e) || asleep(e)) continue;
       if (e.atkTimer > 0) {
         // 寒冷中は攻撃速度が下がる。拘束中の囚人も攻撃速度が下がる
         const conf = lib && e.confined ? Math.max(0.1, (100 + lib.confAspd) / 100) : 1;
@@ -2529,7 +2615,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           e.maxHp = e.input.spec.hp;
         } else continue;
       }
-      if (t < e.stallUntil) continue;
+      if (t < e.stallUntil || asleep(e)) continue;
       if (e.frozenUntil >= 0) {
         if (t < e.frozenUntil) continue;
         // 凍結が解けたら術耐性が戻る
@@ -2614,6 +2700,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       enemyAttacks();
       tickZones();
       tickPollution();
+      tickSleep();
       for (const u of rt) if (u.barrier > 0) u.barrier = Math.max(0, u.barrier - u.barrierDecay * dt);
     }
 
@@ -2799,6 +2886,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           if (targets.length >= 3 || (inSkill && targets.length >= 2)) emit([2, uid, inSkill ? 1 : 0], `area${uid}`, 0.3);
         }
         for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1) * talentScale(u, e, activeNow));
+        if (def.charId === TITI) {
+          for (const [e] of targets) {
+            // 素質：移動していない敵に攻撃力15%の術ダメージを追加
+            if (e.alive && u.tb[0].extra_atk_scale && (asleep(e) || isFrozen(e) || e.blockedBy !== null || e.input.spec.speed <= 0))
+              deal(u, e, hitDamage(atk * u.tb[0].extra_atk_scale, 'arts', effDefense(e), mods));
+            // スキル：睡眠状態でない対象を睡眠
+            if (titiOn(u)) sleepEnemy(e, s.bb['attack@sleep'] ?? s.bb.sleep ?? 5, u);
+          }
+        }
         // ミヅキ：攻撃範囲内でHPが最も少ない敵に追加の術ダメージ
         if (cid(u) === 'char_437_mizuki') {
           const low = enemiesInRange(u).filter((e) => !isStealthed(e)).sort((a, b) => a.hp - b.hp)[0];

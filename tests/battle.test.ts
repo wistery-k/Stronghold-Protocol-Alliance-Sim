@@ -429,6 +429,25 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(Math.abs(d1 / d3 - 1.5) < 0.1).toBe(true);
   });
 
+  it('ティティ：スキル中の攻撃で敵を睡眠にし、範囲内の睡眠で【サルゴン】【精密】を加算', () => {
+    const titi = UNITS.find((u) => u.name === 'ティティ')!;
+    ENEMIES.test_sleep = { name: 's', hp: 20000, def: 100, res: 0, speed: 0.6, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    setActiveMap('legacy');
+    const { inputs, globals } = buildSimInputs(
+      [
+        { uid: 1, defId: titi.id, star: 1, pos: 24, dir: 'down' },
+        { uid: 2, defId: byProf('defender').id, star: 2, pos: 31, dir: 'right' },
+      ],
+      [],
+      {},
+    );
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 90, moveMultiplier: 0.5, spawns: [{ enemy: 'test_sleep', count: 8, interval: 4, delay: 0, spawn: 1 }] };
+    const r = simulateBattle(inputs, spec, { globals, activeAlliances: new Set(['sargon', 'preci']) });
+    expect(r.perUnit[0].skillCasts).toBeGreaterThan(0);
+    expect(r.stackGains.sargon ?? 0).toBeGreaterThan(0);
+    expect(r.stackGains.preci).toBe(r.stackGains.sargon);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか

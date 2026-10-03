@@ -323,7 +323,7 @@ export const TALENT_STATUS: Record<string, [TalentImpl, string?][]> = {
   char_4134_cetsyr: [['partial', 'S3中のみ（スキル外の「微塵」は未再現）'], ['none', '敵の種類（サルカズ）が無いため未再現']],
   char_171_bldsk: [['full']],
   char_1032_excu2: [['full', '確率は期待値'], ['full']],
-  char_4056_titi: [['none', '睡眠は未再現'], ['partial', 'HP50%以上の条件は省略。【ミノス】は対象外']],
+  char_4056_titi: [['full', '睡眠中の敵への攻撃・継続ダメージ、移動していない敵への追加ダメージ'], ['partial', 'HP50%以上の条件は省略。【ミノス】は対象外']],
   char_1040_blaze2: [['full'], ['none', 'ダウン状態は未再現']],
   char_4145_ulpia: [['full'], ['full']],
   char_4010_etlchi: [['full'], ['full']],
