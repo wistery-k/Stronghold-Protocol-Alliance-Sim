@@ -167,7 +167,7 @@ function undonePanel(state: GameState): HTMLElement | null {
     { class: 'panel' },
     h('h2', null, `取り消した戦闘（${list.length}）`),
     list.map((b, i) => {
-      const verdict = b.sim.cleared ? `全滅 ${b.sim.elapsed}秒` : `突破${b.sim.leaked}体・耐久値-${b.lifeLost}`;
+      const verdict = b.sim.cleared ? `${b.sim.bossDefeated ? 'ボス撃破' : '全滅'} ${b.sim.elapsed}秒` : `突破${b.sim.leaked}体・耐久値-${b.lifeLost}`;
       const body = h('div', null);
       const d = h(
         'details',

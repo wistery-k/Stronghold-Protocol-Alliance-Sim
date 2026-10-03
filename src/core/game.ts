@@ -771,7 +771,9 @@ function resolveBattle(state: GameState): void {
   };
   state.history.push({ round: state.round, killed: sim.cleared, lifeLost: lost });
   notify(state, 
-    sim.cleared
+    sim.cleared && sim.bossDefeated
+      ? `ラウンド${state.round}：ボスを撃破（${sim.elapsed}秒）`
+      : sim.cleared
       ? `ラウンド${state.round}：敵${sim.total}体をすべて撃破（${sim.elapsed}秒）`
       : `ラウンド${state.round}：${sim.leaked}体に突破され、耐久値-${lost}`,
   );

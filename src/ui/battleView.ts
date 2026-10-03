@@ -229,7 +229,7 @@ export function roundInfo(spec: RoundSpec, timeLimit: number, group?: RoundGroup
 export function predictionLine(r: BattleResult) {
   const down = downCount(r);
   const downText = down ? `・撤退${down}人` : '';
-  if (r.cleared) return h('div', { class: 'predict ok' }, `全滅見込み（${r.elapsed}秒${downText}）`);
+  if (r.cleared) return h('div', { class: 'predict ok' }, `${r.bossDefeated ? 'ボス撃破' : '全滅'}見込み（${r.elapsed}秒${downText}）`);
   return h(
     'div',
     { class: 'predict ng' },
@@ -325,7 +325,7 @@ export function battleSummary(r: BattleResult, units: ReplayUnit[]) {
     h(
       'div',
       { class: `verdict ${r.cleared ? 'ok' : 'ng'}` },
-      r.cleared ? `全滅！ ${r.elapsed}秒` : `突破 ${r.leaked}体　耐久値-${r.lifeLoss}`,
+      r.cleared ? `${r.bossDefeated ? 'ボス撃破' : '全滅'}！ ${r.elapsed}秒` : `突破 ${r.leaked}体　耐久値-${r.lifeLoss}`,
     ),
     h(
       'div',

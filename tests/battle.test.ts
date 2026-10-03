@@ -525,6 +525,29 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.perUnit[0].hits).toBeGreaterThan(0);
   });
 
+  it('冑を倒すとその時点で戦闘終了。残りの敵（未出現を含む）は突破に数えない', () => {
+    ENEMIES.test_weakboss = { ...ENEMIES.enemy_9013_acstmk, hp: 3000, def: 0, res: 0, summon: undefined, bomb: undefined, attack: undefined };
+    ENEMIES.test_late = { name: 'l', hp: 1e9, def: 0, res: 0, speed: 1, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    setActiveMap('legacy');
+    const spec: RoundSpec = {
+      round: 14,
+      levelId: 'test',
+      timeLimit: 120,
+      moveMultiplier: 0.5,
+      spawns: [
+        { enemy: 'test_weakboss', count: 1, interval: 0, delay: 0, spawn: 0 },
+        { enemy: 'test_late', count: 3, interval: 1, delay: 3, spawn: 1 },
+        { enemy: 'test_late', count: 2, interval: 1, delay: 100, spawn: 1 },
+      ],
+    };
+    const { inputs, globals } = buildSimInputs([{ uid: 1, defId: byProf('sniper').id, star: 2, pos: 6, dir: 'right' }], [], {});
+    const r = simulateBattle(inputs, spec, { globals });
+    expect(r.bossDefeated).toBe(true);
+    expect(r.elapsed < 30).toBe(true);
+    expect(r.lifeLoss).toBe(0);
+    expect(r.cleared).toBe(true);
+  });
+
   it('海溝の実験体：ダメージを固定値で軽減（活性源石のマスのダメージにも有効）、【エーギル】なら反撃', () => {
     const spec = oneEnemy('test_flat', false, { speed: 0, boss: true });
     const run4 = (items: OwnedUnit['items'], defId = byProf('defender').id) => {

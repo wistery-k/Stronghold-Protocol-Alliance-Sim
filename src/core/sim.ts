@@ -134,6 +134,8 @@ export interface BattleResult {
   leaks: { key: string; name: string; count: number; lifeLoss: number }[];
   /** ボスの残りHP割合（ボスがいない・倒したなら 0） */
   bossRemaining: number;
+  /** 大型のボス（冑）を倒して戦闘が即座に終わった */
+  bossDefeated?: boolean;
   cleared: boolean;
   totalDamage: number;
   totalHp: number;
@@ -910,6 +912,7 @@ interface EngineResult {
   frames: ReplayFrame[];
   fx: FxEvent[];
   killTime: number | null;
+  bossDefeated: boolean;
   colds: number;
   freezes: number;
   opBursts: number;
@@ -1295,6 +1298,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   let killTime: number | null = null;
   const byUid = new Map(rt.map((u) => [u.input.uid, u]));
 
+  /** 大型のボス（冑）がいて、すべて倒された（ボス戦はその時点で終了） */
+  const bossDefeated = () => {
+    const big = enemies.filter((e) => e.input.spec.large);
+    return big.length > 0 && big.every((e) => e.spawned && !e.alive && !e.leaked);
+  };
   const remainingHp = () => enemies.reduce((sum, e) => sum + (e.leaked ? 0 : e.alive || !e.spawned ? e.hp : 0), 0);
   const aliveCount = () => enemies.filter((e) => e.alive).length;
 
@@ -3519,7 +3527,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
     }
 
-    if (killTime === null && enemies.every((e) => e.spawned && !e.alive && !e.leaked)) killTime = Math.round((t + dt) * 100) / 100;
+    if (killTime === null && (enemies.every((e) => e.spawned && !e.alive && !e.leaked) || bossDefeated())) killTime = Math.round((t + dt) * 100) / 100;
     if ((step + 1) % sampleEvery === 0) timeline.push({ t: Math.round((step + 1) * dt * 100) / 100, hp: remainingHp(), alive: aliveCount() });
     if (opts.record && step % frameEvery === 0) {
       frames.push({
@@ -3535,12 +3543,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         c: Math.floor(cost),
       });
     }
-    if (enemies.every((e) => e.spawned && !e.alive)) {
+    if (enemies.every((e) => e.spawned && !e.alive) || bossDefeated()) {
       t += dt;
       break;
     }
   }
-  if (t < timeLimit && !enemies.every((e) => e.spawned && !e.alive)) t = timeLimit;
+  if (t < timeLimit && !enemies.every((e) => e.spawned && !e.alive) && !bossDefeated()) t = timeLimit;
   timeline.push({ t: Math.round(t * 100) / 100, hp: remainingHp(), alive: aliveCount() });
   if (opts.record) {
     frames.push({
@@ -3558,7 +3566,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   }
   const sargon = g.sargon ? { aspd: g.sargon.aspd, atkPct: g.sargon.atkPct, max: sargonMax, avg: Math.round((sargonSum / Math.max(dt, t)) * 10) / 10 } : undefined;
   const siracusa = g.siracusa && g.siracusa.aspd ? { aspd: g.siracusa.aspd, duration: g.siracusa.duration, members: rt.filter((u) => g.siracusa!.members.has(u.input.uid)).length } : undefined;
-  return { t, enemies, units: rt, timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, colds, freezes, opBursts, enBursts, sargon, siracusa };
+  return { t, enemies, units: rt, timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, bossDefeated: bossDefeated(), colds, freezes, opBursts, enBursts, sargon, siracusa };
 }
 
 // ------------------------------------------------------------
@@ -3618,6 +3626,8 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     true,
     { ...opts, moveMultiplier: spec.moveMultiplier },
   );
+  // 冑（大型のボス）を倒すとその時点で戦闘終了。残っている敵（未出現を含む）は消え、突破に数えない
+  const vanished = (e: (typeof r.enemies)[number]) => r.bossDefeated && !e.leaked && (e.alive || !e.spawned);
   let lifeLoss = 0;
   let bossRemaining = 0;
   const leakMap = new Map<string, { key: string; name: string; count: number; lifeLoss: number }>();
@@ -3625,6 +3635,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     const sp = e.input.spec;
     const timedOut = !e.leaked && (e.alive || !e.spawned);
     if (!e.leaked && !timedOut) continue;
+    if (vanished(e)) continue;
     // ボスの手下は防衛地点に入らない（突破に数えない）。弾も数えない
     if (sp.roam || sp.projectile) continue;
     let loss = sp.lifeReduce;
@@ -3641,7 +3652,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
   }
   const isKilled = (e: (typeof r.enemies)[number]) => e.spawned && !e.alive && !e.leaked;
   // ボスの弾（<刺胄之弹>）は敵の数に入れない
-  const counted = r.enemies.filter((e) => !e.input.spec.projectile);
+  const counted = r.enemies.filter((e) => !e.input.spec.projectile && !vanished(e));
   const killed = counted.filter(isKilled).length;
   const bountyKilled = counted.filter((e) => e.input.bounty && isKilled(e));
   const totalHp = counted.reduce((s, e) => s + e.input.spec.hp, 0);
@@ -3656,6 +3667,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     lifeLoss,
     leaks: [...leakMap.values()],
     bossRemaining,
+    bossDefeated: r.bossDefeated || undefined,
     cleared: killed === counted.length,
     totalDamage: perUnit.reduce((s, u) => s + u.damage, 0),
     totalHp,
