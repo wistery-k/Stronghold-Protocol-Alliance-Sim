@@ -5419,10 +5419,10 @@
    "bomb": {
     "cooldown": 25.0,
     "init": 20.0,
-    "stun": 10,
-    "dotDps": 200,
-    "dotDuration": 10,
-    "hits": 15
+    "stun": 2.1,
+    "dotDps": 400,
+    "dotDuration": 9.95,
+    "hits": 8
    }
   },
   "enemy_10027_vtsk": {
@@ -5464,10 +5464,10 @@
    "bomb": {
     "cooldown": 25.0,
     "init": 20.0,
-    "stun": 10,
-    "dotDps": 200,
-    "dotDuration": 10,
-    "hits": 15
+    "stun": 2.1,
+    "dotDps": 400,
+    "dotDuration": 9.95,
+    "hits": 8
    }
   },
   "enemy_9014_acstma": {

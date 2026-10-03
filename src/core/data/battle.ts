@@ -53,7 +53,7 @@ export interface EnemySpec {
   large?: boolean;
   /**
    * 【灭顶之灾】攻撃力が最も高い味方に<刺胄之弹>を撃つ（init 秒後から cooldown 秒ごと）。着弾で目標と周囲8マスの味方を stun 秒スタンさせ、
-   * dotDuration 秒間、毎秒 dotDps の物理ダメージ。弾は飛行中に hits 回攻撃すると撃ち落とせる。HPが lowHpGuard.ratio 未満なら2発
+   * dotDuration 秒間、毎秒 dotDps の物理ダメージ。弾は飛行中に hits 回攻撃すると撃ち落とせ、味方に優先して狙われる（挑発）
    */
   bomb?: { cooldown: number; init: number; stun: number; dotDps: number; dotDuration: number; hits: number };
   /** 敵の弾（<刺胄之弹>）：飛行中の的。突破・撃破の数には入れない */

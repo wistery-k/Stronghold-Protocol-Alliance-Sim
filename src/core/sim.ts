@@ -1398,8 +1398,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (u.melee && e.blockedBy === u.input.uid) return true;
       return covers(range, e);
     });
-    // ブロック中の敵を優先し、次に防衛地点に近い敵
-    return list.sort((a, b) => Number(b.blockedBy === u.input.uid) - Number(a.blockedBy === u.input.uid) || remaining(a) - remaining(b));
+    // ボスの弾（挑発）を最優先、次にブロック中の敵、次に防衛地点に近い敵
+    return list.sort(
+      (a, b) =>
+        Number(!!b.input.spec.projectile) - Number(!!a.input.spec.projectile) ||
+        Number(b.blockedBy === u.input.uid) - Number(a.blockedBy === u.input.uid) ||
+        remaining(a) - remaining(b),
+    );
   };
 
   /** 1回の攻撃で狙う敵と倍率 */
@@ -2665,11 +2670,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     hitsToKill: true,
     projectile: true,
   });
-  /** ボスが弾を撃つ（攻撃力が最も高い味方へ。HPが一定割合未満なら2発） */
+  /** ボスが弾を撃つ（攻撃力が最も高い味方へ1発。ゲーム内の「HPが低下すると追加で発射」は誤りで、発射数は増えない） */
   const fireBombs = (boss: Enemy) => {
     const b = boss.input.spec.bomb!;
-    const guard = boss.input.spec.lowHpGuard;
-    const n = guard && boss.hp / boss.input.spec.hp < guard.ratio ? 2 : 1;
+    const n = 1;
     const targets = rt
       .filter((u) => u.alive && u.input.pos !== undefined)
       .sort((x, y) => baseAtk(y.input.def, y.input.star, y.input.mods) - baseAtk(x.input.def, x.input.star, x.input.mods))
