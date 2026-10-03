@@ -1,5 +1,5 @@
 import { bondKey, type BattleGlobals } from './alliance';
-import { ENEMY_PATHS, canBlockAt, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
+import { BOSS_CELLS, BOSS_CENTER, ENEMY_PATHS, GOAL, canBlockAt, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
 import { ENEMIES, rangeGrid, unitRangeIds, type ElementType, type EnemySpec, type RoundSpec } from './data/battle';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE, ENEMY_SPEED_SCALE } from './rules';
 import { unitState } from './data/units';
@@ -74,6 +74,8 @@ export interface EnemyMeta {
   bounty?: number;
   /** 周囲攻撃の半径（マス） */
   aura?: number;
+  /** 大型のボス（右の2列×上の3行を占める） */
+  large?: boolean;
 }
 
 /** リプレイ用のコマ：敵ごとに [id, x*100, y*100, HP%] と、スキル中のユニット */
@@ -453,7 +455,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -734,6 +736,8 @@ interface Enemy {
   sleepUntil: number;
   sleepAt: number;
   sleepBy: Runtime | null;
+  /** ボスの手下：飛び回る先 */
+  roamTo: { x: number; y: number } | null;
   /** 囚人：拘束中か、拘束中に攻撃した回数 */
   confined: boolean;
   confAttacks: number;
@@ -972,13 +976,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const isStealthed = (e: Enemy) => !!e.input.spec.stealth && e.blockedBy === null && e.reviveAt === null && !neutral(e) && !revealed(e);
 
   /** スキルによる防御力・術耐性低下を反映した敵の防御 */
+  /** 範囲に敵が入っているか（大型のボスは占めるマスのどれかが入っていればよい） */
+  const covers = (range: Set<number> | null | undefined, e: Enemy) =>
+    !!range && (e.input.spec.large ? BOSS_CELLS.some((c) => range.has(c)) : range.has(enemyTile(e)));
   const effDefense = (e: Enemy): DefenseState => {
     let dDef = 0;
     let dRes = 0;
-    const tile = enemyTile(e);
     for (const u of rt) {
       const s = u.skill;
-      if (!u.alive || (!s.enemyDef && !s.enemyRes) || !(u.skillLeft > 0 || u.ammoLeft > 0) || !u.rangeSkill?.has(tile)) continue;
+      if (!u.alive || (!s.enemyDef && !s.enemyRes) || !(u.skillLeft > 0 || u.ammoLeft > 0) || !covers(u.rangeSkill, e)) continue;
       dDef = Math.min(dDef, s.enemyDef);
       dRes = Math.min(dRes, s.enemyRes);
     }
@@ -994,9 +1000,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const TITI = 'char_4056_titi';
   const titiOn = (u: Runtime) => cid(u) === TITI && u.alive && u.skillLeft > 0 && u.skillLeft < 9000;
   /** 範囲内で敵・味方が睡眠・スタン状態になった（ティティの堅守特性） */
-  const onSleepStun = (tile: number) => {
+  const onSleepStun = (where: number | Enemy) => {
     for (const u of rt) {
-      if (!u.alive || !u.rangeNormal?.has(tile)) continue;
+      if (!u.alive || !(typeof where === 'number' ? !!u.rangeNormal?.has(where) : covers(u.rangeNormal, where))) continue;
       for (const ev of u.events) if (ev.kind === 'sleepstun') gainStacks(ev);
     }
   };
@@ -1005,7 +1011,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.sleepAt = t;
     e.sleepUntil = t + seconds;
     e.sleepBy = src;
-    if (field) onSleepStun(enemyTile(e));
+    if (field) onSleepStun(e);
   };
   /** 睡眠から目覚めた・睡眠中に倒された：スキル中なら睡眠時間に応じた術ダメージと、周囲の別の敵1体を睡眠 */
   const sleepBurst = (e: Enemy) => {
@@ -1053,9 +1059,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
   /** 凍結した時：範囲内の敵の凍結で加算数を得る特性 */
   const onFreeze = (e: Enemy) => {
-    const tile = enemyTile(e);
     for (const u of rt) {
-      if (!u.alive || !u.rangeNormal?.has(tile)) continue;
+      if (!u.alive || !covers(u.rangeNormal, e)) continue;
       for (const ev of u.events) {
         if (ev.kind !== 'freeze') continue;
         ev.acc += ev.prob;
@@ -1106,7 +1111,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       u.coldDotTimer += 1;
       const atk = baseAtk(u.input.def, u.input.star, u.input.mods);
       for (const e of enemies) {
-        if (!e.alive || !isChilled(e) || !u.rangeNormal?.has(enemyTile(e))) continue;
+        if (!e.alive || !isChilled(e) || !covers(u.rangeNormal, e)) continue;
         deal(u, e, hitDamage(atk * dot, 'arts', effDefense(e), u.input.mods, artsVuln(e)));
       }
     }
@@ -1151,7 +1156,16 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       sleepUntil: -1,
       sleepAt: -1,
       sleepBy: null,
+      roamTo: null,
     });
+  /** シミュレーター内の決定的な乱数（ボスの攻撃対象・手下の移動先） */
+  let seed = 0x2545f491;
+  const rand = () => {
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    return ((seed >>> 0) % 1_000_000) / 1_000_000;
+  };
   const enemies: Enemy[] = enemyInputs.map((input, i) => newEnemy(input, i + 1)).sort((a, b) => a.input.spawnAt - b.input.spawnAt);
 
   const gainStacks = (ev: GarrisonEvent, times = 1) => {
@@ -1215,6 +1229,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     e.alive = false;
     e.reviveAt = null;
+    // ボスが倒れると手下も消える
+    if (e.input.spec.boss) for (const m of enemies) if (m.alive && m.input.spec.minionOf === e.input.key) m.alive = false;
     if (asleep(e)) {
       e.sleepUntil = -1;
       sleepBurst(e);
@@ -1252,6 +1268,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const deal = (u: Runtime, e: Enemy, amount: number) => {
     if (!e.alive || amount <= 0) return;
+    // ボスの手下は無敵
+    if (e.input.spec.roam) return;
+    // 仮想敵：冑：HPが一定割合を下回ると受けるダメージ減少
+    const guard = e.input.spec.lowHpGuard;
+    if (guard && e.hp / e.input.spec.hp < guard.ratio) amount *= guard.scale;
     const applied = Math.min(countsHits(e) ? 1 : amount, e.hp);
     e.hp -= applied;
     u.result.damage += applied;
@@ -1349,11 +1370,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (e.input.spec.flying && u.melee) return false;
       // 隠匿：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
       if (isStealthed(e)) return false;
+      // ボスの手下は無敵（攻撃の対象にならない）
+      if (e.input.spec.roam) return false;
       // 睡眠中の敵は狙えない（ティティの素質は例外）
       if (asleep(e) && cid(u) !== TITI) return false;
       // 近距離は、範囲外でもブロックしている敵を攻撃できる
       if (u.melee && e.blockedBy === u.input.uid) return true;
-      return !!range && range.has(enemyTile(e));
+      return covers(range, e);
     });
     // ブロック中の敵を優先し、次に防衛地点に近い敵
     return list.sort((a, b) => Number(b.blockedBy === u.input.uid) - Number(a.blockedBy === u.input.uid) || remaining(a) - remaining(b));
@@ -1925,10 +1948,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (!e.alive || amount <= 0 || enBursting(e, type)) return;
     // ヴィルトゥオーサの素質：範囲内の敵が受ける凋亡損傷が上昇
     if (type === 'apoptosis') {
-      const tile = enemyTile(e);
       for (const u of rt) {
         const tal = ELEMENT_TALENT[u.input.def.charId];
-        if (u.alive && tal?.auraApoptosisTaken && u.rangeNormal?.has(tile)) amount *= tal.auraApoptosisTaken;
+        if (u.alive && tal?.auraApoptosisTaken && covers(u.rangeNormal, e)) amount *= tal.auraApoptosisTaken;
       }
     }
     e.elem[type] = (e.elem[type] ?? 0) + amount;
@@ -1949,7 +1971,6 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
   /** 敵の元素損傷が爆発した時の素質（熾炎ブレイズ・ニンフ） */
   const onEnemyBurst = (e: Enemy, type: ElementType) => {
-    const tile = enemyTile(e);
     for (const u of rt) {
       if (!u.alive) continue;
       const tal = ELEMENT_TALENT[u.input.def.charId];
@@ -1960,7 +1981,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         healUnit(u, u, u.maxHp * tal.onBurnBurst.heal);
         if (u.ammoLeft > 0) u.ammoLeft += u.skill.bb.ammo_recover ?? 0;
       }
-      if (type === 'apoptosis' && tal.atkPerApoptosisBurst && u.rangeNormal?.has(tile)) {
+      if (type === 'apoptosis' && tal.atkPerApoptosisBurst && covers(u.rangeNormal, e)) {
         u.talentStacks = Math.min(tal.atkPerApoptosisBurst.max, u.talentStacks + 1);
       }
     }
@@ -2013,7 +2034,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // ヴィルトゥオーサの素質：攻撃範囲内の敵に毎秒凋亡損傷
       if (tal?.auraApoptosis) {
         const atk = baseAtk(o.input.def, o.input.star, o.input.mods);
-        for (const e of enemies) if (e.alive && o.rangeNormal?.has(enemyTile(e))) addEnElement(e, 'apoptosis', atk * tal.auraApoptosis * dt, o);
+        for (const e of enemies) if (e.alive && covers(o.rangeNormal, e)) addEnElement(e, 'apoptosis', atk * tal.auraApoptosis * dt, o);
       }
     }
     for (const e of enemies) {
@@ -2069,7 +2090,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   // 素質（戦闘中に変化するもの）
   // ------------------------------------------------------------
   const posXY = (u: Runtime) => ({ x: cellX(u.input.pos ?? 0), y: cellY(u.input.pos ?? 0) });
-  const enemiesInRange = (u: Runtime) => enemies.filter((e) => e.alive && e.spawned && !!u.rangeNormal?.has(enemyTile(e)));
+  const enemiesInRange = (u: Runtime) => enemies.filter((e) => e.alive && e.spawned && !!covers(u.rangeNormal, e));
   const enemiesNear = (u: Runtime, r: number) => {
     const p = posXY(u);
     return enemies.filter((e) => e.alive && e.spawned && Math.hypot(e.x - p.x, e.y - p.y) <= r);
@@ -2159,7 +2180,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const talentDamageMult = (u: Runtime, e: Enemy, type: DamageType): number => {
     let vuln = 1;
     for (const w of rt) {
-      if (!w.alive || !w.rangeNormal?.has(enemyTile(e))) continue;
+      if (!w.alive || !covers(w.rangeNormal, e)) continue;
       const [b0] = w.tb;
       switch (cid(w)) {
         case 'char_4079_haini': // ルシーラ：エリート・ボス以外に脆弱
@@ -2348,7 +2369,6 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
   /** 敵が倒れた時の素質 */
   const talentOnKill = (e: Enemy, by: Runtime) => {
-    const tile = enemyTile(e);
     const [b0, b1] = by.tb;
     switch (cid(by)) {
       case 'char_2015_dusk':
@@ -2385,13 +2405,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         break;
     }
     // エステル：周囲8マスで敵が倒れるとHP回復
+    const tile = enemyTile(e);
     for (const w of holders('char_127_estell')) {
       if (w.input.pos === undefined) continue;
       if (Math.abs(cellX(tile) - cellX(w.input.pos)) <= 1 && Math.abs(cellY(tile) - cellY(w.input.pos)) <= 1) healUnit(w, w, w.maxHp * (w.tb[0].hp_ratio ?? 0));
     }
     // ワルファリン：攻撃範囲内で敵が倒れると自身と範囲内の味方1人のSP回復
     for (const w of holders('char_171_bldsk')) {
-      if (!w.rangeNormal?.has(tile)) continue;
+      if (!covers(w.rangeNormal, e)) continue;
       w.sp += w.tb[0]['bldsk_t_1[self].sp'] ?? 0;
       const ally = alliesInRange(w, false)
         .filter((o) => o !== w && o.skill.spCost > 0)
@@ -2481,7 +2502,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const talentSlow = (e: Enemy): number => {
     let slow = 0;
     for (const w of rt) {
-      if (!w.alive || !w.rangeNormal?.has(enemyTile(e))) continue;
+      if (!w.alive || !covers(w.rangeNormal, e)) continue;
       if (cid(w) === 'char_213_mostma' || cid(w) === 'char_4087_ines') slow = Math.max(slow, -(w.tb[1].move_speed ?? 0));
     }
     return 1 - slow;
@@ -2491,7 +2512,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     rt.some(
       (w) =>
         w.alive &&
-        w.rangeNormal?.has(enemyTile(e)) &&
+        covers(w.rangeNormal, e) &&
         ((cid(w) === 'char_172_svrash' && (unitState(w.input.def, w.input.star).talents?.length ?? 0) >= 2) ||
           (cid(w) === 'char_4087_ines' && w.tb[1].move_speed !== undefined)),
     );
@@ -2581,7 +2602,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
       let target: Runtime | undefined;
       if (e.blockedBy !== null) target = byUid.get(e.blockedBy);
-      else if (a.kind === 'ranged') {
+      else if (a.kind === 'ranged' && a.randomTarget) {
+        // 範囲内のランダムな対象（換気口の上の味方は除く）
+        const cands = rt.filter(
+          (u) => u.alive && u.input.pos !== undefined && unitTile(u) !== 'smog' && Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) <= a.range,
+        );
+        if (cands.length) target = cands[Math.floor(rand() * cands.length)];
+      } else if (a.kind === 'ranged') {
         for (const u of rt) {
           if (!u.alive || u.input.pos === undefined) continue;
           if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
@@ -2604,6 +2631,28 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
 
+  const roam = (e: Enemy) => {
+    if (!e.roamTo) {
+      // 出現位置：ボスのそば
+      e.x = BOSS_CENTER.x;
+      e.y = BOSS_CENTER.y - 1;
+    }
+    const gx = cellX(GOAL);
+    const gy = cellY(GOAL);
+    while (!e.roamTo || Math.hypot(e.roamTo.x - e.x, e.roamTo.y - e.y) < 0.05) {
+      const to = { x: rand() * 8, y: rand() * 3 };
+      if (Math.hypot(to.x - gx, to.y - gy) >= 2) e.roamTo = to;
+    }
+    if (t < e.stallUntil || isFrozen(e) || asleep(e)) return;
+    const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) : 1);
+    const dx = e.roamTo.x - e.x;
+    const dy = e.roamTo.y - e.y;
+    const dist = Math.hypot(dx, dy);
+    const step = Math.min(dist, speed * dt);
+    e.x += (dx / dist) * step;
+    e.y += (dy / dist) * step;
+  };
+
   const moveEnemies = () => {
     for (const e of enemies) {
       if (!e.spawned && e.input.spawnAt <= t + 1e-9) {
@@ -2620,7 +2669,19 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.neutralUntil = -1;
         e.defense.res = currentRes(e);
       }
-      if (!e.alive || !e.input.path || e.blockedBy !== null) continue;
+      if (!e.alive) continue;
+      // 大型のボス：移動しない
+      if (e.input.spec.large) {
+        e.x = BOSS_CENTER.x;
+        e.y = BOSS_CENTER.y;
+        continue;
+      }
+      // ボスの手下：フィールド内を飛び回る（防衛地点の周りには入らない）
+      if (e.input.spec.roam) {
+        roam(e);
+        continue;
+      }
+      if (!e.input.path || e.blockedBy !== null) continue;
       // 復活待ち：その場に留まり、時間が来たら元のHPで復活する
       if (e.reviveAt !== null) {
         if (t >= e.reviveAt) {
@@ -3093,6 +3154,8 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     const sp = e.input.spec;
     const timedOut = !e.leaked && (e.alive || !e.spawned);
     if (!e.leaked && !timedOut) continue;
+    // ボスの手下は防衛地点に入らない（突破に数えない）
+    if (sp.roam) continue;
     let loss = sp.lifeReduce;
     if (timedOut && sp.boss) {
       const ratio = e.hp / sp.hp;
@@ -3132,7 +3195,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     opBursts: r.opBursts,
     enBursts: r.enBursts,
     sargon: r.sargon,
-    enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined })),
+    enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined, large: e.input.spec.large || undefined })),
     bountyGold: bountyKilled.reduce((sum, e) => sum + (e.input.bounty ?? 0), 0),
     bountyKills: bountyKilled.length,
     frames: opts.record ? r.frames : undefined,

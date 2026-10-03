@@ -557,11 +557,32 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   const fxLayer = s('g', { class: 'rp-fx' });
   svg.append(fxLayer);
   const fxDraw = replayFx(r, units, S);
-  const enemyNodes = new Map<number, { g: SVGElement; bar: SVGElement }>();
+  const enemyNodes = new Map<number, { g: SVGElement; bar: SVGElement; barW: number }>();
   const enemyNode = (id: number) => {
     let n = enemyNodes.get(id);
     if (n) return n;
     const m = meta.get(id)!;
+    if (m.large) {
+      // 大型のボス：右の2列×上の3行を占める（位置は左下のマスの中心）
+      const x0 = -S / 2 + 6;
+      const y0 = -2.5 * S + 6;
+      const w = 2 * S - 12;
+      const hgt = 3 * S - 12;
+      const bar = s('rect', { x: x0 + 8, y: y0 + 8, width: w - 16, height: 8, class: 'rp-hp' });
+      const g = s(
+        'g',
+        { class: 'rp-enemy boss large' },
+        s('rect', { x: x0, y: y0, width: w, height: hgt, rx: 14, class: 'rp-enemy-body' }),
+        s('rect', { x: x0 + 8, y: y0 + 8, width: w - 16, height: 8, class: 'rp-hp-bg' }),
+        bar,
+        s('text', { x: S / 2, y: -S, 'text-anchor': 'middle', class: 'rp-boss-name' }, m.name),
+      );
+      g.append(s('title', {}, m.name));
+      n = { g, bar, barW: w - 16 };
+      enemyNodes.set(id, n);
+      enemyLayer.prepend(g);
+      return n;
+    }
     const rad = enemyRadius(m);
     const bar = s('rect', { x: -rad, y: -rad - 12, width: rad * 2, height: 6, class: 'rp-hp' });
     const g = s(
@@ -574,7 +595,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       bar,
     );
     g.append(s('title', {}, m.name));
-    n = { g, bar };
+    n = { g, bar, barW: rad * 2 };
     enemyNodes.set(id, n);
     enemyLayer.append(g);
     return n;
@@ -613,8 +634,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       const x = nb ? e[1] + (nb[1] - e[1]) * f : e[1];
       const y = nb ? e[2] + (nb[2] - e[2]) * f : e[2];
       n.g.setAttribute('transform', `translate(${(x / 100) * S + S / 2},${(y / 100) * S + S / 2})`);
-      const rad = enemyRadius(meta.get(e[0])!);
-      n.bar.setAttribute('width', String(Math.max(0, (e[3] / 100) * rad * 2)));
+      n.bar.setAttribute('width', String(Math.max(0, (e[3] / 100) * n.barW)));
       n.g.style.display = '';
       n.g.classList.toggle('freed', e[4] === 1);
       seen.add(e[0]);

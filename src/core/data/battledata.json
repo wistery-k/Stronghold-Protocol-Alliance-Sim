@@ -5408,7 +5408,13 @@
     "atk": 650,
     "interval": 4.0,
     "range": 8.0,
-    "arts": false
+    "arts": true,
+    "randomTarget": true
+   },
+   "large": true,
+   "lowHpGuard": {
+    "ratio": 0.2,
+    "scale": 0.5
    }
   },
   "enemy_10027_vtsk": {
@@ -5439,7 +5445,13 @@
     "atk": 750,
     "interval": 4.0,
     "range": 8.0,
-    "arts": false
+    "arts": true,
+    "randomTarget": true
+   },
+   "large": true,
+   "lowHpGuard": {
+    "ratio": 0.2,
+    "scale": 0.5
    }
   },
   "enemy_9014_acstma": {
@@ -5452,7 +5464,17 @@
    "flying": true,
    "boss": false,
    "elite": true,
-   "lifeReduce": 0
+   "lifeReduce": 0,
+   "attack": {
+    "kind": "ranged",
+    "atk": 300,
+    "interval": 6.0,
+    "range": 1.6,
+    "arts": false,
+    "aura": true
+   },
+   "roam": true,
+   "minionOf": "enemy_9013_acstmk_2"
   },
   "enemy_9015_acstmb": {
    "name": "「冑を砕く鎚」",
@@ -5464,7 +5486,17 @@
    "flying": true,
    "boss": false,
    "elite": true,
-   "lifeReduce": 0
+   "lifeReduce": 0,
+   "attack": {
+    "kind": "ranged",
+    "atk": 350,
+    "interval": 8.0,
+    "range": 1.6,
+    "arts": false,
+    "aura": true
+   },
+   "roam": true,
+   "minionOf": "enemy_9013_acstmk_2"
   },
   "enemy_1204_msfhu": {
    "name": "青磁の茶器",

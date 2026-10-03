@@ -63,6 +63,11 @@ BOUNTY_GROUPS = {
 }
 
 # 元素損傷の種類（図鑑の説明のタグ → シミュレーターの名前）
+# 大型で動かないボス（小型で歩き回るボス：ルシアン・仮想敵：銃 は対象外）
+LARGE_BOSSES = {'enemy_9013_acstmk', 'enemy_9021_acduml', 'enemy_1521_dslily', 'enemy_9032_aclionk', 'enemy_9033_acdeer'}
+# シークレットコア版のボスの手下（キーはボスのキー）
+BOSS_MINIONS = {'enemy_9014_acstma': 'enemy_9013_acstmk_2', 'enemy_9015_acstmb': 'enemy_9013_acstmk_2'}
+
 ELEMENT_TAGS = {
     'ba.dt.burning': 'burning',
     'ba.dt.neural': 'neural',
@@ -196,6 +201,27 @@ def main():
                 'range': (radius if radius > 0 else 2.5) if apply_way == 'RANGED' else 0,
                 'arts': dtypes[0] == 'MAGIC',
             }
+        # 「持続攻撃」（applyWay ALL）：範囲内の味方全員に攻撃し続ける（冑を斬る剣・冑を砕く鎚。他の ALL の敵は攻撃の仕方が様々なので対象外）
+        if apply_way == 'ALL' and atk > 0 and key in BOSS_MINIONS:
+            bat = enemy_value(at, 'baseAttackTime', 2.0) or 2.0
+            aspd = enemy_value(at, 'attackSpeed', 100.0) or 100.0
+            radius = ed['rangeRadius']['m_value'] if ed['rangeRadius']['m_defined'] else 1.0
+            dtypes = ((cn_handbook.get(key) or {}).get('damageType') or ['PHYSIC'])
+            e['attack'] = {'kind': 'ranged', 'atk': atk, 'interval': round(bat * 100 / aspd, 3), 'range': radius, 'arts': dtypes[0] == 'MAGIC', 'aura': True}
+        # 大型のボス：移動せず、マップ右上の2列×3行を占める
+        if re.sub(r'_\d$', '', key) in LARGE_BOSSES:
+            e['large'] = True
+            # HPが一定割合を下回ると受けるダメージが減る（仮想敵：冑）
+            if '1.hp_ratio' in bb and '1.damage_scale' in bb:
+                e['lowHpGuard'] = {'ratio': bb['1.hp_ratio']['value'], 'scale': bb['1.damage_scale']['value']}
+            # 通常攻撃は「ランダムな対象に射線で術ダメージ」
+            if 'attack' in e and any('法术' in a for a in abilities[:1]):
+                e['attack']['arts'] = True
+                e['attack']['randomTarget'] = True
+        # ボスの手下：フィールド内を自由に飛び回り、防衛地点には入らない
+        if key in BOSS_MINIONS:
+            e['roam'] = True
+            e['minionOf'] = BOSS_MINIONS[key]
         # 元素損傷：攻撃時に攻撃力×比率の元素損傷を与える（種類は図鑑の説明から）
         etype = next((ELEMENT_TAGS[tag] for a in abilities for tag in ELEMENT_TAGS if tag in a), None)
         eratio = next((b['value'] for k, b in bb.items() if k.endswith('attack@ep_damage_ratio') or k == 'epdamage.ep_damage_ratio'), None)

@@ -1238,6 +1238,18 @@ aside {
   stroke: rgba(255, 255, 255, 0.85);
   stroke-width: 3px;
 }
+.rp-enemy.boss.large .rp-enemy-body {
+  fill: #5a1621;
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-opacity: 1;
+}
+.rp-boss-name {
+  fill: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  pointer-events: none;
+}
 .rp-hp-bg {
   fill: #000;
   opacity: 0.5;

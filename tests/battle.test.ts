@@ -502,6 +502,43 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.frames!.some((f) => (f.sg ?? []).length > 0)).toBe(true);
   });
 
+  it('大型のボスは動かず右上の2列×3行を占め、そのどこかが範囲に入れば攻撃できる', () => {
+    ENEMIES.test_bigboss = { ...ENEMIES.enemy_9013_acstmk, hp: 1e8 };
+    setActiveMap('legacy');
+    const spec: RoundSpec = { round: 14, levelId: 'test', timeLimit: 30, moveMultiplier: 0.5, spawns: [{ enemy: 'test_bigboss', count: 1, interval: 0, delay: 0, spawn: 0 }] };
+    // 6 = (7,1)。右向きの狙撃は (8,1)(9,1) の列に届く
+    const { inputs, globals } = buildSimInputs([{ uid: 1, defId: byProf('sniper').id, star: 1, pos: 6, dir: 'right' }], [], {});
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    expect(r.perUnit[0].hits).toBeGreaterThan(0);
+    // 位置は (8,3) から動かない
+    const xs = new Set(r.frames!.flatMap((f) => f.e.map((e) => `${e[1]},${e[2]}`)));
+    expect([...xs]).toEqual(['700,200']);
+  });
+
+  it('シークレットコア版の手下は飛び回り、防衛地点に入らず、無敵で、ボスが倒れると消える', () => {
+    ENEMIES.test_boss2 = { ...ENEMIES.enemy_9013_acstmk_2, hp: 3000, def: 0, attack: undefined };
+    ENEMIES.test_minion = { ...ENEMIES.enemy_9014_acstma, minionOf: 'test_boss2' };
+    setActiveMap('legacy');
+    const spec: RoundSpec = {
+      round: 15,
+      levelId: 'test',
+      timeLimit: 60,
+      moveMultiplier: 0.5,
+      spawns: [
+        { enemy: 'test_boss2', count: 1, interval: 0, delay: 0, spawn: 0 },
+        { enemy: 'test_minion', count: 1, interval: 0, delay: 0, spawn: 0 },
+      ],
+    };
+    const { inputs, globals } = buildSimInputs([{ uid: 1, defId: byProf('sniper').id, star: 2, pos: 6, dir: 'right' }], [], {});
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    // ボスを倒すと手下も消えて全滅
+    expect(r.cleared).toBe(true);
+    expect(r.lifeLoss).toBe(0);
+    // 手下は動き回る
+    const pos = new Set(r.frames!.flatMap((f) => f.e.filter((e) => e[0] === 2).map((e) => `${e[1]},${e[2]}`)));
+    expect(pos.size).toBeGreaterThan(3);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか

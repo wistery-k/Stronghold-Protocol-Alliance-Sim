@@ -48,7 +48,14 @@ export interface EnemySpec {
    * 攻撃。近接はブロックしている相手を、遠距離は範囲内の相手を攻撃する。無ければ攻撃しない。
    * aura：通常攻撃をせず、範囲内の味方全員に攻撃し続ける（換気口の上の味方は対象外。ブロックされても続ける）
    */
-  attack?: { kind: 'melee' | 'ranged'; atk: number; interval: number; range: number; arts: boolean; aura?: boolean };
+  attack?: { kind: 'melee' | 'ranged'; atk: number; interval: number; range: number; arts: boolean; aura?: boolean; randomTarget?: boolean };
+  /** 大型のボス：移動せず、マップ右上の2列×3行（BOSS_CELLS）を占める。対象を中心とする効果は BOSS_CENTER が中心 */
+  large?: boolean;
+  /** HPが ratio を下回ると、受けるダメージが scale 倍 */
+  lowHpGuard?: { ratio: number; scale: number };
+  /** ボスの手下：フィールド内を自由に飛び回り、防衛地点には入らない。無敵（攻撃の対象にならない）で、ボスが倒れると消える */
+  roam?: boolean;
+  minionOf?: string;
   /** 抵抗：寒冷・凍結などの異常状態の時間がこの割合だけ短くなる */
   statusResist?: number;
 }
