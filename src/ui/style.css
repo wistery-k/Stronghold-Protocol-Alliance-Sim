@@ -1280,6 +1280,10 @@ aside {
   stroke: #8a5a00;
   stroke-width: 1.5;
 }
+.rp-enemy.stealth,
+.rp-unit.stealth {
+  opacity: 0.45;
+}
 .fx-stun {
   fill: rgba(255, 200, 40, 0.18);
   stroke: #ffc828;

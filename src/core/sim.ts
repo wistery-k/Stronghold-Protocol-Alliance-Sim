@@ -83,7 +83,7 @@ export interface EnemyMeta {
 /** リプレイ用のコマ：敵ごとに [id, x*100, y*100, HP%] と、スキル中のユニット */
 export interface ReplayFrame {
   t: number;
-  /** [id, x×100, y×100, HP%, 状態ビット（1 = 解放済みの囚人、2 = スタン中、4 = 恐怖中）] */
+  /** [id, x×100, y×100, HP%, 状態ビット（1 = 解放済みの囚人、2 = スタン中、4 = 恐怖中、8 = ステルス中）] */
   e: [number, number, number, number, number?][];
   s: number[];
   /** 所持コスト */
@@ -98,6 +98,8 @@ export interface ReplayFrame {
   sg?: [number, number][];
   /** 【シラクーザ】の攻撃速度上昇を受けているオペレーターの uid */
   sc?: number[];
+  /** ステルス中のオペレーターの uid */
+  st?: number[];
   /** オペレーターの元素損傷 [uid, 種類（0灼燃・1神経・2侵蝕・3壊死）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1以上溜まっているものだけ */
   ue?: [number, number, number][];
 }
@@ -2721,7 +2723,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const enemyFrame = (e: Enemy): [number, number, number, number, number?] => {
     const f: [number, number, number, number, number?] = [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)];
     // 4つ目以降：ビット1 = 解放済みの囚人、ビット2 = スタン中
-    const flags = (e.input.spec.liberty && !e.confined ? 1 : 0) | (t < e.stunUntil ? 2 : 0) | (t < e.fearUntil ? 4 : 0);
+    const flags = (e.input.spec.liberty && !e.confined ? 1 : 0) | (t < e.stunUntil ? 2 : 0) | (t < e.fearUntil ? 4 : 0) | (isStealthed(e) ? 8 : 0);
     if (flags) f.push(flags);
     return f;
   };
@@ -2758,15 +2760,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       else if (a.kind === 'ranged' && a.randomTarget) {
         // 範囲内のランダムな対象（換気口の上の味方は除く）
         const cands = rt.filter(
-          (u) => u.alive && u.input.pos !== undefined && unitTile(u) !== 'smog' && Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) <= a.range,
+          (u) => u.alive && u.input.pos !== undefined && unitTile(u) !== 'smog' && !unitStealthed(u) && Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) <= a.range,
         );
         if (cands.length) target = cands[Math.floor(rand() * cands.length)];
       } else if (a.kind === 'ranged') {
         for (const u of rt) {
           if (!u.alive || u.input.pos === undefined) continue;
           if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
-          // 換気口の上の味方は遠距離攻撃の対象にならない
-          if (unitTile(u) === 'smog') continue;
+          // 換気口の上の味方・ステルスの味方は遠距離攻撃の対象にならない
+          if (unitTile(u) === 'smog' || unitStealthed(u)) continue;
           const tu = u.input.mods.taunt ?? 0;
           const tt = target?.input.mods.taunt ?? 0;
           if (!target || tu > tt || (tu === tt && u.order > target.order)) target = u;
@@ -2836,6 +2838,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.alive = false;
     blast(to.pos, to.stun, to.dotDps, to.dotDuration);
   };
+  /** 味方のステルス：【シラクーザ】Lv2の配置後の一定時間。敵の遠距離攻撃の対象にならない */
+  const unitStealthed = (u: Runtime) =>
+    !!g.siracusa && g.siracusa.fear > 0 && g.siracusa.members.has(u.input.uid) && t - u.ts.deployedAt < g.siracusa.duration;
   /** ステルス中は次の攻撃の倍率を戻す。臨戦状態の敵は周囲に元素損傷を与え続ける */
   const tickEnemyStates = () => {
     for (const e of enemies) {
@@ -3081,6 +3086,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       .map((u): [number, number] => [u.input.uid, u.sargonBuffs.filter((until) => until > t).length])
       .filter((x) => x[1] > 0);
 
+  const stealthFrame = (): number[] => rt.filter((u) => u.alive && u.input.pos !== undefined && unitStealthed(u)).map((u) => u.input.uid);
   const siracusaFrame = (): number[] =>
     g.siracusa ? rt.filter((u) => u.alive && u.input.pos !== undefined && g.siracusa!.members.has(u.input.uid) && t - u.ts.deployedAt < g.siracusa!.duration).map((u) => u.input.uid) : [];
 
@@ -3388,6 +3394,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         ue: elemFrame(),
         sg: sargonFrame(),
         sc: siracusaFrame(),
+        st: stealthFrame(),
         c: Math.floor(cost),
       });
     }
@@ -3407,6 +3414,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       ue: elemFrame(),
       sg: sargonFrame(),
         sc: siracusaFrame(),
+        st: stealthFrame(),
       c: Math.floor(cost),
     });
   }

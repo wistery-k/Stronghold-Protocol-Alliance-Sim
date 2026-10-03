@@ -665,6 +665,14 @@ describe('寒冷・凍結とスキルの細部', () => {
     const r = simulateBattle(inputs, spec, { globals, activeAlliances: new Set(['siracusa']), record: true });
     expect(r.perUnit.reduce((a, u) => a + (u.siracusaDamage ?? 0), 0)).toBeGreaterThan(0);
     expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 4) !== 0))).toBe(true);
+    // Lv2 は配置後の一定時間ステルス（リプレイに記録）
+    expect(r.frames![0].st!.length).toBe(6);
+  });
+
+  it('ステルスの敵はリプレイに記録される', () => {
+    const spec = oneEnemy('test_stealth_rec', false, { ...ENEMIES.enemy_1299_ymkilr, hp: 1e9 });
+    const r = run([], { ...spec, timeLimit: 5 });
+    expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 8) !== 0))).toBe(true);
   });
 
   it('山海衆精鋭：ステルスが解けた後の最初の攻撃は攻撃力2倍', () => {
