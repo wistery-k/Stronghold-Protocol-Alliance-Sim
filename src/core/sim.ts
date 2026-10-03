@@ -1370,14 +1370,16 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const { def, mods, uid } = u.input;
     if (!e.alive) return;
     emit([0, uid, e.id, DMG_CODE[def.damageType] ?? 0], `h${uid}:${e.id}`, 0.01);
+    let siraProc = false;
     // 攻撃を無効にする盾
     if (def.damageType !== 'heal') {
       if (u.neutralize) neutralize(e, u.neutralize);
-      if (g.siracusa?.members.has(uid) && t - u.ts.deployedAt < g.siracusa.procWindow && g.siracusa.fear > 0) {
-        // シラクーザLv2：確率で恐怖（期待値で、累積が1に達するたびに発生）
+      if (g.siracusa?.members.has(uid) && t - u.ts.deployedAt < g.siracusa.procWindow && g.siracusa.procProb > 0) {
+        // シラクーザLv2：確率で確定ダメージと恐怖（期待値で、累積が1に達するたびに発生）
         u.fearAcc += g.siracusa.procProb;
         if (u.fearAcc >= 1) {
           u.fearAcc -= 1;
+          siraProc = true;
           fearEnemy(e, g.siracusa.fear);
         }
       }
@@ -1402,9 +1404,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (type !== 'heal' && mods.lifeOnHit) healUnit(u, u, u.maxHp * mods.lifeOnHit);
     if (type !== 'heal') {
       if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken);
-      if (g.siracusa?.members.has(uid) && t - u.ts.deployedAt < g.siracusa.procWindow && g.siracusa.procProb > 0) {
+      if (siraProc && g.siracusa) {
         const before = u.result.damage;
-        deal(u, e, g.siracusa.procProb * g.siracusa.procDmg * e.defense.damageTaken);
+        deal(u, e, g.siracusa.procDmg * e.defense.damageTaken);
         u.result.siracusaDamage = (u.result.siracusaDamage ?? 0) + (u.result.damage - before);
       }
       if (type === 'arts' && g.arcane?.members.has(uid) && dmg > 0) e.arcaneUntil = t + g.arcane.duration;
