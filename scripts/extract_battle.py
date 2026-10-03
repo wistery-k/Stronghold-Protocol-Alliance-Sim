@@ -27,6 +27,14 @@ ENEMY_NAME_OVERRIDES = {
     'enemy_9013_acstmk_2': '仮想敵：冑',
     'enemy_9014_acstma': '「冑を斬る剣」',
     'enemy_9015_acstmb': '「冑を砕く鎚」',
+    # 日本版に未実装の敵：大陸版の名前を日本語の字体に直した仮の名前
+    'enemy_10124_uashld': '集団軍盾衛',
+    'enemy_10124_uashld_2': '集団軍中堅盾衛',
+    'enemy_10122_uacann': '集団軍軽型火砲',
+    'enemy_10122_uacann_2': '集団軍重型火砲',
+    'enemy_9009_acfort': '仮想敵：黒雲',
+    'enemy_9006_actoxi': '仮想敵：蝕裂',
+    'enemy_9011_acrefr': '仮想敵：鏡膜',
 }
 
 # 懸賞は、序盤（3〜4ラウンド）向けの enemyeffect_10〜15_4〜6（I〜III）を使う
