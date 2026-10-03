@@ -810,6 +810,21 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(hitsInSkill('荒蕪ラップランド')).toBeGreaterThan(0);
   });
 
+  it('アンジェリーナS3：スキル発動中のみ攻撃する', () => {
+    ENEMIES.test_ag = { name: 'a', hp: 1e6, def: 100, res: 0, speed: 0.4, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_ag', count: 10, interval: 4, delay: 0, spawn: 1 }] };
+    setActiveMap('legacy');
+    const def = UNITS.find((u) => u.name === 'アンジェリーナ')!;
+    const { inputs, globals } = buildSimInputs([{ uid: 1, defId: def.id, star: 1, pos: 24, dir: 'down' }], [], {});
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    expect(r.perUnit[0].skillCasts).toBeGreaterThan(0);
+    const on = new Set(r.frames!.filter((f) => f.s.includes(1)).map((f) => Math.round(f.t * 5)));
+    const hits = (r.fx ?? []).filter((x) => x[1] === 0 && x[2] === 1);
+    expect(hits.length).toBeGreaterThan(0);
+    // 攻撃はすべてスキル中（記録の0.2秒刻みで前後1コマの誤差を許す）
+    expect(hits.every((x) => [-1, 0, 1].some((d) => on.has(Math.floor((x[0] / 100) * 5) + d)))).toBe(true);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか

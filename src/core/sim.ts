@@ -566,6 +566,8 @@ const ELEMENT_SKILL: Record<string, 'virtuosa' | 'nymph'> = {
 };
 /** スキルでのみ攻撃するオペレーター */
 const SKILL_ONLY_ATTACK = new Set(['char_245_cello']);
+/** スキル発動中のみ攻撃行動を行う（アンジェリーナS3） */
+const SKILL_ACTIVE_ONLY_ATTACK = new Set(['char_291_aglina']);
 /** スキル中は攻撃しなくなる（スズラン・クオーラ・キャサリン・バブル） */
 const NO_ATTACK_IN_SKILL = new Set(['char_358_lisa', 'char_150_snakek', 'char_4162_cathy', 'char_381_bubble']);
 /** バブル：スキル中、攻撃されるたび自身の防御力の一定割合の物理ダメージで反撃 */
@@ -3352,7 +3354,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // 陣法術師はスキル中しか攻撃しない
       // ヴィルトゥオーサはスキルでのみ攻撃、フィラエはスキル中は攻撃しない
       const canAttack =
-        !heal && !(def.subProfession === 'phalanx' && !activeNow) && !(field && SKILL_ONLY_ATTACK.has(def.charId)) && !(PHILAE[def.charId] && u.skillLeft > 0) &&
+        !heal && !((def.subProfession === 'phalanx' || SKILL_ACTIVE_ONLY_ATTACK.has(def.charId)) && !activeNow) && !(field && SKILL_ONLY_ATTACK.has(def.charId)) && !(PHILAE[def.charId] && u.skillLeft > 0) &&
         !(NO_ATTACK_IN_SKILL.has(def.charId) && u.skillLeft > 0);
 
       // 医療：治療行動（吟遊者は範囲内の全員を毎秒攻撃力の10%回復）
