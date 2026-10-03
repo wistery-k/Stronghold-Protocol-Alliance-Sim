@@ -541,9 +541,11 @@ const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius:
 
 /** 狩人：最大弾数、攻撃時の攻撃力倍率、攻撃をやめてから装填が始まるまでと1発の装填時間（秒） */
 const HUNTER_AMMO = 8;
-/** 旋輪射手：旋回投擲物の速度（マス/秒）。射出時15、回収時3.75。手元に戻ってから攻撃間隔を数え始める */
+/** 旋輪射手：旋回投擲物の速度（マス/秒）。射出時15、回収時3.75。手元に戻るまで次の攻撃はできない */
 const LOOP_OUT_SPEED = 15;
 const LOOP_BACK_SPEED = 3.75;
+/** 旋輪射手：攻撃動作から投擲物を放つまでの時間（未確認のため0。実機との差を合わせる調整用） */
+const LOOP_WINDUP = 0;
 /** 単体標的モード（位置なし）での投擲物の飛距離 */
 const LOOP_DEFAULT_DIST = 2;
 const HUNTER_ATK_SCALE = 1.2;
@@ -2769,10 +2771,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         if (loop) {
           const e0 = targets[0][0];
           const d = field && u.input.pos !== undefined ? Math.hypot(e0.x - cellX(u.input.pos), e0.y - cellY(u.input.pos)) : LOOP_DEFAULT_DIST;
-          const trip = d / LOOP_OUT_SPEED + d / LOOP_BACK_SPEED;
-          u.loopBackAt = t + trip;
-          // 攻撃間隔は投擲物が手元に戻ってから数え始める（実効の間隔 = 攻撃間隔 + 往復時間）
-          u.atkTimer += trip;
+          // 投擲物が戻るまで次の攻撃はできない（実効の間隔 = 攻撃間隔と往復時間の長い方）
+          u.loopBackAt = t + LOOP_WINDUP + d / LOOP_OUT_SPEED + d / LOOP_BACK_SPEED;
         }
         if (hunter) {
           u.huntAmmo -= 1;

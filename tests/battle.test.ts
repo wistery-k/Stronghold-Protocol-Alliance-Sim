@@ -413,18 +413,19 @@ describe('寒冷・凍結とスキルの細部', () => {
     setActiveMap('legacy');
   });
 
-  it('旋輪射手は投擲物が戻ってから攻撃間隔を数える（遠い敵ほど攻撃が遅い）', () => {
+  it('旋輪射手は投擲物が戻るまで攻撃できない（攻撃速度を上げても遠い敵には往復時間が上限）', () => {
     const caper = UNITS.find((u) => u.name === 'ケイパー')!;
-    // 敵は動かず、ケイパーの前方1マス・3マスの位置で殴られ続ける
-    const at = (pos: number) => {
+    const at = (pos: number, aspd: number) => {
       const spec = oneEnemy('test_loop', false, { speed: 0, def: 0 });
       const { inputs, globals } = buildSimInputs([{ uid: 1, defId: caper.id, star: 1, pos, dir: 'right' }], [], {});
+      inputs[0].mods.aspd = aspd;
       return simulateBattle(inputs, spec, { globals }).perUnit[0].hits;
     };
-    // 出現地点（下段の右端）に止まった敵を、同じ行の左から攻撃する
-    const near = at(34);
-    const far = at(32);
-    expect(far > 0 && near > far).toBe(true);
+    // 攻撃間隔1.0秒なら往復（1マス約0.33秒・3マス約1.0秒）より長いので距離は関係ない
+    expect(at(34, 0)).toBe(at(32, 0));
+    // 攻撃速度+200（間隔約0.33秒）にすると、3マス先は往復時間で頭打ち
+    expect(at(32, 200) < at(34, 200)).toBe(true);
+    expect(at(32, 200) > at(32, 0) - 1).toBe(true);
   });
 
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
