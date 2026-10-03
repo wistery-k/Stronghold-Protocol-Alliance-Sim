@@ -81,7 +81,7 @@ export interface EnemyMeta {
 /** リプレイ用のコマ：敵ごとに [id, x*100, y*100, HP%] と、スキル中のユニット */
 export interface ReplayFrame {
   t: number;
-  /** [id, x×100, y×100, HP%, 解放済みの囚人なら1] */
+  /** [id, x×100, y×100, HP%, 状態ビット（1 = 解放済みの囚人、2 = スタン中）] */
   e: [number, number, number, number, number?][];
   s: number[];
   /** 所持コスト */
@@ -108,6 +108,7 @@ export interface ReplayFrame {
  * - 5 設置した範囲（ブリキなど）：[uid, x×100, y×100, 半径×100, 秒数×10]
  * - 6 敵の汚染秽蝕：[敵id, x×100, y×100, 半径×100, 秒数×10]
  * - 7 ボスの弾の着弾（周囲8マスをスタン）：[x×100, y×100, スタン秒数×10]
+ * - 8 剣雨の命中（術ダメージとスタン）：[uid, x×100, y×100]
  */
 export type FxEvent = number[];
 
@@ -213,7 +214,8 @@ export function parseSkill(s: SkillData): SkillModel {
   };
   // 「範囲内の敵全員の防御力-」：防御・術耐性の値は敵に掛かる
   const enemyAura = /範囲内の敵全員の(防御力|術耐性)-/.test(s.description);
-  const onDeploy = s.skillType === 'PASSIVE' && s.description.startsWith('配置後') && bb.duration !== undefined;
+  // 配置時に発動して時間で終わるスキル（ウタゲ・グラベル・血掟テキサス）
+  const onDeploy = s.skillType === 'PASSIVE' && s.description.startsWith('配置後') && (bb.duration !== undefined || s.duration > 0);
   const passive = s.skillType === 'PASSIVE' && !onDeploy;
   const charge = s.spType === 'INCREASE_WITH_TIME' ? 'time' : s.spType === 'INCREASE_WHEN_ATTACK' ? 'attack' : 'none';
   const atk = get('atk', 'attack@atk') ?? 0;
@@ -222,7 +224,7 @@ export function parseSkill(s: SkillData): SkillModel {
   const ammo = s.durationType === 'AMMO' ? get('attack@trigger_time', 'trigger_time', 'ammo', 'cnt', 'attack@cnt') ?? 0 : 0;
   // 「退場まで効果継続」のスキル（スルト）は長い効果時間として扱う。それ以外の duration < 0 は即時発動
   const duration = onDeploy
-    ? Number(bb.duration)
+    ? Number(bb.duration ?? s.duration)
     : s.duration < 0 && s.durationType !== 'AMMO' && s.description.includes('退場まで効果継続')
       ? 9999
       : Math.max(0, s.duration);
@@ -239,7 +241,8 @@ export function parseSkill(s: SkillData): SkillModel {
     // 1未満の倍率は副次効果（範囲ダメージ等）のことが多いので、主攻撃には使わない
     atkScale: Math.max(1, get('atk_scale', 'attack@atk_scale') ?? 1),
     hits,
-    maxTarget: Math.max(1, Math.round(get('attack@max_target', 'max_target') ?? 1)),
+    // 配置時のスキルの max_target は副次効果（血掟テキサスの剣雨）の対象数
+    maxTarget: onDeploy ? 1 : Math.max(1, Math.round(get('attack@max_target', 'max_target') ?? 1)),
     blockAdd: Math.max(0, Math.round(get('block_cnt') ?? 0)),
     instant: !passive && !onDeploy && duration <= 0 && ammo <= 0,
     defPct: !enemyAura && (get('def') ?? 0) < 10 ? get('def') ?? 0 : 0,
@@ -743,6 +746,8 @@ interface Enemy {
   sleepUntil: number;
   sleepAt: number;
   sleepBy: Runtime | null;
+  /** スタン（移動・攻撃しない） */
+  stunUntil: number;
   /** ボスの手下：飛び回る先 */
   roamTo: { x: number; y: number } | null;
   /** 【灭顶之灾】次に弾を撃つ時刻（ボス）／弾の着弾先と効果（弾） */
@@ -814,6 +819,8 @@ interface Runtime {
   redistTimer: number;
   /** 睡眠（ティティのスキル：致命傷を受けた味方が眠る。HPが全回復するかスキル終了まで） */
   sleepUntil: number;
+  /** 血掟テキサス：次の剣雨までの時間 */
+  swordTimer: number;
   /** スタン（<刺胄之弹>）と、毎秒の物理ダメージ */
   stunUntil: number;
   dotUntil: number;
@@ -936,6 +943,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       inspireUntil: -1,
       redistTimer: 0,
       sleepUntil: -1,
+      swordTimer: 0,
       stunUntil: -1,
       dotUntil: -1,
       dotDps: 0,
@@ -1181,6 +1189,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       sleepAt: -1,
       sleepBy: null,
       roamTo: null,
+      stunUntil: -1,
       bombAt: input.spec.bomb ? input.spawnAt + input.spec.bomb.init : -1,
       bombTo: null,
       summonAt: input.spec.summon ? input.spawnAt + input.spec.summon.init : -1,
@@ -1745,6 +1754,45 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.result.redeploys++;
     onDeployed(u);
   };
+  // ---- 血掟テキサス S3「ロヴェーショ」 ----
+  const TEXAS2 = 'char_1028_texas2';
+  const stunEnemy = (e: Enemy, seconds: number) => {
+    if (!e.alive || seconds <= 0) return;
+    e.stunUntil = Math.max(e.stunUntil, t + seconds * (1 - (e.input.spec.statusResist ?? 0)));
+    if (field) onSleepStun(e);
+  };
+  const texasAtk = (u: Runtime) => baseAtk(u.input.def, u.input.star, u.input.mods, u.tb[0].atk ?? 0);
+  /** 配置時：周囲の敵全員に2回連続の術ダメージとスタン */
+  const texasAppear = (u: Runtime) => {
+    if (!field) return;
+    const bb = u.skill.bb;
+    emit([2, u.input.uid, 1]);
+    for (const e of enemies) {
+      if (!e.alive || !e.spawned || !covers(u.rangeSkill, e)) continue;
+      for (let i = 0; i < 2; i++) deal(u, e, hitDamage(texasAtk(u) * (bb['appear.atk_scale'] ?? 1), 'arts', effDefense(e), u.input.mods));
+      stunEnemy(e, bb['appear.stun'] ?? 0);
+      emit([8, u.input.uid, Math.round(e.x * 100), Math.round(e.y * 100)]);
+    }
+    u.swordTimer = bb['texas2_s_3[sword].interval'] ?? 1;
+  };
+  /** スキル中：1秒ごとに範囲内の敵最大N体に剣雨（術ダメージと短いスタン） */
+  const tickTexas = () => {
+    for (const u of rt) {
+      if (cid(u) !== TEXAS2 || !u.alive || u.skillLeft <= 0 || !u.skill.onDeploy) continue;
+      u.swordTimer -= dt;
+      if (u.swordTimer > 0) continue;
+      const bb = u.skill.bb;
+      u.swordTimer += bb['texas2_s_3[sword].interval'] ?? 1;
+      const targets = targetsInRange(u, true).slice(0, Math.max(1, Math.round(bb.max_target ?? 1)));
+      // 効果範囲を光らせる
+      emit([2, u.input.uid, 1]);
+      for (const e of targets) {
+        deal(u, e, hitDamage(texasAtk(u) * (bb.atk_scale ?? 1), 'arts', effDefense(e), u.input.mods));
+        stunEnemy(e, bb.stun ?? 0);
+        emit([8, u.input.uid, Math.round(e.x * 100), Math.round(e.y * 100)]);
+      }
+    }
+  };
   /** 配置時に発動するスキル（ウタゲ：HP減少と効果時間、グラベル：バリア） */
   const onDeployed = (u: Runtime) => {
     const s = u.skill;
@@ -1765,6 +1813,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       u.barrier = u.maxHp * s.barrier;
       u.barrierDecay = u.barrier / Math.max(1, s.duration);
     }
+    if (cid(u) === TEXAS2) texasAppear(u);
   };
   if (field) for (const u of rt) onDeployed(u);
 
@@ -2457,6 +2506,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           by.ts.recast = true;
           by.hp = by.maxHp;
           by.skillLeft = by.skill.duration;
+          if (by.skill.onDeploy) texasAppear(by);
         }
         break;
       case 'char_4058_pepe':
@@ -2628,7 +2678,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const enemyFrame = (e: Enemy): [number, number, number, number, number?] => {
     const f: [number, number, number, number, number?] = [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)];
-    if (e.input.spec.liberty && !e.confined) f.push(1);
+    // 4つ目以降：ビット1 = 解放済みの囚人、ビット2 = スタン中
+    const flags = (e.input.spec.liberty && !e.confined ? 1 : 0) | (t < e.stunUntil ? 2 : 0);
+    if (flags) f.push(flags);
     return f;
   };
 
@@ -2639,7 +2691,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const lib = e.input.spec.liberty;
       // 解放後の囚人はHPが回復する
       if (lib?.regen && !e.confined) e.hp = Math.min(e.maxHp, e.hp + lib.regen * dt);
-      if (isFrozen(e) || asleep(e)) continue;
+      if (isFrozen(e) || asleep(e) || t < e.stunUntil) continue;
       if (e.atkTimer > 0) {
         // 寒冷中は攻撃速度が下がる。拘束中の囚人も攻撃速度が下がる
         const conf = lib && e.confined ? Math.max(0.1, (100 + lib.confAspd) / 100) : 1;
@@ -2882,7 +2934,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           e.maxHp = e.input.spec.hp;
         } else continue;
       }
-      if (t < e.stallUntil || asleep(e)) continue;
+      if (t < e.stallUntil || asleep(e) || t < e.stunUntil) continue;
       if (e.frozenUntil >= 0) {
         if (t < e.frozenUntil) continue;
         // 凍結が解けたら術耐性が戻る
@@ -2977,6 +3029,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       tickPollution();
       tickSleep();
       tickBossSkills();
+      tickTexas();
       // 【サルゴン】の強化の層数（最大・時間平均）
       if (g.sargon) {
         let cur = 0;

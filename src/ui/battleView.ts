@@ -369,7 +369,7 @@ function enemyRadius(m: { boss: boolean; maxHp: number }): number {
 }
 
 /** 演出の表示時間（秒） */
-const FX_LIFE = [0.18, 0.4, 0.4, 0.3, 0.45];
+const FX_LIFE = [0.18, 0.4, 0.4, 0.3, 0.45, 0, 0, 0, 0.7];
 const DMG_CLASS = ['phys', 'arts', 'true'];
 
 /**
@@ -488,6 +488,23 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
           const p1 = center(tg.pos);
           nodes.push(s('line', { x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y, class: 'fx-heal', opacity: op }));
           nodes.push(s('circle', { cx: p1.x, cy: p1.y, r: 30, class: 'fx-heal-ring', opacity: op }));
+          break;
+        }
+        case 8: {
+          // 剣雨：上から剣が降り、命中点に星形（スタン）
+          const x = (ev[3] / 100) * S + S / 2;
+          const y = (ev[4] / 100) * S + S / 2;
+          const k = Math.min(1, age / 0.25);
+          nodes.push(s('line', { x1: x, y1: y - 70 + 60 * k, x2: x, y2: y - 20 + 20 * k, class: 'fx-sword', opacity: op }));
+          if (k >= 1) {
+            const r0 = 22 + 10 * (age / life);
+            const pts = Array.from({ length: 10 }, (_, i) => {
+              const a = (Math.PI / 5) * i - Math.PI / 2;
+              const rr = i % 2 ? r0 * 0.45 : r0;
+              return `${x + rr * Math.cos(a)},${y + rr * Math.sin(a)}`;
+            }).join(' ');
+            nodes.push(s('polygon', { points: pts, class: 'fx-stun-star', opacity: op }));
+          }
           break;
         }
       }
@@ -645,7 +662,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       n.g.setAttribute('transform', `translate(${(x / 100) * S + S / 2},${(y / 100) * S + S / 2})`);
       n.bar.setAttribute('width', String(Math.max(0, (e[3] / 100) * n.barW)));
       n.g.style.display = '';
-      n.g.classList.toggle('freed', e[4] === 1);
+      n.g.classList.toggle('freed', ((e[4] ?? 0) & 1) !== 0);
+      n.g.classList.toggle('stunned', ((e[4] ?? 0) & 2) !== 0);
       seen.add(e[0]);
     }
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';

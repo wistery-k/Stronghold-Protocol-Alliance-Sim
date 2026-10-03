@@ -610,6 +610,23 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(pos.size).toBeGreaterThan(3);
   });
 
+  it('血掟テキサスS3：配置時に発動し、周囲の敵に2連撃とスタン、その後時間切れまで剣雨', () => {
+    const texas = UNITS.find((u) => u.charId === 'char_1028_texas2')!;
+    ENEMIES.test_tx = { name: 't', hp: 1e9, def: 0, res: 0, speed: 1, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    setActiveMap('legacy');
+    // 出現地点（35）の隣に置き、出現直後から範囲内に入るようにする
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 15, moveMultiplier: 0.5, spawns: [{ enemy: 'test_tx', count: 3, interval: 0.5, delay: 0, spawn: 1 }] };
+    const { inputs, globals } = buildSimInputs([{ uid: 1, defId: texas.id, star: 1, pos: 34, dir: 'right' }], [], {});
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    expect(r.perUnit[0].skillCasts).toBe(1);
+    // 剣雨の命中（剣と星の演出）がスキル時間（6秒）の間だけ出る
+    const bursts = (r.fx ?? []).filter((f) => f[1] === 8 && f[2] === 1).map((f) => f[0] / 100);
+    expect(bursts.length).toBeGreaterThan(2);
+    expect(Math.max(...bursts) <= 6.05).toBe(true);
+    // スタン中の敵がいる
+    expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 2) !== 0))).toBe(true);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか

@@ -1250,6 +1250,22 @@ aside {
   font-weight: 700;
   pointer-events: none;
 }
+.rp-enemy.stunned .rp-enemy-body {
+  stroke: #ffd23f;
+  stroke-opacity: 1;
+  stroke-width: 5;
+  stroke-dasharray: 4 3;
+}
+.fx-sword {
+  stroke: #b58cff;
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+.fx-stun-star {
+  fill: #ffd23f;
+  stroke: #8a5a00;
+  stroke-width: 1.5;
+}
 .fx-stun {
   fill: rgba(255, 200, 40, 0.18);
   stroke: #ffc828;
