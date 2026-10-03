@@ -26,7 +26,7 @@ export interface BandState {
   /** キアーベ：累計の更新回数と、このラウンドの獲得数 */
   chiaveRefreshes: number;
   chiaveRound: number;
-  /** スキウルス：このラウンドの割引を使った */
+  /** スキウース：このラウンドの割引を使った */
   sciurusUsed: boolean;
   /** シャマレ：このラウンドの交換を使った */
   vodfoxUsed: boolean;
@@ -122,7 +122,7 @@ export function bandOnSpend(state: GameState, amount: number): void {
 // 調達所
 // ------------------------------------------------------------
 
-/** 招集価格（スキウルス：毎ラウンド最初のイェラグは1） */
+/** 招集価格（スキウース：毎ラウンド最初のイェラグは1） */
 export function bandPrice(state: GameState, defId: string, price: number): number {
   if (state.band === 'sciurus' && !state.bandState.sciurusUsed && getUnit(defId).bonds.includes('kjerag')) return Math.min(price, 1);
   return price;

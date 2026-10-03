@@ -463,7 +463,7 @@ describe('戦術と懸賞', () => {
     expect(s.gold).toBe(9 + 6 + 1);
   });
 
-  it('スキウルス：毎ラウンド最初のイェラグは資金1', () => {
+  it('スキウース：毎ラウンド最初のイェラグは資金1', () => {
     const s = withShop(createGame(1, { band: 'sciurus' }), ['マッターホルン', 'スノーハンター']);
     expect(priceOf(s, id('マッターホルン'))).toBe(1);
     const s2 = applyAction(s, { type: 'buy', slot: 0 }).state;
