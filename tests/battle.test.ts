@@ -627,6 +627,31 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 2) !== 0))).toBe(true);
   });
 
+  it('【シラクーザ】の攻撃速度上昇を結果とリプレイに記録する（配置後の一定時間）', () => {
+    const sira = UNITS.filter((u) => u.bonds.includes('siracusa')).slice(0, 3);
+    ENEMIES.test_sc = { name: 's', hp: 1e9, def: 0, res: 0, speed: 0.5, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    setActiveMap('legacy');
+    const board: OwnedUnit[] = sira.map((u, i) => ({ uid: i + 1, defId: u.id, star: 1, pos: [31, 32, 33][i], dir: 'right' }));
+    const { inputs, globals } = buildSimInputs(board, [], {});
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 40, moveMultiplier: 0.5, spawns: [{ enemy: 'test_sc', count: 1, interval: 0, delay: 0, spawn: 1 }] };
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    expect(r.siracusa!.aspd).toBeGreaterThan(0);
+    expect(r.frames![0].sc!.length).toBe(3);
+    expect(r.frames!.at(-1)!.sc ?? []).toEqual([]);
+  });
+
+  it('血掟テキサスの素質：スキル中に撃破するとスキルをもう一度発動（配置ごとに1回）', () => {
+    const texas = UNITS.find((u) => u.charId === 'char_1028_texas2')!;
+    ENEMIES.test_tx2 = { name: 't', hp: 3000, def: 0, res: 0, speed: 1, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    setActiveMap('legacy');
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 30, moveMultiplier: 0.5, spawns: [{ enemy: 'test_tx2', count: 12, interval: 1.5, delay: 0, spawn: 1 }] };
+    const { inputs, globals } = buildSimInputs([{ uid: 1, defId: texas.id, star: 2, pos: 33, dir: 'right' }], [], {});
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    expect(r.perUnit[0].skillCasts).toBe(2);
+    // スキル時間7秒を超えてスキルが続く
+    expect(r.frames!.some((f) => f.t > 7.5 && f.s.includes(1))).toBe(true);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか

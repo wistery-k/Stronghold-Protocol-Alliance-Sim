@@ -94,6 +94,8 @@ export interface ReplayFrame {
   u?: [number, number, number, number, number, number?][];
   /** 【サルゴン】の強化の層数 [uid, 層数]。1層以上のものだけ */
   sg?: [number, number][];
+  /** 【シラクーザ】の攻撃速度上昇を受けているオペレーターの uid */
+  sc?: number[];
   /** オペレーターの元素損傷 [uid, 種類（0灼燃・1神経・2侵蝕・3凋亡）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1以上溜まっているものだけ */
   ue?: [number, number, number][];
 }
@@ -142,6 +144,8 @@ export interface BattleResult {
   enBursts: number;
   /** 【サルゴン】のスキル発動時の強化：1層あたりの攻撃速度・攻撃力と、層数の最大・時間平均 */
   sargon?: { aspd: number; atkPct: number; max: number; avg: number };
+  /** 【シラクーザ】の配置後の攻撃速度上昇（上昇量・秒数・対象人数） */
+  siracusa?: { aspd: number; duration: number; members: number };
   enemies: EnemyMeta[];
   /** リプレイの演出 */
   fx?: FxEvent[];
@@ -877,6 +881,7 @@ interface EngineResult {
   opBursts: number;
   enBursts: number;
   sargon?: { aspd: number; atkPct: number; max: number; avg: number };
+  siracusa?: { aspd: number; duration: number; members: number };
 }
 
 function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: number, field: boolean, opts: SimOptions): EngineResult {
@@ -1356,7 +1361,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // 攻撃を無効にする盾
     if (def.damageType !== 'heal') {
       if (u.neutralize) neutralize(e, u.neutralize);
-      if (g.siracusa?.members.has(uid) && t < g.siracusa.procWindow && g.siracusa.fear > 0) {
+      if (g.siracusa?.members.has(uid) && t - u.ts.deployedAt < g.siracusa.procWindow && g.siracusa.fear > 0) {
         // シラクーザLv2：確率で恐怖（期待値で、累積が1に達するたびに発生）
         u.fearAcc += g.siracusa.procProb;
         if (u.fearAcc >= 1) {
@@ -1385,7 +1390,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (type !== 'heal' && mods.lifeOnHit) healUnit(u, u, u.maxHp * mods.lifeOnHit);
     if (type !== 'heal') {
       if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken);
-      if (g.siracusa?.members.has(uid) && t < g.siracusa.procWindow) deal(u, e, g.siracusa.procProb * g.siracusa.procDmg * e.defense.damageTaken);
+      if (g.siracusa?.members.has(uid) && t - u.ts.deployedAt < g.siracusa.procWindow) deal(u, e, g.siracusa.procProb * g.siracusa.procDmg * e.defense.damageTaken);
       if (type === 'arts' && g.arcane?.members.has(uid) && dmg > 0) e.arcaneUntil = t + g.arcane.duration;
       // 元素損傷：ヴィクトリアの鉄鎚・灼熱（術ダメージの一部を灼燃損傷に）
       if (type === 'arts' && mods.burnOnArts && dmg > 0) addEnElement(e, 'burning', dmg * mods.burnOnArts, u);
@@ -1804,6 +1809,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.ts.saveUsed = false;
     u.ts.bloodBattle = false;
     u.ts.surtrUntil = null;
+    // 血掟テキサス：「1回の配置につき1回」「配置後、敵を1体倒すまで」は配置ごとにリセット
+    u.ts.recast = false;
+    u.ts.firstKill = false;
     if (!s.onDeploy) return;
     u.skillLeft = s.duration;
     u.castAt = t;
@@ -2506,6 +2514,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           by.ts.recast = true;
           by.hp = by.maxHp;
           by.skillLeft = by.skill.duration;
+          by.result.skillCasts++;
           if (by.skill.onDeploy) texasAppear(by);
         }
         break;
@@ -3009,6 +3018,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       .map((u): [number, number] => [u.input.uid, u.sargonBuffs.filter((until) => until > t).length])
       .filter((x) => x[1] > 0);
 
+  const siracusaFrame = (): number[] =>
+    g.siracusa ? rt.filter((u) => u.alive && u.input.pos !== undefined && g.siracusa!.members.has(u.input.uid) && t - u.ts.deployedAt < g.siracusa!.duration).map((u) => u.input.uid) : [];
+
   const steps = Math.round(timeLimit / dt);
   const sampleEvery = Math.max(1, Math.round(0.5 / dt));
   const frameEvery = Math.max(1, Math.round(0.2 / dt));
@@ -3121,7 +3133,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         (activeNow ? s.aspd : 0) +
         (g.sargon ? sargonCount * g.sargon.aspd : 0) +
         Math.min(u.attacks, mods.aspdPerAttackMax ?? 0) * (mods.aspdPerAttack ?? 0) +
-        (g.siracusa?.members.has(uid) && t < g.siracusa.duration ? g.siracusa.aspd : 0) +
+        // 【シラクーザ】配置後（再配置でも）一定時間
+        (g.siracusa?.members.has(uid) && t - u.ts.deployedAt < g.siracusa.duration ? g.siracusa.aspd : 0) +
         talentAspd(u) +
         tileAspd(u);
       const interval = attackInterval(stats.interval, aspd, activeNow && !s.passive ? s.intervalAdd : 0);
@@ -3310,6 +3323,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u: unitFrame(),
         ue: elemFrame(),
         sg: sargonFrame(),
+        sc: siracusaFrame(),
         c: Math.floor(cost),
       });
     }
@@ -3328,11 +3342,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       u: unitFrame(),
       ue: elemFrame(),
       sg: sargonFrame(),
+        sc: siracusaFrame(),
       c: Math.floor(cost),
     });
   }
   const sargon = g.sargon ? { aspd: g.sargon.aspd, atkPct: g.sargon.atkPct, max: sargonMax, avg: Math.round((sargonSum / Math.max(dt, t)) * 10) / 10 } : undefined;
-  return { t, enemies, units: rt, timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, colds, freezes, opBursts, enBursts, sargon };
+  const siracusa = g.siracusa && g.siracusa.aspd ? { aspd: g.siracusa.aspd, duration: g.siracusa.duration, members: rt.filter((u) => g.siracusa!.members.has(u.input.uid)).length } : undefined;
+  return { t, enemies, units: rt, timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, colds, freezes, opBursts, enBursts, sargon, siracusa };
 }
 
 // ------------------------------------------------------------
@@ -3442,6 +3458,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     opBursts: r.opBursts,
     enBursts: r.enBursts,
     sargon: r.sargon,
+    siracusa: r.siracusa,
     enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined, large: e.input.spec.large || undefined })),
     bountyGold: bountyKilled.reduce((sum, e) => sum + (e.input.bounty ?? 0), 0),
     bountyKills: bountyKilled.length,

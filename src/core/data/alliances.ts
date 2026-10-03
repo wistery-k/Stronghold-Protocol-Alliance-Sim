@@ -307,6 +307,7 @@ export const ALLIANCES: Record<AllianceId, AllianceDef> = {
     kind: 'extra',
     thresholds: [1],
     countMode: 'exactlyOne',
+    noStack: true,
     describe: () => [
       { count: 1, text: `盤面の【孤高】がちょうど1名なら、その攻撃力とHP+${pct(v('solo', 'atk'))}、初期SP+${v('solo', 'sp')}（2名以上で無効）` },
     ],

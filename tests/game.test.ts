@@ -648,3 +648,11 @@ describe('ラウンド14・15', () => {
     expect(run(15)).toBe(0);
   });
 });
+
+describe('孤高', () => {
+  it('加算数を持たない', () => {
+    const s = createGame(1, { mapId: 'legacy' });
+    addStacks(s, 'solo', 5);
+    expect(s.stacks.solo ?? 0).toBe(0);
+  });
+});

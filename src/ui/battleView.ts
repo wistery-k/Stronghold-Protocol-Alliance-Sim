@@ -324,6 +324,14 @@ export function battleSummary(r: BattleResult, units: ReplayUnit[]) {
       r.opBursts || r.enBursts ? h('div', null, h('span', { class: 'muted small', title: '元素損傷が爆発した回数（味方/敵）' }, '元素爆発 味方/敵'), h('b', null, `${r.opBursts ?? 0}/${r.enBursts ?? 0}回`)) : null,
       r.colds || r.freezes ? h('div', null, h('span', { class: 'muted small' }, '寒冷/凍結'), h('b', null, `${r.colds ?? 0}/${r.freezes ?? 0}回`)) : null,
       r.sargon ? sargonKpi(r.sargon) : null,
+      r.siracusa
+        ? h(
+            'div',
+            { title: `【シラクーザ】の${r.siracusa.members}人が、配置後${Math.round(r.siracusa.duration)}秒間 攻撃速度+${Math.round(r.siracusa.aspd)}` },
+            h('span', { class: 'muted small' }, 'シラクーザ AS'),
+            h('b', null, `+${Math.round(r.siracusa.aspd)}（${Math.round(r.siracusa.duration)}秒）`),
+          )
+        : null,
       h('div', null, h('span', { class: 'muted small' }, '撤退'), h('b', { class: downCount(r) ? 'ng' : '' }, `${downCount(r)}人`)),
       r.bossRemaining > 0 ? h('div', null, h('span', { class: 'muted small' }, 'ボス残りHP'), h('b', { class: 'ng' }, pct(r.bossRemaining))) : null,
     ),
@@ -567,7 +575,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     const elemG = s('g', { class: 'rp-elem' });
     g.append(elemG);
     unitElem.set(u.uid, { g: elemG, x: x + 22, y: y + 21, key: '' });
-    if (r.sargon) {
+    if (r.sargon || r.siracusa) {
       const sg = s('text', { x: x + 13, y: y + 74, 'text-anchor': 'start', class: 'rp-sargon' }, '');
       g.append(sg);
       unitSargon.set(u.uid, sg);
@@ -718,18 +726,24 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
         }),
       );
     }
-    // 【サルゴン】の強化：層があるオペレーターだけ「AS+36」のように表示
-    if (r.sargon) {
+    // 【サルゴン】の強化・【シラクーザ】の攻撃速度上昇：受けているオペレーターだけ「AS+36」のように表示
+    if (r.sargon || r.siracusa) {
       const layers = new Map(a.sg ?? []);
+      const sc = new Set(a.sc ?? []);
       for (const [uid, el] of unitSargon) {
-        const n = unitNodes.get(uid)?.classList.contains('down') ? 0 : (layers.get(uid) ?? 0);
-        const text = n > 0 ? `AS+${n * r.sargon.aspd}` : '';
+        const down = unitNodes.get(uid)?.classList.contains('down');
+        const n = down ? 0 : (layers.get(uid) ?? 0);
+        const sgAs = r.sargon ? n * r.sargon.aspd : 0;
+        const scAs = !down && r.siracusa && sc.has(uid) ? r.siracusa.aspd : 0;
+        const total = Math.round(sgAs + scAs);
+        const text = total > 0 ? `AS+${total}` : '';
         if (el.getAttribute('data-k') !== text) {
           el.setAttribute('data-k', text);
-          el.replaceChildren(
-            text,
-            ...(n > 0 ? [s('title', {}, `【サルゴン】${n}層：攻撃速度+${n * r.sargon.aspd}${r.sargon.atkPct ? `・攻撃力+${Math.round(n * r.sargon.atkPct * 100)}%` : ''}`)] : []),
-          );
+          const parts = [
+            sgAs ? `【サルゴン】${n}層：攻撃速度+${sgAs}${r.sargon!.atkPct ? `・攻撃力+${Math.round(n * r.sargon!.atkPct * 100)}%` : ''}` : '',
+            scAs ? `【シラクーザ】攻撃速度+${Math.round(scAs)}（配置後${Math.round(r.siracusa!.duration)}秒間）` : '',
+          ].filter(Boolean);
+          el.replaceChildren(text, ...(parts.length ? [s('title', {}, parts.join('\n'))] : []));
         }
       }
     }
@@ -784,6 +798,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・凋亡。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化による攻撃速度'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・凋亡。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度'),
   );
 }
