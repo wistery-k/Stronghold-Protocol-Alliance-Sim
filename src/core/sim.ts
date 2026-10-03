@@ -566,6 +566,10 @@ const ELEMENT_SKILL: Record<string, 'virtuosa' | 'nymph'> = {
 };
 /** スキルでのみ攻撃するオペレーター */
 const SKILL_ONLY_ATTACK = new Set(['char_245_cello']);
+/** スキル中は攻撃しなくなる（スズラン・クオーラ・キャサリン・バブル） */
+const NO_ATTACK_IN_SKILL = new Set(['char_358_lisa', 'char_150_snakek', 'char_4162_cathy', 'char_381_bubble']);
+/** バブル：スキル中、攻撃されるたび自身の防御力の一定割合の物理ダメージで反撃 */
+const BUBBLE = 'char_381_bubble';
 /** フィラエ：スキル中は攻撃せず、攻撃を受けると周囲の地上の敵に反撃 */
 const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius: 1.5 } };
 
@@ -2006,6 +2010,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
 
+  /** 狙われやすさ（装備＋スキル中の taunt_level。バブル） */
+  const unitTaunt = (u: Runtime) => (u.input.mods.taunt ?? 0) + (u.skillLeft > 0 ? (u.skill.bb.taunt_level ?? 0) : 0);
   /** 固定値の被ダメージ軽減（海溝の実験体）。1回分のダメージから差し引く */
   const flatCut = (u: Runtime, amount: number) => Math.max(0, amount - (u.input.mods.damageFlatReduce ?? 0));
   /** 毎秒ダメージ（1秒ごとに1回受けるものとして固定値軽減を適用） */
@@ -2071,6 +2077,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       u.mberryShield--;
       return;
     }
+    // バブルのスキル：攻撃されるたび防御力の40%の物理ダメージで反撃
+    if (cid(u) === BUBBLE && u.skillLeft > 0 && src.alive) deal(u, src, hitDamage(u.def * (u.skill.bb.atk_scale ?? 0.4), 'physical', effDefense(src), u.input.mods));
     // 海溝の実験体（【エーギル】）：攻撃元へ術ダメージで反撃
     const rs = u.input.mods.retaliateScale ?? 0;
     if (rs > 0 && u.alive && src.alive && t >= u.retaliateReadyAt) {
@@ -2895,8 +2903,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
           // 換気口の上の味方・ステルスの味方は遠距離攻撃の対象にならない
           if (unitTile(u) === 'smog' || unitStealthed(u)) continue;
-          const tu = u.input.mods.taunt ?? 0;
-          const tt = target?.input.mods.taunt ?? 0;
+          const tu = unitTaunt(u);
+          const tt = target ? unitTaunt(target) : 0;
           if (!target || tu > tt || (tu === tt && u.order > target.order)) target = u;
         }
       }
@@ -3345,8 +3353,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // ヴィルトゥオーサはスキルでのみ攻撃、フィラエはスキル中は攻撃しない
       const canAttack =
         !heal && !(def.subProfession === 'phalanx' && !activeNow) && !(field && SKILL_ONLY_ATTACK.has(def.charId)) && !(PHILAE[def.charId] && u.skillLeft > 0) &&
-        // 荒蕪ラップランドS3：浮遊ユニットはザーロとして戦場を飛び回るので通常攻撃しない
-        !(field && def.charId === WHITW2 && u.skillLeft > 0);
+        !(NO_ATTACK_IN_SKILL.has(def.charId) && u.skillLeft > 0);
 
       // 医療：治療行動（吟遊者は範囲内の全員を毎秒攻撃力の10%回復）
       if (heal && field) {
@@ -3445,7 +3452,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
             u.funnelStack = 0;
           }
           const fs = Math.min(funnelCap(u, activeNow), FUNNEL.init + FUNNEL.delta * u.funnelStack);
-          const n = funnelCount(u, activeNow);
+          // 荒蕪ラップランドS3：本体の通常攻撃は続く。スキルで増える浮遊ユニット（+2）はザーロとして別に動くので数えない
+          const n = funnelCount(u, activeNow && def.charId !== WHITW2);
           for (let k = 0; k < n; k++) strike(u, e0, atk, fs * m0 * talentScale(u, e0, activeNow));
           if (whitw2Stage(u) >= 2) neutralize(e0, u.tb[0]['attack@silence_duration'] ?? 2);
         } else

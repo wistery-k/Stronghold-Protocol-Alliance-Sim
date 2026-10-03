@@ -792,6 +792,23 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 4) !== 0))).toBe(true);
   });
 
+  it('スキル中の通常攻撃：スズランS3は攻撃しない、荒蕪ラップランドS3は本体が攻撃を続ける', () => {
+    ENEMIES.test_sk = { name: 'k', hp: 1e6, def: 100, res: 0, speed: 0.4, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 80, moveMultiplier: 0.5, spawns: [{ enemy: 'test_sk', count: 12, interval: 4, delay: 0, spawn: 1 }] };
+    const hitsInSkill = (name: string) => {
+      setActiveMap('legacy');
+      const def = UNITS.find((u) => u.name === name)!;
+      const { inputs, globals } = buildSimInputs([{ uid: 1, defId: def.id, star: 2, pos: 24, dir: 'down' }], [], {});
+      const r = simulateBattle(inputs, spec, { globals, record: true });
+      expect(r.perUnit[0].skillCasts).toBeGreaterThan(0);
+      const on = r.frames!.filter((f) => f.s.includes(1)).map((f) => f.t);
+      const [from, to] = [Math.min(...on) + 0.5, Math.max(...on) - 0.5];
+      return (r.fx ?? []).filter((x) => x[1] === 0 && x[2] === 1 && x[0] / 100 >= from && x[0] / 100 <= to).length;
+    };
+    expect(hitsInSkill('スズラン')).toBe(0);
+    expect(hitsInSkill('荒蕪ラップランド')).toBeGreaterThan(0);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか
