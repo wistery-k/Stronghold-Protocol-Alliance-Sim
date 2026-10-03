@@ -4,7 +4,7 @@ import { behindOf, frontOf, sameRow } from '../src/core/board';
 import { applyAction, createGame, levelUpCost, priceOf, roundSpecOf, type GameState } from '../src/core/game';
 import { UNITS, getUnit } from '../src/core/data/units';
 import { BENCH_SIZE, DEPLOY_CAP, MAX_STACKS, roundIncome } from '../src/core/rules';
-import { addStacks } from '../src/core/garrison';
+import { addStacks, allTargets, triggerGarrisons } from '../src/core/garrison';
 import type { OwnedItem, OwnedUnit } from '../src/core/types';
 
 const id = (name: string) => UNITS.find((u) => u.name === name)!.id;
@@ -578,5 +578,20 @@ describe('盟約加算数', () => {
     addStacks(s, 'egir', 50);
     expect(s.stacks.egir).toBe(MAX_STACKS);
     expect(MAX_STACKS).toBe(999);
+  });
+});
+
+describe('ニンフの堅守特性', () => {
+  it('準備フェーズ終了時、控えのオペレーター1名ごとに【俊敏】+2', () => {
+    const run = (benchNames: string[]) => {
+      const s = createGame(1, { mapId: 'legacy' });
+      s.board = [{ ...ou(1, 'ニンフ'), pos: 4 }, { ...ou(2, 'インサイダー'), pos: 5 }];
+      s.bench = s.bench.map(() => null);
+      benchNames.forEach((n, i) => (s.bench[i] = ou(10 + i, n)));
+      s.stacks = {};
+      triggerGarrisons(s, 'SERVER_PREP_FIN', allTargets(s));
+      return s.stacks.swift ?? 0;
+    };
+    expect(run(['ヴァンデラ', 'グム', 'ミント']) - run([])).toBe(6);
   });
 });

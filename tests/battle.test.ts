@@ -413,6 +413,20 @@ describe('寒冷・凍結とスキルの細部', () => {
     setActiveMap('legacy');
   });
 
+  it('旋輪射手は投擲物が戻ってから攻撃間隔を数える（遠い敵ほど攻撃が遅い）', () => {
+    const caper = UNITS.find((u) => u.name === 'ケイパー')!;
+    // 敵は動かず、ケイパーの前方1マス・3マスの位置で殴られ続ける
+    const at = (pos: number) => {
+      const spec = oneEnemy('test_loop', false, { speed: 0, def: 0 });
+      const { inputs, globals } = buildSimInputs([{ uid: 1, defId: caper.id, star: 1, pos, dir: 'right' }], [], {});
+      return simulateBattle(inputs, spec, { globals }).perUnit[0].hits;
+    };
+    // 出現地点（下段の右端）に止まった敵を、同じ行の左から攻撃する
+    const near = at(34);
+    const far = at(32);
+    expect(far > 0 && near > far).toBe(true);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか

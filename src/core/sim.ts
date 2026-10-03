@@ -541,6 +541,11 @@ const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius:
 
 /** 狩人：最大弾数、攻撃時の攻撃力倍率、攻撃をやめてから装填が始まるまでと1発の装填時間（秒） */
 const HUNTER_AMMO = 8;
+/** 旋輪射手：旋回投擲物の速度（マス/秒）。射出時15、回収時3.75。手元に戻ってから攻撃間隔を数え始める */
+const LOOP_OUT_SPEED = 15;
+const LOOP_BACK_SPEED = 3.75;
+/** 単体標的モード（位置なし）での投擲物の飛距離 */
+const LOOP_DEFAULT_DIST = 2;
 const HUNTER_ATK_SCALE = 1.2;
 const HUNTER_RELOAD_DELAY = 1;
 const HUNTER_RELOAD_INTERVAL = 1;
@@ -770,6 +775,8 @@ interface Runtime {
   mberryShield: number;
   mberryAcc: number;
   lastAttackAt: number;
+  /** 旋輪射手：投擲物が手元に戻る時刻 */
+  loopBackAt: number;
   /** バリア（残量・減る速さ） */
   barrier: number;
   barrierDecay: number;
@@ -879,6 +886,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       mberryShield: 0,
       mberryAcc: 0,
       lastAttackAt: -99,
+      loopBackAt: -1,
       barrier: 0,
       barrierDecay: 0,
       coldAcc: 0,
@@ -2690,7 +2698,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         tileAspd(u);
       const interval = attackInterval(stats.interval, aspd, activeNow && !s.passive ? s.intervalAdd : 0);
       const scale = activeNow && !s.instant && !s.passive ? s.atkScale : 1;
-      const hits = activeNow && !s.instant ? s.hits : 1;
+      // 旋輪射手（ケイパー）：スキル中は攻撃時に投擲物を追加で放つ（cnt 個）
+      const loop = def.subProfession === 'loopshooter';
+      const hits = activeNow && !s.instant ? (loop && !s.passive && s.bb.cnt ? s.bb.cnt : s.hits) : 1;
       // 陣法術師はスキル中しか攻撃しない
       // ヴィルトゥオーサはスキルでのみ攻撃、フィラエはスキル中は攻撃しない
       const canAttack =
@@ -2746,10 +2756,23 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           u.atkTimer = 0;
           break;
         }
+        // 旋輪射手は投擲物が手元にないと攻撃できない
+        if (loop && t < u.loopBackAt) {
+          u.atkTimer = 0;
+          break;
+        }
         const targets = pickTargets(u, activeNow);
         if (!targets.length) {
           u.atkTimer = 0;
           break;
+        }
+        if (loop) {
+          const e0 = targets[0][0];
+          const d = field && u.input.pos !== undefined ? Math.hypot(e0.x - cellX(u.input.pos), e0.y - cellY(u.input.pos)) : LOOP_DEFAULT_DIST;
+          const trip = d / LOOP_OUT_SPEED + d / LOOP_BACK_SPEED;
+          u.loopBackAt = t + trip;
+          // 攻撃間隔は投擲物が手元に戻ってから数え始める（実効の間隔 = 攻撃間隔 + 往復時間）
+          u.atkTimer += trip;
         }
         if (hunter) {
           u.huntAmmo -= 1;

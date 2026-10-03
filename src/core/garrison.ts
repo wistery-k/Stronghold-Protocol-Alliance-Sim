@@ -153,6 +153,8 @@ function runGarrison(
       else if (bb.add_method === 'round_gain_char') give(bond, state.round_.gained * multi);
       else if (bb.add_method === 'same_bond_diff_lv') give(bond, distinctTiers(state, bond[0]) * multi);
       else if (bb.add_method === 'same_row') give(bond, sameRow(state.board, unit).length * multi);
+      // 控えのオペレーター1名ごと（ニンフ）
+      else if (bb.add_method === 'hand_count') give(bond, benchUnits(state).length * multi);
       else return false;
       return true;
     }
