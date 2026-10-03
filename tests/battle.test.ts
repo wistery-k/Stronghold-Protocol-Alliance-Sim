@@ -467,6 +467,23 @@ describe('寒冷・凍結とスキルの細部', () => {
     }
   });
 
+  it('シヴィライト・エテルナ：前方1マスのオペレーターが戦闘中に特性で加算数を得るたびに+1', () => {
+    const id = (n: string) => UNITS.find((u) => u.name === n)!.id;
+    ENEMIES.test_eterna = { name: 'e', hp: 2000, def: 100, res: 0, speed: 0.6, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 90, moveMultiplier: 0.5, spawns: [{ enemy: 'test_eterna', count: 6, interval: 5, delay: 0, spawn: 1 }] };
+    const run = (withEterna: boolean) => {
+      setActiveMap('legacy');
+      // スカジ：2体倒すたびに【エーギル】+1
+      const board: OwnedUnit[] = [{ uid: 1, defId: id('スカジ'), star: 1, pos: 31, dir: 'right' }];
+      if (withEterna) board.push({ uid: 2, defId: id('シヴィライト・エテルナ'), star: 1, pos: 30, dir: 'right' });
+      const { inputs, globals } = buildSimInputs(board, [], {});
+      return simulateBattle(inputs, spec, { globals, activeAlliances: new Set(['egir']) }).stackGains.egir ?? 0;
+    };
+    const base = run(false);
+    expect(base).toBeGreaterThan(0);
+    expect(run(true)).toBe(base * 2);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか

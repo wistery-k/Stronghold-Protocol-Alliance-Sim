@@ -346,6 +346,8 @@ interface GarrisonEvent {
   kind: 'useskill' | 'kill' | 'ammo' | 'dead' | 'freeze' | 'sleepstun';
   bonds: AllianceId[] | 'maxstack';
   count: number;
+  /** シヴィライト・エテルナ：この特性で加算数を得るたびに追加される数（上限の対象外） */
+  bonus: number;
   max: number;
   every: number;
   gained: number;
@@ -415,7 +417,8 @@ function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
     out.push({
       kind,
       bonds,
-      count: count + (input.bonusGain ?? 0),
+      count,
+      bonus: input.bonusGain ?? 0,
       max: Number(bb.max_add_count_per_battle ?? Infinity),
       every: Number(kind === 'kill' ? (bb.check_cnt ?? 1) : (bb.consume_count ?? 1)),
       gained: 0,
@@ -1152,9 +1155,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         : ev.bonds.filter((b) => active.has(b));
     if (targets.length === 0) return;
     ev.gained += amount;
+    const bonus = ev.bonus * times;
     for (const b of targets) {
-      stackGains[b] = (stackGains[b] ?? 0) + amount;
+      stackGains[b] = (stackGains[b] ?? 0) + amount + bonus;
       addSource(ev.uid, ev.name, b, amount, STACK_CAUSE[ev.kind]);
+      if (bonus > 0) addSource(ev.uid, ev.name, b, bonus, `${STACK_CAUSE[ev.kind]}（シヴィライト・エテルナの追加）`);
     }
   };
 

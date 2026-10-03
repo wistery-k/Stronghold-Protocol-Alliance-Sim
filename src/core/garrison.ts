@@ -336,6 +336,15 @@ export function onDeployStacks(state: GameState): void {
     }
   }
   const garrisons = effectiveGarrisons(state.board);
+  // シヴィライト・エテルナ：前方1マスのオペレーターが特性で加算数を増やした時、さらに追加
+  const bonusGain = new Map<number, number>();
+  for (const o of state.board) {
+    for (const g of garrisons.get(o.uid) ?? []) {
+      if (g.blackboard.key !== 'act1autochess_gar_event_addition_cnt') continue;
+      const front = frontOf(state.board, o);
+      if (front) bonusGain.set(front.uid, (bonusGain.get(front.uid) ?? 0) + Number(g.blackboard.extra_cnt ?? 0));
+    }
+  }
   for (const o of state.board) {
     const def = getUnit(o.defId);
     for (const g of garrisons.get(o.uid) ?? []) {
@@ -343,10 +352,11 @@ export function onDeployStacks(state: GameState): void {
       if (g.event !== 'IN_BATTLE' || bb.key !== 'act2autochess_gar_event_onstart' || bb.bond_add_type !== 'by_count') continue;
       const bonds = bb.bond_type === 'bond_self' ? def.bonds : bondList(bb.bond_id);
       const count = Math.min(Number(bb.bond_add_count ?? 0), Number(bb.max_add_count_per_battle ?? Infinity));
+      const bonus = bonusGain.get(o.uid) ?? 0;
       for (const b of bonds) {
-        if (!active.has(b)) continue;
-        addStacks(state, b, count, active);
-        notify(state, `${def.name}（配置時）：【${ALLIANCES[b].name}】+${count}`);
+        if (!active.has(b) || count <= 0) continue;
+        addStacks(state, b, count + bonus, active);
+        notify(state, `${def.name}（配置時）：【${ALLIANCES[b].name}】+${count}${bonus ? `（シヴィライト・エテルナ +${bonus}）` : ''}`);
       }
     }
   }

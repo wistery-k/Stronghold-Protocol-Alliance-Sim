@@ -4,7 +4,7 @@ import { behindOf, frontOf, sameRow } from '../src/core/board';
 import { applyAction, createGame, levelUpCost, priceOf, roundSpecOf, type GameState } from '../src/core/game';
 import { UNITS, getUnit } from '../src/core/data/units';
 import { BENCH_SIZE, DEPLOY_CAP, MAX_STACKS, roundIncome } from '../src/core/rules';
-import { addStacks, allTargets, triggerGarrisons } from '../src/core/garrison';
+import { addStacks, allTargets, onDeployStacks, triggerGarrisons } from '../src/core/garrison';
 import type { OwnedItem, OwnedUnit } from '../src/core/types';
 
 const id = (name: string) => UNITS.find((u) => u.name === name)!.id;
@@ -593,5 +593,21 @@ describe('ニンフの堅守特性', () => {
       return s.stacks.swift ?? 0;
     };
     expect(run(['ヴァンデラ', 'グム', 'ミント']) - run([])).toBe(6);
+  });
+});
+
+describe('シヴィライト・エテルナの堅守特性', () => {
+  it('前方1マスのオペレーターの〈配置時〉の加算にも+1される', () => {
+    const run = (withEterna: boolean) => {
+      const s = createGame(1, { mapId: 'legacy' });
+      // グラベル（配置時【カジミエーシュ】+1）と、【カジミエーシュ】を発動させる仲間
+      s.board = [{ ...ou(1, 'グラベル'), pos: 31, dir: 'right' as const }, { ...ou(2, 'ムリナール'), pos: 32 }, { ...ou(3, 'アッシュロック'), pos: 33 }];
+      if (withEterna) s.board.push({ ...ou(4, 'シヴィライト・エテルナ'), pos: 30, dir: 'right' as const });
+      s.bench = s.bench.map(() => null);
+      s.stacks = {};
+      onDeployStacks(s);
+      return s.stacks.kazimierz ?? 0;
+    };
+    expect(run(true) - run(false)).toBe(1);
   });
 });
