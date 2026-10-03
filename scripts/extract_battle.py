@@ -71,6 +71,8 @@ BOUNTY_GROUPS = {
 
 # 元素損傷の種類（図鑑の説明のタグ → シミュレーターの名前）
 # 大型で動かないボス（小型で歩き回るボス：ルシアン・仮想敵：銃 は対象外）
+# ボス（ラウンド14・15）のHPに使う難易度：bloodPoint（標準）/ bloodPointNormal（険境）/ bloodPointHard（絶境＝死地）/ bloodPointAbyss（究極）
+BOSS_HP_FIELD = 'bloodPointHard'
 LARGE_BOSSES = {'enemy_9013_acstmk', 'enemy_9021_acduml', 'enemy_1521_dslily', 'enemy_9032_aclionk', 'enemy_9033_acdeer'}
 # シークレットコア版のボスの手下（キーはボスのキー）
 BOSS_MINIONS = {'enemy_9014_acstma': 'enemy_9013_acstmk_2', 'enemy_9015_acstmb': 'enemy_9013_acstmk_2'}
@@ -356,6 +358,7 @@ def main():
         level = load(cn_root / 'levels/activities' / (level_path + '.json'))
         refs = {x['id']: x for x in level['enemyDbRefs']}
         routes = level['routes']
+        boss_info = act['bossInfoDict'].get(entry['bossId'] or '')
         spawns = []
         for wave in level['waves']:
             t0 = wave['preDelay']
@@ -367,6 +370,9 @@ def main():
                     key = a['key']
                     if not add_enemy(key, refs.get(key)):
                         continue
+                    # ボスのHPは難易度ごとの値（bossInfoDict の bloodPoint*）。基本値は険境に近いので BOSS_HP_FIELD の難易度に合わせる
+                    if boss_info and enemies[key]['boss'] and not enemies[key].get('minionOf'):
+                        enemies[key]['hp'] = boss_info[BOSS_HP_FIELD]
                     route = routes[a['routeIndex']]
                     # 本家の出現地点は2つ（防衛地点と同じ行＝下、もう一方＝上）
                     start_row = route['startPosition']['row']

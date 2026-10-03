@@ -71,9 +71,10 @@ describe('マップ', () => {
 });
 
 describe('マップ戦闘', () => {
-  it('ボスは本家の仮想敵：冑の耐久', () => {
+  it('ボスは本家の仮想敵：冑（HPは絶境＝死地の値）', () => {
     const boss = ROUNDS[13].spawns.map((s) => ENEMIES[s.enemy]).find((e) => e.boss)!;
-    expect(boss.hp).toBe(600000);
+    expect(boss.hp).toBe(1800000);
+    expect(ROUNDS[14].spawns.map((s) => ENEMIES[s.enemy]).find((e) => e.boss && e.large)!.hp).toBe(3600000);
     expect(boss.def).toBe(1000);
     expect(boss.res).toBe(25);
   });
