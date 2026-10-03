@@ -1230,6 +1230,14 @@ aside {
 .rp-elem-dot.burst .rp-elem-label { fill: #000; }
 .rp-elem-dot.burst { animation: rp-elem-pulse 0.8s ease-in-out infinite alternate; }
 @keyframes rp-elem-pulse { from { opacity: 1; } to { opacity: 0.45; } }
+.rp-sargon {
+  fill: #d98a1f;
+  font-size: 10px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 3px;
+}
 .rp-hp-bg {
   fill: #000;
   opacity: 0.5;

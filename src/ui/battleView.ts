@@ -121,6 +121,17 @@ export function placeHint(defId: string, pos: number): string | null {
   return canPlace(pos, defId) ? null : tileAt(pos) === 'high' ? '高台には遠距離オペレーターのみ' : '置けないマス';
 }
 
+/** 【サルゴン】の強化の要約（最大・平均の層数と攻撃速度） */
+function sargonKpi(sg: NonNullable<BattleResult['sargon']>) {
+  const atk = (n: number) => (sg.atkPct ? `・攻撃力+${Math.round(n * sg.atkPct * 100)}%` : '');
+  return h(
+    'div',
+    { title: `【サルゴン】のスキル発動時の強化。最大${sg.max}層（攻撃速度+${sg.max * sg.aspd}${atk(sg.max)}）、戦闘中の平均${sg.avg}層（攻撃速度+${Math.round(sg.avg * sg.aspd)}${atk(sg.avg)}）` },
+    h('span', { class: 'muted small' }, 'サルゴン AS 最大/平均'),
+    h('b', null, `+${sg.max * sg.aspd}/+${Math.round(sg.avg * sg.aspd)}`),
+  );
+}
+
 const ELEM_SHORT = ['灼', '神', '侵', '凋'];
 const ELEM_FULL = ['灼燃損傷', '神経損傷', '侵蝕損傷', '凋亡損傷'];
 
@@ -312,6 +323,7 @@ export function battleSummary(r: BattleResult, units: ReplayUnit[]) {
       r.bountyKills ? h('div', null, h('span', { class: 'muted small' }, '懸賞'), h('b', { class: 'ok' }, `資金+${r.bountyGold}`)) : null,
       r.opBursts || r.enBursts ? h('div', null, h('span', { class: 'muted small', title: '元素損傷が爆発した回数（味方/敵）' }, '元素爆発 味方/敵'), h('b', null, `${r.opBursts ?? 0}/${r.enBursts ?? 0}回`)) : null,
       r.colds || r.freezes ? h('div', null, h('span', { class: 'muted small' }, '寒冷/凍結'), h('b', null, `${r.colds ?? 0}/${r.freezes ?? 0}回`)) : null,
+      r.sargon ? sargonKpi(r.sargon) : null,
       h('div', null, h('span', { class: 'muted small' }, '撤退'), h('b', { class: downCount(r) ? 'ng' : '' }, `${downCount(r)}人`)),
       r.bossRemaining > 0 ? h('div', null, h('span', { class: 'muted small' }, 'ボス残りHP'), h('b', { class: 'ng' }, pct(r.bossRemaining))) : null,
     ),
@@ -502,6 +514,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   const unitSp = new Map<number, { bar: SVGElement; label: SVGElement }>();
   /** 元素損傷の小さな丸（左上） */
   const unitElem = new Map<number, { g: SVGElement; x: number; y: number; key: string }>();
+  /** 【サルゴン】の強化（攻撃速度）の小さな表示（左下） */
+  const unitSargon = new Map<number, SVGElement>();
   for (const u of units) {
     if (u.pos === undefined) continue;
     const def = getUnit(u.defId);
@@ -527,6 +541,11 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     const elemG = s('g', { class: 'rp-elem' });
     g.append(elemG);
     unitElem.set(u.uid, { g: elemG, x: x + 22, y: y + 21, key: '' });
+    if (r.sargon) {
+      const sg = s('text', { x: x + 13, y: y + 74, 'text-anchor': 'start', class: 'rp-sargon' }, '');
+      g.append(sg);
+      unitSargon.set(u.uid, sg);
+    }
     unitNodes.set(u.uid, g);
     svg.append(g);
   }
@@ -652,6 +671,21 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
         }),
       );
     }
+    // 【サルゴン】の強化：層があるオペレーターだけ「AS+36」のように表示
+    if (r.sargon) {
+      const layers = new Map(a.sg ?? []);
+      for (const [uid, el] of unitSargon) {
+        const n = unitNodes.get(uid)?.classList.contains('down') ? 0 : (layers.get(uid) ?? 0);
+        const text = n > 0 ? `AS+${n * r.sargon.aspd}` : '';
+        if (el.getAttribute('data-k') !== text) {
+          el.setAttribute('data-k', text);
+          el.replaceChildren(
+            text,
+            ...(n > 0 ? [s('title', {}, `【サルゴン】${n}層：攻撃速度+${n * r.sargon.aspd}${r.sargon.atkPct ? `・攻撃力+${Math.round(n * r.sargon.atkPct * 100)}%` : ''}`)] : []),
+          );
+        }
+      }
+    }
     timeLabel.textContent = `${t.toFixed(1)}秒`;
     costLabel.textContent = a.c !== undefined ? `コスト ${a.c}` : '';
     slider.value = String(Math.round(t * 10));
@@ -703,6 +737,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・凋亡。リングが爆発までの蓄積、塗りつぶしは爆発中）'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・凋亡。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化による攻撃速度'),
   );
 }

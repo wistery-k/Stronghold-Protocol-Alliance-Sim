@@ -484,6 +484,24 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(run(true)).toBe(base * 2);
   });
 
+  it('【サルゴン】の強化の層数（最大・平均）を結果とリプレイに記録する', () => {
+    const id = (n: string) => UNITS.find((u) => u.name === n)!.id;
+    ENEMIES.test_sg = { name: 's', hp: 60000, def: 200, res: 0, speed: 0.4, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    setActiveMap('legacy');
+    const board: OwnedUnit[] = [
+      { uid: 1, defId: id('エステル'), star: 1, pos: 33, dir: 'right' },
+      { uid: 2, defId: id('バブル'), star: 1, pos: 32, dir: 'right' },
+      { uid: 3, defId: id('パピルス'), star: 1, pos: 14, dir: 'down' },
+    ];
+    const { inputs, globals } = buildSimInputs(board, [], { sargon: 20 });
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_sg', count: 3, interval: 8, delay: 0, spawn: 1 }] };
+    const r = simulateBattle(inputs, spec, { globals, activeAlliances: new Set(['sargon']), stacks: { sargon: 20 }, record: true });
+    expect(r.sargon!.aspd).toBe(12);
+    expect(r.sargon!.max).toBeGreaterThan(0);
+    expect(r.sargon!.avg > 0 && r.sargon!.avg <= r.sargon!.max).toBe(true);
+    expect(r.frames!.some((f) => (f.sg ?? []).length > 0)).toBe(true);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか

@@ -89,6 +89,8 @@ export interface ReplayFrame {
    * 4: 再配置待ち（ゲージ=経過%、値=残り秒×10。0ならコスト待ち）
    */
   u?: [number, number, number, number, number, number?][];
+  /** 【サルゴン】の強化の層数 [uid, 層数]。1層以上のものだけ */
+  sg?: [number, number][];
   /** オペレーターの元素損傷 [uid, 種類（0灼燃・1神経・2侵蝕・3凋亡）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1以上溜まっているものだけ */
   ue?: [number, number, number][];
 }
@@ -133,6 +135,8 @@ export interface BattleResult {
   /** 元素損傷が爆発した回数（味方・敵） */
   opBursts: number;
   enBursts: number;
+  /** 【サルゴン】のスキル発動時の強化：1層あたりの攻撃速度・攻撃力と、層数の最大・時間平均 */
+  sargon?: { aspd: number; atkPct: number; max: number; avg: number };
   enemies: EnemyMeta[];
   /** リプレイの演出 */
   fx?: FxEvent[];
@@ -839,6 +843,7 @@ interface EngineResult {
   freezes: number;
   opBursts: number;
   enBursts: number;
+  sargon?: { aspd: number; atkPct: number; max: number; avg: number };
 }
 
 function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: number, field: boolean, opts: SimOptions): EngineResult {
@@ -2689,6 +2694,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return out;
   };
 
+  let sargonMax = 0;
+  let sargonSum = 0;
+  const sargonFrame = (): [number, number][] =>
+    rt
+      .filter((u) => u.alive && u.input.pos !== undefined)
+      .map((u): [number, number] => [u.input.uid, u.sargonBuffs.filter((until) => until > t).length])
+      .filter((x) => x[1] > 0);
+
   const steps = Math.round(timeLimit / dt);
   const sampleEvery = Math.max(1, Math.round(0.5 / dt));
   const frameEvery = Math.max(1, Math.round(0.2 / dt));
@@ -2708,6 +2721,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       tickZones();
       tickPollution();
       tickSleep();
+      // 【サルゴン】の強化の層数（最大・時間平均）
+      if (g.sargon) {
+        let cur = 0;
+        for (const u of rt) if (u.alive && g.sargon.members.has(u.input.uid)) cur = Math.max(cur, u.sargonBuffs.filter((until) => until > t).length);
+        sargonMax = Math.max(sargonMax, cur);
+        sargonSum += cur * dt;
+      }
       for (const u of rt) if (u.barrier > 0) u.barrier = Math.max(0, u.barrier - u.barrierDecay * dt);
     }
 
@@ -2980,6 +3000,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         s: rt.filter((u) => u.alive && (u.skillLeft > 0 || u.ammoLeft > 0)).map((u) => u.input.uid),
         u: unitFrame(),
         ue: elemFrame(),
+        sg: sargonFrame(),
         c: Math.floor(cost),
       });
     }
@@ -2997,10 +3018,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       s: [],
       u: unitFrame(),
       ue: elemFrame(),
+      sg: sargonFrame(),
       c: Math.floor(cost),
     });
   }
-  return { t, enemies, units: rt, timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, colds, freezes, opBursts, enBursts };
+  const sargon = g.sargon ? { aspd: g.sargon.aspd, atkPct: g.sargon.atkPct, max: sargonMax, avg: Math.round((sargonSum / Math.max(dt, t)) * 10) / 10 } : undefined;
+  return { t, enemies, units: rt, timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, colds, freezes, opBursts, enBursts, sargon };
 }
 
 // ------------------------------------------------------------
@@ -3105,6 +3128,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     freezes: r.freezes,
     opBursts: r.opBursts,
     enBursts: r.enBursts,
+    sargon: r.sargon,
     enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined })),
     bountyGold: bountyKilled.reduce((sum, e) => sum + (e.input.bounty ?? 0), 0),
     bountyKills: bountyKilled.length,

@@ -723,6 +723,10 @@ function resolveBattle(state: GameState): void {
   for (const src of sim.stackSources ?? []) {
     notify(state, `戦闘中：${src.name}（${src.cause}）：【${ALLIANCES[src.bond].name}】+${src.amount}`);
   }
+  if (sim.sargon && sim.sargon.max > 0) {
+    const sg = sim.sargon;
+    notify(state, `戦闘中：【サルゴン】の強化：最大${sg.max}層（攻撃速度+${sg.max * sg.aspd}）、平均${sg.avg}層（攻撃速度+${Math.round(sg.avg * sg.aspd)}）`);
+  }
 
   if (sim.bountyGold > 0) {
     state.pendingGold += sim.bountyGold;
