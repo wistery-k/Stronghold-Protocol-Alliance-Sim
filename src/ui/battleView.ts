@@ -639,7 +639,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     if (n) return n;
     const m = meta.get(id)!;
     if (m.large) {
-      // 大型のボス：右の2列×上の3行を占める（位置は左下のマスの中心）
+      // 大型のボス：右の2列×上の3行を占める（位置は左下のマスの中心）。当たり判定はその左の列も含む
       const x0 = -S / 2 + 6;
       const y0 = -2.5 * S + 6;
       const w = 2 * S - 12;
@@ -648,6 +648,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       const g = s(
         'g',
         { class: 'rp-enemy boss large' },
+        // 当たり判定のみの列（(7,1)〜(7,3)）：配置・経路には影響しないので点線で薄く示す
+        s('rect', { x: x0 - S, y: y0, width: S + 8, height: hgt, rx: 14, class: 'rp-boss-hitbox' }),
         s('rect', { x: x0, y: y0, width: w, height: hgt, rx: 14, class: 'rp-enemy-body' }),
         s('rect', { x: x0 + 8, y: y0 + 8, width: w - 16, height: 8, class: 'rp-hp-bg' }),
         bar,

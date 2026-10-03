@@ -84,8 +84,11 @@ export const cellY = (pos: number) => Math.floor(pos / BOARD_COLS);
 export const cellPos = (x: number, y: number) => y * BOARD_COLS + x;
 const inside = (x: number, y: number) => x >= 0 && x < BOARD_COLS && y >= 0 && y < BOARD_ROWS;
 
-/** 大型のボスが占めるマス（右の2列×上の3行。(列,行)で(8,1)〜(9,3)） */
-export const BOSS_CELLS: number[] = [7, 8].flatMap((x) => [0, 1, 2].map((y) => cellPos(x, y)));
+/**
+ * 大型のボスの当たり判定のマス（右の3列×上の3行。(列,行)で(7,1)〜(9,3)）。
+ * 見た目の本体は (8,1)〜(9,3)。(7,1)〜(7,3) は当たり判定のみで、配置や敵の経路には影響しない
+ */
+export const BOSS_CELLS: number[] = [6, 7, 8].flatMap((x) => [0, 1, 2].map((y) => cellPos(x, y)));
 /** 大型のボスの位置（対象を中心とする効果の中心。(8,3)） */
 export const BOSS_CENTER = { x: 7, y: 2 };
 

@@ -1258,6 +1258,14 @@ aside {
   stroke-width: 4;
   stroke-opacity: 1;
 }
+.rp-boss-hitbox {
+  fill: rgba(90, 22, 33, 0.12);
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+  stroke-opacity: 0.8;
+  pointer-events: none;
+}
 .rp-boss-name {
   fill: #fff;
   font-size: 18px;

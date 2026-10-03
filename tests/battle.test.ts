@@ -515,6 +515,43 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect([...xs]).toEqual(['700,200']);
   });
 
+  it('大型のボスの当たり判定は (7,1)〜(7,3) の列も含む（配置・経路には影響しない）', () => {
+    ENEMIES.test_bigboss2 = { ...ENEMIES.enemy_9013_acstmk, hp: 1e8, summon: undefined, bomb: undefined, attack: undefined };
+    setActiveMap('legacy');
+    const spec: RoundSpec = { round: 14, levelId: 'test', timeLimit: 20, moveMultiplier: 0.5, spawns: [{ enemy: 'test_bigboss2', count: 1, interval: 0, delay: 0, spawn: 0 }] };
+    // 6 = (7,1)。左向きの重装の範囲は自分のマス（と左）だけ → 当たり判定の列にいるので攻撃できる
+    const { inputs, globals } = buildSimInputs([{ uid: 1, defId: byProf('defender').id, star: 1, pos: 6, dir: 'left' }], [], {});
+    const r = simulateBattle(inputs, spec, { globals });
+    expect(r.perUnit[0].hits).toBeGreaterThan(0);
+  });
+
+  it('海溝の実験体：ダメージを固定値で軽減（活性源石のマスのダメージにも有効）、【エーギル】なら反撃', () => {
+    const spec = oneEnemy('test_flat', false, { speed: 0, boss: true });
+    const run4 = (items: OwnedUnit['items'], defId = byProf('defender').id) => {
+      setActiveMap('m4');
+      // 13 = (5,2) の活性源石
+      const { inputs, globals } = buildSimInputs([{ uid: 1, defId, star: 1, pos: 13, dir: 'right', items }], [], {});
+      const r = simulateBattle(inputs, { ...spec, timeLimit: 10 }, { globals });
+      setActiveMap('legacy');
+      return r.perUnit[0];
+    };
+    expect(run4([]).taken).toBeGreaterThan(0);
+    expect(run4([{ uid: 9, itemId: '6_04', star: 1 }]).taken).toBe(0);
+    // 反撃：【エーギル】が装備し、近接の敵に殴られると攻撃元へ術ダメージ
+    const skadi = UNITS.find((u) => u.name === 'スカジ')!.id;
+    ENEMIES.test_ret = { name: 'r', hp: 1e9, def: 0, res: 0, speed: 0.6, blockCnt: 1, flying: false, boss: true, elite: false, lifeReduce: 1, attack: { kind: 'melee', atk: 2000, interval: 1, range: 0, arts: false } };
+    const fight = (items: OwnedUnit['items']) => {
+      setActiveMap('legacy');
+      const { inputs, globals } = buildSimInputs([{ uid: 1, defId: skadi, star: 1, pos: 33, dir: 'left', items }], [], {});
+      const s: RoundSpec = { round: 1, levelId: 'test', timeLimit: 20, moveMultiplier: 0.5, spawns: [{ enemy: 'test_ret', count: 1, interval: 0, delay: 0, spawn: 1 }] };
+      return simulateBattle(inputs, s, { globals }).perUnit[0];
+    };
+    const plain = fight([]);
+    const withItem = fight([{ uid: 9, itemId: '6_04', star: 1 }]);
+    expect(withItem.damage).toBeGreaterThan(plain.damage);
+    expect(withItem.taken < plain.taken).toBe(true);
+  });
+
   it('冑の【灭顶之灾】：攻撃力最高の味方へ弾を撃ち、着弾で周囲をスタン。弾は撃ち落とせて、敵の数には入らない', () => {
     ENEMIES.test_bomb_boss = { ...ENEMIES.enemy_9013_acstmk, hp: 1e8, attack: undefined, summon: undefined };
     setActiveMap('legacy');

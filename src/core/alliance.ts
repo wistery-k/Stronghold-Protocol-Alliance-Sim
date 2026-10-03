@@ -565,6 +565,14 @@ export function battleSetup(
           case 'act1autochess_equip_acarm042_global_buff':
             apply([o.uid], { burnOnArts: n('damage_scale') });
             break;
+          case 'halfidle_block_fixed_damage':
+            // 海溝の実験体：ダメージをX軽減（種別指定なし → 確定ダメージにも有効）
+            apply([o.uid], { damageFlatReduce: n('value') });
+            break;
+          case 'act2autochess_equip_acarm078_global_buff':
+            // 海溝の実験体：【エーギル】が装備すると被ダメージ時に反撃（エーギルのいかりも装備でさらに同量）
+            if (bonds.includes('egir')) apply([o.uid], { retaliateScale: n('atk_scale') * (has('3_07') ? 2 : 1), retaliateLock: n('lock_duration') });
+            break;
           case 'silence_attachment':
             apply([o.uid], { neutralize: n('silence') });
             break;

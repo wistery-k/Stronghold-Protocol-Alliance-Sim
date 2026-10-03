@@ -821,6 +821,7 @@ interface Runtime {
   order: number;
   /** 堅守の反撃のクールダウン */
   reflectReadyAt: number;
+  retaliateReadyAt: number;
   /** スキルを発動した時刻 */
   castAt: number;
   /** 元素損傷の蓄積と爆発の終わる時刻、爆発の影響 */
@@ -963,6 +964,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       alive: true,
       order: 0,
       reflectReadyAt: 0,
+      retaliateReadyAt: 0,
       castAt: -1,
       elem: {},
       elemBurst: {},
@@ -1996,6 +1998,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
 
+  /** 固定値の被ダメージ軽減（海溝の実験体）。1回分のダメージから差し引く */
+  const flatCut = (u: Runtime, amount: number) => Math.max(0, amount - (u.input.mods.damageFlatReduce ?? 0));
+  /** 毎秒ダメージ（1秒ごとに1回受けるものとして固定値軽減を適用） */
+  const takeDps = (u: Runtime, dps: number) => takeDamage(u, flatCut(u, dps) * dt);
+
   const takeDamage = (u: Runtime, amount: number) => {
     if (!u.alive || amount <= 0) return;
     u.result.taken += amount;
@@ -2056,7 +2063,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       u.mberryShield--;
       return;
     }
-    let dmg = mitigate(u, raw, arts, defPen) * talentTakenMult(u, arts);
+    // 海溝の実験体（【エーギル】）：攻撃元へ術ダメージで反撃
+    const rs = u.input.mods.retaliateScale ?? 0;
+    if (rs > 0 && u.alive && src.alive && t >= u.retaliateReadyAt) {
+      u.retaliateReadyAt = t + (u.input.mods.retaliateLock ?? 0.5);
+      deal(u, src, hitDamage(u.curAtk * rs, 'arts', effDefense(src), u.input.mods));
+    }
+    let dmg = flatCut(u, mitigate(u, raw, arts, defPen) * talentTakenMult(u, arts));
     const sd = g.stead;
     if (sd && sd.members.has(u.input.uid)) steadReflect(u, src);
     else if (sd) {
@@ -2182,14 +2195,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (type === 'neural') {
       // 神経損傷の爆発：スタン（ティティの堅守特性の対象）
       if (field && o.input.pos !== undefined) onSleepStun(o.input.pos);
-      takeDamage(o, 1000);
+      takeDamage(o, flatCut(o, 1000));
       for (const e of o.blocked) e.blockedBy = null;
       o.blocked = [];
     } else if (type === 'erosion') {
       o.erosionDef += 100;
-      takeDamage(o, mitigate(o, 800, false));
+      takeDamage(o, flatCut(o, mitigate(o, 800, false)));
     } else if (type === 'burning') {
-      takeDamage(o, mitigate(o, 1200, true));
+      takeDamage(o, flatCut(o, mitigate(o, 1200, true)));
     }
   };
 
@@ -2266,7 +2279,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           o.elem[type] = Math.max(0, (o.elem[type] ?? 0) - (OP_ELEMENT_MAX / OP_BURST_DURATION[type]) * dt);
           if (type === 'apoptosis') {
             o.sp = Math.max(0, o.sp - dt);
-            takeDamage(o, mitigate(o, 100, true) * dt);
+            takeDps(o, mitigate(o, 100, true));
           }
         } else if (until >= 0) {
           o.elemBurst[type] = -1;
@@ -2324,7 +2337,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const tickPollution = () => {
     for (const z of pollutions) {
       if (t >= z.until) continue;
-      for (const o of alliesNear(z.x, z.y, z.radius)) takeDamage(o, (o.hp / o.maxHp > 0.5 ? z.high : z.low) * dt);
+      for (const o of alliesNear(z.x, z.y, z.radius)) takeDps(o, o.hp / o.maxHp > 0.5 ? z.high : z.low);
     }
   };
   const zones: { owner: Runtime; x: number; y: number; r: number; until: number; atk: number; heal: number; dot: number; groundOnly: boolean }[] = [];
@@ -2800,7 +2813,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
   const tickTiles = () => {
     if (!field) return;
-    for (const u of rt) if (u.alive && unitTile(u) === 'infection') takeDamage(u, INFECTION.dps * dt);
+    for (const u of rt) if (u.alive && unitTile(u) === 'infection') takeDps(u, INFECTION.dps);
     for (const e of enemies) {
       if (!e.alive || e.reviveAt !== null) continue;
       const tl = enemyGroundTile(e);
@@ -2984,7 +2997,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       enemies.push(ne);
     }
     // スタン中の毎秒ダメージ
-    for (const u of rt) if (u.alive && t < u.dotUntil) takeDamage(u, mitigate(u, u.dotDps, false) * dt);
+    for (const u of rt) if (u.alive && t < u.dotUntil) takeDps(u, mitigate(u, u.dotDps, false));
   };
 
   /** 爆発（弾・手下の突進）：中心と周囲8マスの味方をスタンさせ、継続ダメージ */

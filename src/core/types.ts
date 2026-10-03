@@ -171,6 +171,11 @@ export interface Modifier {
   resFlat?: number;
   /** 被ダメージ軽減（割合、加算） */
   damageReduce?: number;
+  /** 被ダメージ軽減（固定値、ダメージ種別を問わず確定ダメージ・マスのダメージにも有効。海溝の実験体） */
+  damageFlatReduce?: number;
+  /** 被ダメージ時に攻撃元へ攻撃力のこの割合の術ダメージ（海溝の実験体＋【エーギル】） */
+  retaliateScale?: number;
+  retaliateLock?: number;
   /** 敵に狙われやすさ（警報器） */
   taunt?: number;
   /** 攻撃するたびに最大HPのこの割合を回復（眠れる眷属） */
