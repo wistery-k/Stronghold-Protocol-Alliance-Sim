@@ -413,19 +413,20 @@ describe('寒冷・凍結とスキルの細部', () => {
     setActiveMap('legacy');
   });
 
-  it('旋輪射手は投擲物が戻るまで攻撃できない（攻撃速度を上げても遠い敵には往復時間が上限）', () => {
+  it('旋輪射手は投擲物が戻るまで攻撃できない（1マス1.0秒・2マス約1.17秒・3マス1.5秒ごと）', () => {
     const caper = UNITS.find((u) => u.name === 'ケイパー')!;
-    const at = (pos: number, aspd: number) => {
-      const spec = oneEnemy('test_loop', false, { speed: 0, def: 0 });
+    const at = (pos: number) => {
+      // ボス扱いにして制限時間をステージ時間で打ち切る
+      const spec = oneEnemy('test_loop', false, { speed: 0, def: 0, boss: true });
       const { inputs, globals } = buildSimInputs([{ uid: 1, defId: caper.id, star: 1, pos, dir: 'right' }], [], {});
-      inputs[0].mods.aspd = aspd;
-      return simulateBattle(inputs, spec, { globals }).perUnit[0].hits;
+      // スキル（1回で2個放つ）が溜まる前の15秒で数える
+      return simulateBattle(inputs, { ...spec, timeLimit: 15 }, { globals }).perUnit[0].hits;
     };
-    // 攻撃間隔1.0秒なら往復（1マス約0.33秒・3マス約1.0秒）より長いので距離は関係ない
-    expect(at(34, 0)).toBe(at(32, 0));
-    // 攻撃速度+200（間隔約0.33秒）にすると、3マス先は往復時間で頭打ち
-    expect(at(32, 200) < at(34, 200)).toBe(true);
-    expect(at(32, 200) > at(32, 0) - 1).toBe(true);
+    // 敵は出現地点（下段の右端・35）で止まる。34 = 1マス、33 = 2マス、32 = 3マス
+    const [d1, d2, d3] = [at(34), at(33), at(32)];
+    expect(d1 > d2 && d2 > d3).toBe(true);
+    // 1マス:3マス ≒ 1.5:1
+    expect(Math.abs(d1 / d3 - 1.5) < 0.1).toBe(true);
   });
 
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
