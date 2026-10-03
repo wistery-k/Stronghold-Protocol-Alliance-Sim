@@ -544,6 +544,8 @@ const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius:
 
 /** 狩人：最大弾数、攻撃時の攻撃力倍率、攻撃をやめてから装填が始まるまでと1発の装填時間（秒） */
 const HUNTER_AMMO = 8;
+/** 呪癒師：与ダメージのうち味方の回復に回る割合 */
+const INCANTATION_HEAL = 0.5;
 /** 旋輪射手：旋回投擲物の速度（マス/秒）。射出時15、回収時3.75。手元に戻るまで次の攻撃はできない */
 const LOOP_OUT_SPEED = 15;
 const LOOP_BACK_SPEED = 3.75;
@@ -2885,6 +2887,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           const inSkill = !s.passive && activeNow;
           if (targets.length >= 3 || (inSkill && targets.length >= 2)) emit([2, uid, inSkill ? 1 : 0], `area${uid}`, 0.3);
         }
+        const dealtBefore = u.result.damage;
         for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1) * talentScale(u, e, activeNow));
         if (def.charId === TITI) {
           for (const [e] of targets) {
@@ -2894,6 +2897,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
             // スキル：睡眠状態でない対象を睡眠
             if (titiOn(u)) sleepEnemy(e, s.bb['attack@sleep'] ?? s.bb.sleep ?? 5, u);
           }
+        }
+        // 呪癒師：攻撃時、攻撃範囲内のランダムな味方1人を与ダメージの50%回復（ランダムは期待値として範囲内の味方で等分）
+        if (field && def.subProfession === 'incantationmedic') {
+          const dealt = u.result.damage - dealtBefore;
+          const allies = alliesInRange(u, activeNow);
+          if (dealt > 0 && allies.length) for (const o of allies) healUnit(u, o, (dealt * INCANTATION_HEAL) / allies.length);
         }
         // ミヅキ：攻撃範囲内でHPが最も少ない敵に追加の術ダメージ
         if (cid(u) === 'char_437_mizuki') {

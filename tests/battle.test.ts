@@ -448,6 +448,25 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.stackGains.preci).toBe(r.stackGains.sargon);
   });
 
+  it('呪癒師は攻撃で与えたダメージの50%で範囲内の味方を回復する', () => {
+    for (const name of ['ヴァンデラ', 'ティティ', '焔影リード']) {
+      const medic = UNITS.find((u) => u.name === name)!;
+      ENEMIES.test_inc = { name: 'i', hp: 1e9, def: 0, res: 0, speed: 0.6, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1, attack: { kind: 'melee', atk: 600, interval: 1, range: 0, arts: false } };
+      setActiveMap('legacy');
+      const { inputs, globals } = buildSimInputs(
+        [
+          { uid: 1, defId: medic.id, star: 1, pos: 24, dir: 'down' },
+          { uid: 2, defId: byProf('defender').id, star: 2, pos: 33, dir: 'right' },
+        ],
+        [],
+        {},
+      );
+      const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 30, moveMultiplier: 0.5, spawns: [{ enemy: 'test_inc', count: 1, interval: 0, delay: 0, spawn: 1 }] };
+      const r = simulateBattle(inputs, spec, { globals });
+      expect(r.perUnit[0].healed).toBeGreaterThan(0);
+    }
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか
