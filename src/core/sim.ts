@@ -440,7 +440,7 @@ function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
       every: Number(kind === 'kill' ? (bb.check_cnt ?? 1) : (bb.consume_count ?? 1)),
       gained: 0,
       prob: Number(bb.prob ?? 1),
-      acc: 0,
+      acc: ACC_START,
       uid: input.uid,
       name: def.name,
     });
@@ -564,6 +564,11 @@ const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius:
 
 /** 狩人：最大弾数、攻撃時の攻撃力倍率、攻撃をやめてから装填が始まるまでと1発の装填時間（秒） */
 const HUNTER_AMMO = 8;
+/**
+ * 確率で起きる効果は「確率を貯めて1に達したら発生」（期待値）で扱う。積み立ての開始値を0.5にして、
+ * 発生回数を「試行回数×確率」の四捨五入にする（0から始めると切り捨てになり、短い戦闘ほど損をする）
+ */
+const ACC_START = 0.5;
 /** <刺胄之弹>の飛ぶ速さ（マス/秒。本家の値が不明なため仮） */
 const BOMB_SPEED = 1;
 /** ボスの手下が突進する速さ（マス/秒。仮） */
@@ -663,8 +668,8 @@ const newTalentState = (): TalentState => ({
   deployedAt: 0,
   lastHitAt: -99,
   lastDealtAt: -99,
-  nullAcc: 0,
-  evadeAcc: 0,
+  nullAcc: ACC_START,
+  evadeAcc: ACC_START,
   killStacks: 0,
   killAtk: 0,
   stealAtk: 0,
@@ -682,7 +687,7 @@ const newTalentState = (): TalentState => ({
   firstHit: new Map(),
   timer: 0,
   selfFrozenUntil: -1,
-  reedAcc: 0,
+  reedAcc: ACC_START,
 });
 
 /** 攻撃時に確率で攻撃力が上がる素質（期待値で扱う）：[1つ目/2つ目の素質, 確率のキー, 倍率のキー] */
@@ -923,7 +928,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       sargonBuffs: [],
       pulseTimer: g.kazimierzPulse?.interval ?? 0,
       attacks: 0,
-      fearAcc: 0,
+      fearAcc: ACC_START,
       neutralize: Math.max(input.mods.neutralize ?? 0, TALENT_NEUTRALIZE[input.def.charId]?.[input.star - 1] ?? 0),
       hp: st.stats.hp * (1 + (input.mods.hpPct ?? 0)),
       maxHp: st.stats.hp * (1 + (input.mods.hpPct ?? 0)),
@@ -943,10 +948,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       counterReadyAt: 0,
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
-      evadeAcc: 0,
+      evadeAcc: ACC_START,
       tb: [talentBB(input.def, input.star, 0), talentBB(input.def, input.star, 1)],
       ts: newTalentState(),
-      swiftAcc: 0,
+      swiftAcc: ACC_START,
       recastAt: -1,
       inspireAtk: 0,
       inspireUntil: -1,
@@ -957,12 +962,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       dotUntil: -1,
       dotDps: 0,
       mberryShield: 0,
-      mberryAcc: 0,
+      mberryAcc: ACC_START,
       lastAttackAt: -99,
       loopBackAt: -1,
       barrier: 0,
       barrierDecay: 0,
-      coldAcc: 0,
+      coldAcc: ACC_START,
       coldDotTimer: 1,
       redeployAt: null,
       respawn: Math.max(1, st.stats.respawn * Math.max(0.1, 1 + (input.mods.respawnPct ?? 0)) + (input.mods.respawnFlat ?? 0)),
@@ -1678,7 +1683,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   // ------------------------------------------------------------
   // 敵の攻撃・オペレーターの被弾と回復
   // ------------------------------------------------------------
-  let indomAcc = 0;
+  let indomAcc = ACC_START;
   let egirRevives = g.egirRevive?.count ?? 0;
   let bandRevives = g.bandRevive ?? 0;
 
