@@ -56,6 +56,13 @@ export interface EnemySpec {
    * dotDuration 秒間、毎秒 dotDps の物理ダメージ。弾は飛行中に hits 回攻撃すると撃ち落とせ、味方に優先して狙われる（挑発）
    */
   bomb?: { cooldown: number; init: number; stun: number; dotDps: number; dotDuration: number; hits: number };
+  /** 【死亡集群】cooldown 秒ごと（init 秒後から）に enemy を1体召喚（HPはボスの最大HP×hpRatio） */
+  summon?: { enemy: string; cooldown: number; init: number; hpRatio: number };
+  /**
+   * ボスの手下の突進：init 秒後から cooldown 秒ごとに攻撃力が最も低い味方へ突っ込み、着弾で周囲8マスに stun 秒スタンと dotDuration 秒間毎秒 dotDps の物理。
+   * 突進中は無敵が切れ、hits 回攻撃されると撃ち落とされる（地上に落ちて動かず、受けるダメージ dmgScale 倍、受けたダメージの一部がボスにも入る）
+   */
+  dive?: { cooldown: number; init: number; stun: number; dotDps: number; dotDuration: number; hits: number; dmgScale: number };
   /** 敵の弾（<刺胄之弹>）：飛行中の的。突破・撃破の数には入れない */
   projectile?: boolean;
   /** HPが ratio を下回ると、受けるダメージが scale 倍 */

@@ -503,7 +503,7 @@ describe('寒冷・凍結とスキルの細部', () => {
   });
 
   it('大型のボスは動かず右上の2列×3行を占め、そのどこかが範囲に入れば攻撃できる', () => {
-    ENEMIES.test_bigboss = { ...ENEMIES.enemy_9013_acstmk, hp: 1e8 };
+    ENEMIES.test_bigboss = { ...ENEMIES.enemy_9013_acstmk, hp: 1e8, summon: undefined };
     setActiveMap('legacy');
     const spec: RoundSpec = { round: 14, levelId: 'test', timeLimit: 30, moveMultiplier: 0.5, spawns: [{ enemy: 'test_bigboss', count: 1, interval: 0, delay: 0, spawn: 0 }] };
     // 6 = (7,1)。右向きの狙撃は (8,1)(9,1) の列に届く
@@ -516,7 +516,7 @@ describe('寒冷・凍結とスキルの細部', () => {
   });
 
   it('冑の【灭顶之灾】：攻撃力最高の味方へ弾を撃ち、着弾で周囲をスタン。弾は撃ち落とせて、敵の数には入らない', () => {
-    ENEMIES.test_bomb_boss = { ...ENEMIES.enemy_9013_acstmk, hp: 1e8, attack: undefined };
+    ENEMIES.test_bomb_boss = { ...ENEMIES.enemy_9013_acstmk, hp: 1e8, attack: undefined, summon: undefined };
     setActiveMap('legacy');
     const spec: RoundSpec = { round: 14, levelId: 'test', timeLimit: 40, moveMultiplier: 0.5, spawns: [{ enemy: 'test_bomb_boss', count: 1, interval: 0, delay: 0, spawn: 0 }] };
     // 近距離だけ（飛んでいる弾を落とせない）→ 着弾する
@@ -542,8 +542,52 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r2.total).toBe(1);
   });
 
+  it('冑の【死亡集群】：周期的に無人機を召喚し、無人機は防衛地点へ飛ぶ', () => {
+    ENEMIES.test_summon_boss = { ...ENEMIES.enemy_9013_acstmk, hp: 1e8, attack: undefined, bomb: undefined };
+    setActiveMap('legacy');
+    const spec: RoundSpec = { round: 14, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_summon_boss', count: 1, interval: 0, delay: 0, spawn: 0 }] };
+    const { inputs, globals } = buildSimInputs([{ uid: 1, defId: byProf('defender').id, star: 1, pos: 31, dir: 'right' }], [], {});
+    const r = simulateBattle(inputs, spec, { globals });
+    // 0秒・50秒に召喚。近距離だけでは落とせず突破される
+    expect(r.total).toBe(3);
+    expect(r.leaks.some((l) => l.key === 'enemy_1005_yokai')).toBe(true);
+  });
+
+  it('手下は周期的に攻撃力が最も低い味方へ突進して周囲をスタンさせ、突進中に何度も攻撃されると撃ち落とされる', () => {
+    ENEMIES.test_boss3 = { ...ENEMIES.enemy_9013_acstmk_2, hp: 1e8, attack: undefined, summon: undefined, bomb: undefined };
+    ENEMIES.test_diver = { ...ENEMIES.enemy_9014_acstma, minionOf: 'test_boss3', attack: undefined, dive: { ...ENEMIES.enemy_9014_acstma.dive!, init: 2 } };
+    setActiveMap('legacy');
+    const spec: RoundSpec = {
+      round: 15,
+      levelId: 'test',
+      timeLimit: 40,
+      moveMultiplier: 0.5,
+      spawns: [
+        { enemy: 'test_boss3', count: 1, interval: 0, delay: 0, spawn: 0 },
+        { enemy: 'test_diver', count: 1, interval: 0, delay: 0, spawn: 0 },
+      ],
+    };
+    // 近距離だけ：突進は着弾する
+    const a = buildSimInputs([{ uid: 1, defId: byProf('defender').id, star: 1, pos: 31, dir: 'right' }], [], {});
+    const r1 = simulateBattle(a.inputs, spec, { globals: a.globals, record: true });
+    expect((r1.fx ?? []).filter((f) => f[1] === 7).length).toBeGreaterThan(0);
+    // 狙撃が多数：突進中に撃ち落とされ、地上に落ちて動かなくなる
+    const sn = byProf('sniper').id;
+    const b = buildSimInputs(
+      [
+        { uid: 1, defId: byProf('defender').id, star: 1, pos: 31, dir: 'right' },
+        ...[14, 15, 22, 23, 24].map((pos, i) => ({ uid: 2 + i, defId: sn, star: 2 as const, pos, dir: 'right' as const })),
+      ],
+      [],
+      {},
+    );
+    const r2 = simulateBattle(b.inputs, spec, { globals: b.globals, record: true });
+    const minionDamage = r2.perUnit.reduce((s2, u) => s2 + u.damage, 0);
+    expect(minionDamage).toBeGreaterThan(0);
+  });
+
   it('シークレットコア版の手下は飛び回り、防衛地点に入らず、無敵で、ボスが倒れると消える', () => {
-    ENEMIES.test_boss2 = { ...ENEMIES.enemy_9013_acstmk_2, hp: 3000, def: 0, attack: undefined };
+    ENEMIES.test_boss2 = { ...ENEMIES.enemy_9013_acstmk_2, hp: 3000, def: 0, attack: undefined, summon: undefined, bomb: undefined };
     ENEMIES.test_minion = { ...ENEMIES.enemy_9014_acstma, minionOf: 'test_boss2' };
     setActiveMap('legacy');
     const spec: RoundSpec = {

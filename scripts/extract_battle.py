@@ -220,6 +220,12 @@ def main():
                 sk = next((x for x in (ed.get('skills') or []) if x.get('prefabKey') == '1'), None)
                 if sk:
                     e['bomb'] = {'cooldown': sk['cooldown'], 'init': sk['initCooldown'], 'stun': 2.1, 'dotDps': 400, 'dotDuration': 9.95, 'hits': 8}
+            # 【死亡集群】周期的に無人機を召喚（スキル2：enemy_key の敵。HPはボスの最大HP×hp_ratio と解釈）
+            sk2 = next((x for x in (ed.get('skills') or []) if x.get('prefabKey') == '2'), None)
+            if sk2 and any('死亡集群' in a for a in abilities):
+                sbb = {b['key']: b for b in (sk2.get('blackboard') or [])}
+                if 'enemy_key' in sbb and add_enemy(sbb['enemy_key']['valueStr']):
+                    e['summon'] = {'enemy': sbb['enemy_key']['valueStr'], 'cooldown': sk2['cooldown'], 'init': sk2['initCooldown'], 'hpRatio': sbb.get('hp_ratio', {'value': 0})['value']}
             # 通常攻撃は「ランダムな対象に射線で術ダメージ」
             if 'attack' in e and any('法术' in a for a in abilities[:1]):
                 e['attack']['arts'] = True
@@ -228,6 +234,13 @@ def main():
         if key in BOSS_MINIONS:
             e['roam'] = True
             e['minionOf'] = BOSS_MINIONS[key]
+            # 周期的に攻撃力が最も低い味方へ突っ込んで自爆（スキル1）。突進中は無敵が切れ、hits 回攻撃されると撃ち落とされて地上に落ち、
+            # 受けるダメージが dmgScale 倍になる。撃ち落とされなければ着弾後ボスのそばへ戻る
+            sk = next((x for x in (ed.get('skills') or []) if x.get('prefabKey') == '1'), None)
+            if sk:
+                sbb = {b['key']: b['value'] for b in (sk.get('blackboard') or [])}
+                e['dive'] = {'cooldown': sk['cooldown'], 'init': sk['initCooldown'], 'stun': sbb.get('stun', 10), 'dotDps': sbb.get('dot_damage', 200),
+                             'dotDuration': sbb.get('dot_duration', 10), 'hits': int(sbb.get('max_hit_cnt', 15)), 'dmgScale': sbb.get('damage_scale', 1)}
         # 元素損傷：攻撃時に攻撃力×比率の元素損傷を与える（種類は図鑑の説明から）
         etype = next((ELEMENT_TAGS[tag] for a in abilities for tag in ELEMENT_TAGS if tag in a), None)
         eratio = next((b['value'] for k, b in bb.items() if k.endswith('attack@ep_damage_ratio') or k == 'epdamage.ep_damage_ratio'), None)

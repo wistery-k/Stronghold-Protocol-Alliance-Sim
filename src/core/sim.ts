@@ -456,7 +456,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -557,6 +557,10 @@ const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius:
 const HUNTER_AMMO = 8;
 /** <刺胄之弹>の飛ぶ速さ（マス/秒。本家の値が不明なため仮） */
 const BOMB_SPEED = 1;
+/** ボスの手下が突進する速さ（マス/秒。仮） */
+const DIVE_SPEED = 1;
+/** 撃ち落とされた手下が受けたダメージのうち、ボスにも入る割合（「一定比例」。仮） */
+const MINION_DAMAGE_SHARE = 0.5;
 /** 呪癒師：与ダメージのうち味方の回復に回る割合 */
 const INCANTATION_HEAL = 0.5;
 /** 旋輪射手：旋回投擲物の速度（マス/秒）。射出時15、回収時3.75。手元に戻るまで次の攻撃はできない */
@@ -744,6 +748,13 @@ interface Enemy {
   /** 【灭顶之灾】次に弾を撃つ時刻（ボス）／弾の着弾先と効果（弾） */
   bombAt: number;
   bombTo: { pos: number; stun: number; dotDps: number; dotDuration: number } | null;
+  /** 【死亡集群】次に召喚する時刻 */
+  summonAt: number;
+  /** ボスの手下：飛び回る・突進中・ボスへ戻る・撃ち落とされた。次の突進の時刻と、突進中に受けた攻撃の回数 */
+  minion: 'roam' | 'dive' | 'back' | 'down';
+  diveAt: number;
+  diveTo: number;
+  diveHits: number;
   /** 囚人：拘束中か、拘束中に攻撃した回数 */
   confined: boolean;
   confAttacks: number;
@@ -1172,6 +1183,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       roamTo: null,
       bombAt: input.spec.bomb ? input.spawnAt + input.spec.bomb.init : -1,
       bombTo: null,
+      summonAt: input.spec.summon ? input.spawnAt + input.spec.summon.init : -1,
+      minion: 'roam',
+      diveAt: input.spec.dive ? input.spawnAt + input.spec.dive.init : -1,
+      diveTo: -1,
+      diveHits: 0,
     });
   /** シミュレーター内の決定的な乱数（ボスの攻撃対象・手下の移動先） */
   let seed = 0x2545f491;
@@ -1288,8 +1304,19 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const deal = (u: Runtime, e: Enemy, amount: number) => {
     if (!e.alive || amount <= 0) return;
-    // ボスの手下は無敵
-    if (e.input.spec.roam) return;
+    // ボスの手下は無敵（突進中・撃ち落とされた後を除く）
+    if (e.input.spec.roam) {
+      if (e.minion === 'roam' || e.minion === 'back') return;
+      if (e.minion === 'dive') {
+        // 突進中：一定回数攻撃されると撃ち落とされる
+        if (++e.diveHits >= (e.input.spec.dive?.hits ?? Infinity)) e.minion = 'down';
+      } else {
+        // 撃ち落とされた後：受けるダメージ増加、受けたダメージの一部がボスにも入る
+        amount *= e.input.spec.dive?.dmgScale ?? 1;
+        const boss = enemies.find((b) => b.alive && b.input.key === e.input.spec.minionOf);
+        if (boss) deal(u, boss, amount * MINION_DAMAGE_SHARE);
+      }
+    }
     // 仮想敵：冑：HPが一定割合を下回ると受けるダメージ減少
     const guard = e.input.spec.lowHpGuard;
     if (guard && e.hp / e.input.spec.hp < guard.ratio) amount *= guard.scale;
@@ -1379,7 +1406,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
 
   const enemyTile = (e: Enemy) => cellPos(Math.round(e.x), Math.round(e.y));
-  const remaining = (e: Enemy) => (e.input.path ? e.input.path.length - 1 - e.d : 0);
+  /** 飛行中か（撃ち落とされたボスの手下は地上扱い） */
+  const isFlying = (e: Enemy) => !!e.input.spec.flying && e.minion !== 'down';
+  const remaining = (e: Enemy) => {
+    const sp = e.input.spec;
+    // 経路を進まない敵（大型のボス・飛び回る手下・弾）は防衛地点までの直線距離
+    if (sp.large || sp.roam || sp.projectile) return Math.hypot(e.x - cellX(GOAL), e.y - cellY(GOAL));
+    return e.input.path ? e.input.path.length - 1 - e.d : 0;
+  };
 
   /** 攻撃範囲内で狙える敵（優先順） */
   const targetsInRange = (u: Runtime, skillActive: boolean): Enemy[] => {
@@ -1387,11 +1421,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const list = enemies.filter((e) => {
       if (!e.alive) return false;
       if (!field) return true;
-      if (e.input.spec.flying && u.melee) return false;
+      if (isFlying(e) && u.melee) return false;
       // 隠匿：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
       if (isStealthed(e)) return false;
-      // ボスの手下は無敵（攻撃の対象にならない）
-      if (e.input.spec.roam) return false;
+      // ボスの手下は無敵（攻撃の対象にならない。突進中・撃ち落とされた後は狙える）
+      if (e.input.spec.roam && (e.minion === 'roam' || e.minion === 'back')) return false;
       // 睡眠中の敵は狙えない（ティティの素質は例外）
       if (asleep(e) && cid(u) !== TITI) return false;
       // 近距離は、範囲外でもブロックしている敵を攻撃できる
@@ -2701,17 +2735,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     // 着弾：目標と周囲8マスの味方をスタンさせ、毎秒物理ダメージ
     e.alive = false;
-    emit([7, Math.round(tx * 100), Math.round(ty * 100), Math.round(to.stun * 10)]);
-    for (const u of rt) {
-      if (!u.alive || u.input.pos === undefined) continue;
-      if (Math.abs(cellX(u.input.pos) - tx) > 1 || Math.abs(cellY(u.input.pos) - ty) > 1) continue;
-      u.stunUntil = Math.max(u.stunUntil, t + to.stun);
-      u.dotUntil = t + to.dotDuration;
-      u.dotDps = to.dotDps;
-      for (const b of u.blocked) b.blockedBy = null;
-      u.blocked = [];
-      onSleepStun(u.input.pos);
-    }
+    blast(to.pos, to.stun, to.dotDps, to.dotDuration);
   };
   const tickBossSkills = () => {
     for (const e of enemies) {
@@ -2719,11 +2743,79 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       fireBombs(e);
       e.bombAt = t + e.input.spec.bomb.cooldown;
     }
+    // 【死亡集群】無人機を召喚（上の出現地点から防衛地点へ飛ぶ）
+    for (const e of enemies) {
+      const sm = e.input.spec.summon;
+      if (!e.alive || !sm || e.summonAt < 0 || t < e.summonAt) continue;
+      e.summonAt = t + sm.cooldown;
+      const base = ENEMIES[sm.enemy];
+      if (!base) continue;
+      const spec = { ...scaledEnemy(base), hp: Math.round(e.input.spec.hp * sm.hpRatio) || base.hp };
+      const ne = newEnemy({ key: sm.enemy, spec, spawnAt: t, path: ENEMY_PATHS[0] ?? null }, enemies.length + 1);
+      ne.spawned = true;
+      ne.alive = true;
+      enemies.push(ne);
+    }
     // スタン中の毎秒ダメージ
     for (const u of rt) if (u.alive && t < u.dotUntil) takeDamage(u, mitigate(u, u.dotDps, false) * dt);
   };
 
+  /** 爆発（弾・手下の突進）：中心と周囲8マスの味方をスタンさせ、継続ダメージ */
+  const blast = (pos: number, stun: number, dotDps: number, dotDuration: number) => {
+    const tx = cellX(pos);
+    const ty = cellY(pos);
+    emit([7, Math.round(tx * 100), Math.round(ty * 100), Math.round(stun * 10)]);
+    for (const u of rt) {
+      if (!u.alive || u.input.pos === undefined) continue;
+      if (Math.abs(cellX(u.input.pos) - tx) > 1 || Math.abs(cellY(u.input.pos) - ty) > 1) continue;
+      u.stunUntil = Math.max(u.stunUntil, t + stun);
+      u.dotUntil = t + dotDuration;
+      u.dotDps = dotDps;
+      for (const b of u.blocked) b.blockedBy = null;
+      u.blocked = [];
+      onSleepStun(u.input.pos);
+    }
+  };
+  const flyTo = (e: Enemy, tx: number, ty: number, speed: number): boolean => {
+    const dist = Math.hypot(tx - e.x, ty - e.y);
+    const step = speed * dt;
+    if (dist <= step) {
+      e.x = tx;
+      e.y = ty;
+      return true;
+    }
+    e.x += ((tx - e.x) / dist) * step;
+    e.y += ((ty - e.y) / dist) * step;
+    return false;
+  };
   const roam = (e: Enemy) => {
+    const dv = e.input.spec.dive;
+    if (e.minion === 'down') return;
+    if (e.minion === 'roam' && dv && e.diveAt >= 0 && t >= e.diveAt) {
+      // 攻撃力が最も低い味方へ突進
+      const target = rt
+        .filter((u) => u.alive && u.input.pos !== undefined)
+        .sort((x, y) => baseAtk(x.input.def, x.input.star, x.input.mods) - baseAtk(y.input.def, y.input.star, y.input.mods))[0];
+      e.diveAt = t + dv.cooldown;
+      if (target) {
+        e.minion = 'dive';
+        e.diveTo = target.input.pos!;
+        e.diveHits = 0;
+      }
+    }
+    if (e.minion === 'dive') {
+      if (flyTo(e, cellX(e.diveTo), cellY(e.diveTo), DIVE_SPEED)) {
+        blast(e.diveTo, dv!.stun, dv!.dotDps, dv!.dotDuration);
+        e.minion = 'back';
+      }
+      return;
+    }
+    if (e.minion === 'back') {
+      if (flyTo(e, BOSS_CENTER.x, BOSS_CENTER.y - 1, DIVE_SPEED)) {
+        e.minion = 'roam';
+        e.roamTo = null;
+      } else return;
+    }
     if (!e.roamTo) {
       // 出現位置：ボスのそば
       e.x = BOSS_CENTER.x;
