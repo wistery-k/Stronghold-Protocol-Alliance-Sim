@@ -44,8 +44,13 @@ export interface EnemySpec {
   liberty?: { times: number; confAspd: number; confDef: number; atk: number; defPen: number; res: number; regen: number; freeAll: boolean };
   /** 攻撃時に攻撃力×ratio の元素損傷を与える */
   element?: { type: ElementType; ratio: number };
-  /** 攻撃。近接はブロックしている相手を、遠距離は範囲内の相手を攻撃する。無ければ攻撃しない */
-  attack?: { kind: 'melee' | 'ranged'; atk: number; interval: number; range: number; arts: boolean };
+  /**
+   * 攻撃。近接はブロックしている相手を、遠距離は範囲内の相手を攻撃する。無ければ攻撃しない。
+   * aura：通常攻撃をせず、範囲内の味方全員に攻撃し続ける（換気口の上の味方は対象外。ブロックされても続ける）
+   */
+  attack?: { kind: 'melee' | 'ranged'; atk: number; interval: number; range: number; arts: boolean; aura?: boolean };
+  /** 抵抗：寒冷・凍結などの異常状態の時間がこの割合だけ短くなる */
+  statusResist?: number;
 }
 
 /** 元素損傷の種類：灼燃・神経・侵蝕・凋亡（壊死） */

@@ -198,9 +198,15 @@ def main():
             }
         # 元素損傷：攻撃時に攻撃力×比率の元素損傷を与える（種類は図鑑の説明から）
         etype = next((ELEMENT_TAGS[tag] for a in abilities for tag in ELEMENT_TAGS if tag in a), None)
-        eratio = next((b['value'] for k, b in bb.items() if k.endswith('attack@ep_damage_ratio')), None)
+        eratio = next((b['value'] for k, b in bb.items() if k.endswith('attack@ep_damage_ratio') or k == 'epdamage.ep_damage_ratio'), None)
         if etype and eratio and 'attack' in e:
             e['element'] = {'type': etype, 'ratio': eratio}
+        # 周囲の味方全員に攻撃し続ける（深溟のミキサーなど）
+        if 'attack' in e and any(a.startswith('持续对周围造成') for a in abilities):
+            e['attack']['aura'] = True
+        # 抵抗：異常状態（寒冷・凍結など）の時間が短くなる
+        if 'buff.one_minus_status_resistance' in bb:
+            e['statusResist'] = -bb['buff.one_minus_status_resistance']['value']
         # 隠匿（ブロックされるまで狙えない）
         if abilities and abilities[0].startswith('<$ba.invisible>'):
             e['stealth'] = True

@@ -138,6 +138,8 @@ function enemyBadges(e: EnemySpec) {
     const p = e.deathPollution;
     b('汚染', `倒れると半径${p.radius}マスに汚染秽蝕を${p.duration}秒残す（範囲内の味方は毎秒HPを失う：HP50%超で${p.high}、以下で${p.low}）`, 'sp');
   }
+  if (e.attack?.aura) b('周囲攻撃', `通常攻撃をせず、半径${e.attack.range}マスの味方全員に${e.attack.interval}秒ごとに${e.attack.arts ? '術' : '物理'}ダメージ${e.element ? 'と元素損傷' : ''}を与え続ける（換気口の上の味方は対象外）`, 'sp');
+  if (e.statusResist) b('抵抗', `寒冷・凍結の時間が${Math.round(e.statusResist * 100)}%短くなる`, 'sp');
   if (e.liberty) {
     const l = e.liberty;
     const freed = [

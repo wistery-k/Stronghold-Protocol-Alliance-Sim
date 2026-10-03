@@ -438,7 +438,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -974,6 +974,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
   const applyCold = (e: Enemy, seconds: number) => {
+    // 抵抗：異常状態の時間が短くなる
+    seconds *= 1 - (e.input.spec.statusResist ?? 0);
     if (!e.alive || seconds <= 0 || isFrozen(e)) return;
     if (t < e.coldUntil) {
       // 寒冷中に再び寒冷になると凍結。凍結時間は、残っていた寒冷と今回の寒冷の長い方
@@ -2444,6 +2446,19 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         // 寒冷中は攻撃速度が下がる。拘束中の囚人も攻撃速度が下がる
         const conf = lib && e.confined ? Math.max(0.1, (100 + lib.confAspd) / 100) : 1;
         e.atkTimer -= (t < e.coldUntil ? (dt * (100 - COLD_ATTACK_SPEED)) / 100 : dt) * tileEnemyAtkRate(e) * conf;
+        continue;
+      }
+      if (a.aura) {
+        // 周囲の味方全員に攻撃し続ける（換気口の上の味方は対象外）
+        const free = lib && !e.confined;
+        for (const u of rt) {
+          if (!u.alive || u.input.pos === undefined || unitTile(u) === 'smog') continue;
+          if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
+          emit([3, e.id, u.input.uid, a.arts ? 1 : 0]);
+          hurt(u, enemyAtk(e, a.atk * (free ? 1 + lib.atk : 1)) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
+          if (e.input.spec.element) addOpElement(u, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
+        }
+        e.atkTimer = a.interval;
         continue;
       }
       let target: Runtime | undefined;

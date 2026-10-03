@@ -392,6 +392,27 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(conf.perUnit[0].taken < plain5.perUnit[0].taken).toBe(true);
   });
 
+  it('深溟のミキサー：通常攻撃せず周囲の味方全員に術ダメージと神経損傷。換気口の上の味方は対象外', () => {
+    const mixer = ENEMIES.enemy_1234_dsubrl;
+    expect(mixer.attack?.aura).toBe(true);
+    expect(mixer.element?.type).toBe('neural');
+    ENEMIES.test_mixer = { ...mixer, hp: 1e9 };
+    setActiveMap('m7');
+    const sniper = byProf('sniper').id;
+    // 4 は換気口（上ルート上）、13 はその下の地上
+    const board: OwnedUnit[] = [
+      { uid: 1, defId: sniper, star: 1, pos: 4, dir: 'right' },
+      { uid: 2, defId: sniper, star: 1, pos: 13, dir: 'right' },
+    ];
+    const { inputs, globals } = buildSimInputs(board, [], {});
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 20, moveMultiplier: 0.5, spawns: [{ enemy: 'test_mixer', count: 1, interval: 0, delay: 0, spawn: 0 }] };
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    const taken = (uid: number) => r.perUnit.find((u) => u.uid === uid)!.taken;
+    expect(taken(1)).toBe(0);
+    expect(taken(2)).toBeGreaterThan(0);
+    setActiveMap('legacy');
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか

@@ -3742,8 +3742,14 @@
     "atk": 140,
     "interval": 1.0,
     "range": 1.6,
-    "arts": true
-   }
+    "arts": true,
+    "aura": true
+   },
+   "element": {
+    "type": "neural",
+    "ratio": 0.05
+   },
+   "statusResist": 0.5
   },
   "enemy_1433_dsbasi": {
    "name": "単核のプレデター",
@@ -3880,8 +3886,14 @@
     "atk": 160,
     "interval": 1.0,
     "range": 1.6,
-    "arts": true
-   }
+    "arts": true,
+    "aura": true
+   },
+   "element": {
+    "type": "neural",
+    "ratio": 0.05
+   },
+   "statusResist": 0.5
   },
   "enemy_10122_uacann_2": {
    "name": "集团军重型火炮",
