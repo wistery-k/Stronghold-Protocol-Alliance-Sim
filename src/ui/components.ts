@@ -135,8 +135,8 @@ export function alliancePanel(statuses: AllianceStatus[], stacks: Partial<Record
             { class: 'thresholds' },
             def.thresholds.map((t, i) => h('span', { class: st.count >= t ? 'th on' : 'th' }, t, i < def.thresholds.length - 1 ? '/' : '')),
           ),
-          h('span', { class: 'stack', title: '加算数' }, `加算数 ${stack}`),
-          h('span', { class: 'count' }, `${st.count}人`),
+          def.noStack ? null : h('span', { class: 'stack', title: '加算数' }, `加算数 ${stack}`),
+          h('span', { class: 'count', title: def.countMode === 'elite' ? '盤面の精鋭オペレーターの人数' : undefined }, `${st.count}人`),
         ),
         h(
           'ul',

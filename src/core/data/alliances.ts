@@ -4,7 +4,7 @@ import type { AllianceId, CoreAllianceId } from '../types';
 // 盟約の名称・発動人数・効果説明。数値は本家データ（gamedata.json の bonds）から読む。
 // 効果のうち戦闘に反映しているものは alliance.ts で計算している。
 
-export type CountMode = 'board' | 'boardAndBench' | 'exactlyOne';
+export type CountMode = 'board' | 'boardAndBench' | 'exactlyOne' | 'elite';
 
 export interface AllianceTier {
   /** 必要人数 */
@@ -22,6 +22,8 @@ export interface AllianceDef {
   countMode: CountMode;
   /** 加算数 stacks のときの効果説明（段階ごと） */
   describe: (stacks: number) => AllianceTier[];
+  /** 加算数を持たない（秘技） */
+  noStack?: boolean;
   /** 加算数による追加効果（○層到達で〜） */
   stackMilestones?: (stacks: number) => { at: number; text: string; reached: boolean }[];
 }
@@ -307,6 +309,18 @@ export const ALLIANCES: Record<AllianceId, AllianceDef> = {
     countMode: 'exactlyOne',
     describe: () => [
       { count: 1, text: `盤面の【孤高】がちょうど1名なら、その攻撃力とHP+${pct(v('solo', 'atk'))}、初期SP+${v('solo', 'sp')}（2名以上で無効）` },
+    ],
+  },
+  sunt: {
+    id: 'sunt',
+    name: '秘技',
+    kind: 'extra',
+    thresholds: [v('sunt', 'power_char_cnt') || 2, v('sunt', 'ex_char_cnt') || 5],
+    countMode: 'elite',
+    noStack: true,
+    describe: () => [
+      { count: v('sunt', 'power_char_cnt') || 2, text: `盤面に精鋭のオペレーターが2名以上いると、精鋭のオペレーターの攻撃力+${pct(v('sunt', 'power_atk'))}` },
+      { count: v('sunt', 'ex_char_cnt') || 5, text: `5名以上いると、さらに精鋭のオペレーターのスキルのSP消費-${pct(1 - v('sunt', 'sp_ratio'))}` },
     ],
   },
 };

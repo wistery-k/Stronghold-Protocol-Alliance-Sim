@@ -611,3 +611,40 @@ describe('シヴィライト・エテルナの堅守特性', () => {
     expect(run(true) - run(false)).toBe(1);
   });
 });
+
+describe('秘技', () => {
+  it('盤面の精鋭2名で精鋭の攻撃力+30%、5名でSP消費-30%（盟約は問わない・加算数は持たない）', () => {
+    const names = ['グム', 'ヴァンデラ', 'ミント', 'インサイダー', 'エステル', 'パピルス'];
+    const board = (elites: number) => names.map((n, i) => ({ ...ou(i + 1, n, i < elites ? 2 : 1), pos: 27 + i }));
+    const st = (elites: number) => evaluateAlliances(board(elites)).find((a) => a.id === 'sunt');
+    expect(st(1)?.level ?? 0).toBe(0);
+    expect(st(2)!.level).toBe(1);
+    expect(st(5)!.level).toBe(2);
+    const two = battleSetup(board(2), [], {});
+    expect(two.mods.get(1)?.atkPct ?? 0).toBeGreaterThanOrEqual(0.3);
+    expect((two.mods.get(6)?.atkPct ?? 0) < 0.3).toBe(true);
+    const five = battleSetup(board(5), [], {});
+    expect(five.mods.get(1)?.spCostCut).toBeCloseTo(0.3);
+    expect(five.mods.get(6)?.spCostCut ?? 0).toBe(0);
+    const s = createGame(1, { mapId: 'legacy' });
+    addStacks(s, 'sunt', 5);
+    expect(s.stacks.sunt ?? 0).toBe(0);
+  });
+});
+
+describe('ラウンド14・15', () => {
+  it('〈配置時〉の加算数は無効（準備フェーズの特性は働く）', () => {
+    const run = (round: number) => {
+      const s = createGame(1, { mapId: 'legacy' });
+      s.round = round;
+      s.board = [{ ...ou(1, 'グラベル'), pos: 31 }, { ...ou(2, 'ムリナール'), pos: 32 }, { ...ou(3, 'アッシュロック'), pos: 33 }];
+      s.bench = s.bench.map(() => null);
+      s.stacks = {};
+      onDeployStacks(s);
+      return s.stacks.kazimierz ?? 0;
+    };
+    expect(run(13)).toBe(1);
+    expect(run(14)).toBe(0);
+    expect(run(15)).toBe(0);
+  });
+});

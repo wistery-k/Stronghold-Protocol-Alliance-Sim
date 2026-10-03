@@ -9,7 +9,7 @@ import { ALLIANCES, v } from './data/alliances';
 import { UNITS, getUnit, unitState } from './data/units';
 import type { GameState } from './game';
 import { isUnitEntry, type AllianceId, type GarrisonData, type OwnedUnit, type Tier } from './types';
-import { MAX_STACKS } from './rules';
+import { MAX_STACKS, NO_BATTLE_STACKS_FROM_ROUND } from './rules';
 
 // 堅守特性のうち、準備フェーズ側（獲得時・準備フェーズ開始/終了時・売却時・更新時）の処理
 
@@ -25,7 +25,7 @@ export function currentActive(state: GameState): Set<AllianceId> {
 
 /** 加算数を増やし、加算数に応じた報酬（先見・奇跡）を処理する */
 export function addStacks(state: GameState, bond: AllianceId, n: number, active?: Set<AllianceId>): void {
-  if (n <= 0) return;
+  if (n <= 0 || ALLIANCES[bond]?.noStack) return;
   state.stacks[bond] = Math.min(MAX_STACKS, (state.stacks[bond] ?? 0) + n);
   stackRewards(state, active ?? currentActive(state));
 }
@@ -79,6 +79,7 @@ export function gainTriggerTimes(state: GameState, active: Set<AllianceId>): num
 function mostStackedActive(state: GameState, active: Set<AllianceId>): AllianceId | null {
   let best: AllianceId | null = null;
   for (const id of active) {
+    if (ALLIANCES[id]?.noStack) continue;
     if (best === null || (state.stacks[id] ?? 0) > (state.stacks[best] ?? 0)) best = id;
   }
   return best;
@@ -325,6 +326,7 @@ export function deputBonus(state: GameState): void {
 
 /** 〈配置時〉〈戦闘開始時〉に加算数を得る特性と、エーギルの捕食による加算数（戦闘前に反映） */
 export function onDeployStacks(state: GameState): void {
+  const battleStacks = state.round < NO_BATTLE_STACKS_FROM_ROUND;
   const statuses = evaluateAlliances(state.board, benchUnits(state), state.banned);
   const active = activeAllianceIds(statuses);
   const egir = statuses.find((s) => s.id === 'egir');
@@ -350,6 +352,8 @@ export function onDeployStacks(state: GameState): void {
     for (const g of garrisons.get(o.uid) ?? []) {
       const bb = g.blackboard;
       if (g.event !== 'IN_BATTLE' || bb.key !== 'act2autochess_gar_event_onstart' || bb.bond_add_type !== 'by_count') continue;
+      // ラウンド14・15は戦闘中の加算数が無効（配置時も戦闘中に含む）
+      if (!battleStacks) continue;
       const bonds = bb.bond_type === 'bond_self' ? def.bonds : bondList(bb.bond_id);
       const count = Math.min(Number(bb.bond_add_count ?? 0), Number(bb.max_add_count_per_battle ?? Infinity));
       const bonus = bonusGain.get(o.uid) ?? 0;

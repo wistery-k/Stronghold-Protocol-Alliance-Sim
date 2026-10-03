@@ -6,6 +6,7 @@ import { UNITS, getUnit, unitState } from './data/units';
 import { addStacks, currentActive, triggerGarrisons } from './garrison';
 import { gainItem, gainRandomItem, returnItems, unitAvailable } from './items';
 import { ownedBonds } from './alliance';
+import { ALLIANCES } from './data/alliances';
 import { TIER_ODDS, roundIncome } from './rules';
 import type { GameState } from './game';
 import type { Rng } from './rng';
@@ -272,7 +273,7 @@ export function bandRoundStart(state: GameState): void {
       break;
     case 'yu':
       if (round === 8) {
-        const active = [...currentActive(state)];
+        const active = [...currentActive(state)].filter((b) => !ALLIANCES[b]?.noStack);
         const n = active.length === 1 ? 36 : 12;
         for (const b of active) addStacks(state, b, n);
         if (active.length) notify(state, `${label(state)}発動中の盟約${active.length}つの加算数+${n}`);

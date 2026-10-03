@@ -54,6 +54,12 @@ export function evaluateAlliances(board: OwnedUnit[], bench: OwnedUnit[] = [], b
   const counts = new Map<AllianceId, { count: number; members: OwnedUnit[] }>();
   for (const id of ALLIANCE_IDS) {
     const def = ALLIANCES[id];
+    // 秘技：盤面の精鋭オペレーターの人数（盟約に関係なく、すべてのオペレーターが数に入る）
+    if (def.countMode === 'elite') {
+      const elites = board.filter((o) => o.star === 2);
+      counts.set(id, { count: elites.length, members: elites });
+      continue;
+    }
     const onBoard = board.filter((o) => ownedBonds(o).includes(id));
     const pool = def.countMode === 'boardAndBench' ? [...onBoard, ...bench.filter((o) => ownedBonds(o).includes(id))] : onBoard;
     counts.set(id, { count: distinctCount(pool), members: onBoard });
@@ -447,6 +453,9 @@ export function battleSetup(
   }
   // 孤高
   if (lv('solo') >= 1) apply(members('solo'), { atkPct: v('solo', 'atk'), startSp: v('solo', 'sp'), hpPct: v('solo', 'max_hp') });
+  // 秘技：精鋭2名で精鋭の攻撃力+30%、5名でさらにSP消費-30%
+  if (lv('sunt') >= 1) apply(members('sunt'), { atkPct: v('sunt', 'power_atk') });
+  if (lv('sunt') >= 2) apply(members('sunt'), { spCostCut: 1 - v('sunt', 'sp_ratio') });
 
   // 耐久系の盟約
   if (lv('stead') >= 1) apply(all, { hpPct: v('stead', 'base_max_hp') + v('stead', 'max_hp_per_stack') * sk('stead') });

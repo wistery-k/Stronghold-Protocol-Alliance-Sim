@@ -61,6 +61,7 @@ import {
   BENCH_SIZE,
   CHOICE_LOCK_MESSAGE,
   MAX_ROUND,
+  NO_BATTLE_STACKS_FROM_ROUND,
   POOL_COPIES,
   REFRESH_COST,
   START_LIFE,
@@ -208,7 +209,7 @@ export function roundSpecOf(state: Pick<GameState, 'seed' | 'enemyTypes'> & { bo
 export const BAN_CORE_COUNT = 3;
 export const BAN_EXTRA_COUNT = 4;
 /** BANの対象にならない追加盟約（本家データで出現の重みが0のもの） */
-const BAN_EXEMPT: AllianceId[] = ['invest', 'mani', 'empty'];
+const BAN_EXEMPT: AllianceId[] = ['invest', 'mani', 'empty', 'sunt'];
 
 export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: GameOptions = {}): GameState {
   const pool: Record<string, number> = {};
@@ -718,10 +719,15 @@ function resolveBattle(state: GameState): void {
   const sim = simulateBattle(inputs, spec, { globals, activeAlliances: activeAllianceIds(statuses), stacks: state.stacks, record: true });
   const afterPrep = { ...state.stacks };
   const active = activeAllianceIds(evaluateAlliances(state.board, bench, state.banned));
-  for (const [b, n] of Object.entries(sim.stackGains) as [AllianceId, number][]) addStacks(state, b, n, active);
-  // 戦闘中に堅守特性で得た加算数をログに出す（ユニット・きっかけごと）
-  for (const src of sim.stackSources ?? []) {
-    notify(state, `戦闘中：${src.name}（${src.cause}）：【${ALLIANCES[src.bond].name}】+${src.amount}`);
+  if (state.round >= NO_BATTLE_STACKS_FROM_ROUND) {
+    // ラウンド14・15は戦闘中に堅守特性で得る加算数が無効
+    if ((sim.stackSources ?? []).length) notify(state, `ラウンド${NO_BATTLE_STACKS_FROM_ROUND}以降は、戦闘中に堅守特性で得る加算数は無効`);
+  } else {
+    for (const [b, n] of Object.entries(sim.stackGains) as [AllianceId, number][]) addStacks(state, b, n, active);
+    // 戦闘中に堅守特性で得た加算数をログに出す（ユニット・きっかけごと）
+    for (const src of sim.stackSources ?? []) {
+      notify(state, `戦闘中：${src.name}（${src.cause}）：【${ALLIANCES[src.bond].name}】+${src.amount}`);
+    }
   }
   if (sim.sargon && sim.sargon.max > 0) {
     const sg = sim.sargon;

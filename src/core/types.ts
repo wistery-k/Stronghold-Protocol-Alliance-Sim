@@ -41,7 +41,8 @@ export type ExtraAllianceId =
   | 'indom'
   | 'mani'
   | 'empty'
-  | 'solo';
+  | 'solo'
+  | 'sunt';
 export type AllianceId = CoreAllianceId | ExtraAllianceId;
 
 export interface UnitStats {
@@ -126,6 +127,8 @@ export interface Modifier {
   aspd?: number;
   spRegen?: number;
   startSp?: number;
+  /** スキルのSP消費の減少（割合、加算） */
+  spCostCut?: number;
   /** 防御力無視（割合） */
   defIgnorePct?: number;
   /** 術耐性無視（割合） */

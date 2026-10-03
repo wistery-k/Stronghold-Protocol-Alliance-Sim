@@ -3,6 +3,7 @@ import { ENEMY_PATHS, canBlockAt, cellPos, cellX, cellY, rangeCells, tileAt, DEF
 import { ENEMIES, rangeGrid, unitRangeIds, type ElementType, type EnemySpec, type RoundSpec } from './data/battle';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE, ENEMY_SPEED_SCALE } from './rules';
 import { unitState } from './data/units';
+import { ALLIANCES } from './data/alliances';
 import { ABYSSAL, talentBB } from './talents';
 import type { AllianceId, DamageType, Direction, EnemyDef, EnemyPhase, GarrisonData, Modifier, SkillData, Star, UnitDef } from './types';
 
@@ -865,7 +866,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const cid = (u: Runtime) => u.input.def.charId;
   const rt: Runtime[] = units.map((input) => {
     const st = unitState(input.def, input.star);
-    const skill = parseSkill(st.skill);
+    const skill0 = parseSkill(st.skill);
+    // 秘技Lv2：SP消費の減少
+    const skill = input.mods.spCostCut ? { ...skill0, spCost: skill0.spCost * Math.max(0, 1 - input.mods.spCostCut) } : skill0;
     const ids = unitRangeIds(input.def.id, input.star);
     const blocker = field && input.pos !== undefined && canBlockAt(input.pos) && input.def.damageType !== 'heal';
     return {
@@ -1156,8 +1159,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (amount <= 0) return;
     const targets: AllianceId[] =
       ev.bonds === 'maxstack'
-        ? [...active].sort((a, b) => (stacks[b] ?? 0) - (stacks[a] ?? 0)).slice(0, 1)
-        : ev.bonds.filter((b) => active.has(b));
+        ? [...active].filter((b) => !ALLIANCES[b]?.noStack).sort((a, b) => (stacks[b] ?? 0) - (stacks[a] ?? 0)).slice(0, 1)
+        : ev.bonds.filter((b) => active.has(b) && !ALLIANCES[b]?.noStack);
     if (targets.length === 0) return;
     ev.gained += amount;
     const bonus = ev.bonus * times;

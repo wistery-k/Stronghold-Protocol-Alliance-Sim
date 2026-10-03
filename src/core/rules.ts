@@ -5,6 +5,8 @@ import type { Tier } from './types';
 // 無いもの（確率・プール枚数など）は妥当そうな値を定めている。
 
 export const MAX_ROUND = 15;
+/** このラウンド以降は、戦闘中（配置時を含む）に堅守特性で得る加算数が無効 */
+export const NO_BATTLE_STACKS_FROM_ROUND = 14;
 /** 盟約加算数の上限 */
 export const MAX_STACKS = 999;
 export const START_LIFE = 20;
