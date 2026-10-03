@@ -100,6 +100,8 @@ export interface ReplayFrame {
   sc?: number[];
   /** ステルス中のオペレーターの uid */
   st?: number[];
+  /** 荒蕪ラップランドS3のザーロ [uid, x×100, y×100, 取り付いていれば1] */
+  zr?: [number, number, number, number][];
   /** オペレーターの元素損傷 [uid, 種類（0灼燃・1神経・2侵蝕・3壊死）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1以上溜まっているものだけ */
   ue?: [number, number, number][];
 }
@@ -115,6 +117,7 @@ export interface ReplayFrame {
  * - 6 敵の汚染秽蝕：[敵id, x×100, y×100, 半径×100, 秒数×10]
  * - 7 ボスの弾の着弾（周囲8マスをスタン）：[x×100, y×100, スタン秒数×10]
  * - 8 剣雨の命中（術ダメージとスタン）：[uid, x×100, y×100]
+ * - 9 ザーロの1秒ごとの術ダメージ：[uid, x×100, y×100]
  */
 export type FxEvent = number[];
 
@@ -571,6 +574,12 @@ const HUNTER_AMMO = 8;
  * 発生回数を「試行回数×確率」の四捨五入にする（0から始めると切り捨てになり、短い戦闘ほど損をする）
  */
 const ACC_START = 0.5;
+/** 浮遊ユニット（遊撃術師）：同じ敵を連続で攻撃するたびに倍率が上がる（初期20%、1回ごとに+15%、上限110%） */
+const FUNNEL = { init: 0.2, delta: 0.15, max: 1.1 };
+/** 荒蕪ラップランド */
+const WHITW2 = 'char_1038_whitw2';
+/** ザーロ（S3の特殊形態の浮遊ユニット）の飛ぶ速さ（マス/秒。本家の値が不明なため仮） */
+const ZARO_SPEED = 2;
 /** <刺胄之弹>の飛ぶ速さ（マス/秒。本家の値が不明なため仮） */
 const BOMB_SPEED = 1;
 /** ボスの手下が突進する速さ（マス/秒。仮） */
@@ -841,6 +850,14 @@ interface Runtime {
   sleepUntil: number;
   /** 血掟テキサス：次の剣雨までの時間 */
   swordTimer: number;
+  /** 浮遊ユニット：連続で攻撃している敵と回数 */
+  funnelTarget: Enemy | null;
+  funnelStack: number;
+  /** 戦闘中の攻撃力（スキル・補正込み。ザーロのダメージに使う） */
+  curAtk: number;
+  /** 荒蕪ラップランドS3のザーロ（位置・追っている敵・取り付いたか）と、次のダメージまでの時間 */
+  zaros: { x: number; y: number; target: Enemy | null; attached: boolean }[];
+  zaroTimer: number;
   /** スタン（<刺胄之弹>）と、毎秒の物理ダメージ */
   stunUntil: number;
   dotUntil: number;
@@ -965,6 +982,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       redistTimer: 0,
       sleepUntil: -1,
       swordTimer: 0,
+      funnelTarget: null,
+      funnelStack: 0,
+      curAtk: 0,
+      zaros: [],
+      zaroTimer: 0,
       stunUntil: -1,
       dotUntil: -1,
       dotDps: 0,
@@ -1833,6 +1855,89 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
     }
   };
+  // ---- 浮遊ユニット（遊撃術師）と荒蕪ラップランドS3「ディザストロ・フィナーレ」 ----
+  /** 荒蕪ラップランドの素質「群狼の統率者」：配置から interval 秒ごとに段階が上がる（1: 与ダメージ上限+10%、2: 特殊能力無効化、3: 数+1） */
+  const whitw2Stage = (u: Runtime) =>
+    cid(u) === WHITW2 && u.tb[0].interval ? Math.min(3, Math.floor((t - u.ts.deployedAt) / u.tb[0].interval)) : 0;
+  const funnelCount = (u: Runtime, active: boolean) =>
+    1 + (active && !u.skill.passive ? Math.round(u.skill.bb['attack@cnt'] ?? 0) : 0) + (whitw2Stage(u) >= 3 ? 1 : 0);
+  /** 倍率の上限（ロックロックのスキル中は上限が上がる。荒蕪ラップランドの素質で+10%） */
+  const funnelCap = (u: Runtime, active: boolean) =>
+    (active && !u.skill.passive && u.skill.bb.scale ? u.skill.bb.scale : FUNNEL.max) * (whitw2Stage(u) >= 1 ? (u.tb[0].scale ?? 1) : 1);
+  const zaroTargets = () => enemies.filter((e) => e.alive && e.spawned && !isStealthed(e) && !(e.input.spec.roam && (e.minion === 'roam' || e.minion === 'back')));
+  /** ザーロ周囲の敵の移動速度低下 */
+  const zaroSlow = (e: Enemy): number => {
+    for (const u of rt) {
+      if (!u.zaros.length) continue;
+      const r = u.skill.bb['attack@range_radius'] ?? 0.9;
+      if (u.zaros.some((z) => z.attached && Math.hypot(z.x - e.x, z.y - e.y) <= r)) return 1 + (u.skill.bb['attack@move_speed'] ?? 0);
+    }
+    return 1;
+  };
+  const tickZaro = () => {
+    for (const u of rt) {
+      if (cid(u) !== WHITW2) continue;
+      const active = u.alive && u.skillLeft > 0;
+      if (!active) {
+        u.zaros = [];
+        continue;
+      }
+      const bb = u.skill.bb;
+      // スキル開始時：浮遊ユニットの数だけザーロを放つ
+      const n = funnelCount(u, true);
+      while (u.zaros.length < n && u.input.pos !== undefined) {
+        u.zaros.push({ x: cellX(u.input.pos), y: cellY(u.input.pos), target: null, attached: false });
+        u.zaroTimer = 1;
+      }
+      for (const z of u.zaros) {
+        // 目標が倒れたら近い敵を探し直す
+        if (!z.target || !z.target.alive) {
+          z.attached = false;
+          // 他のザーロが追っていない敵を優先（いなければ一番近い敵）
+          const taken = new Set(u.zaros.filter((o) => o !== z && o.target?.alive).map((o) => o.target));
+          const cands = zaroTargets().sort((a, b) => Math.hypot(a.x - z.x, a.y - z.y) - Math.hypot(b.x - z.x, b.y - z.y));
+          z.target = cands.find((e) => !taken.has(e)) ?? cands[0] ?? null;
+        }
+        if (!z.target) continue;
+        if (z.attached) {
+          z.x = z.target.x;
+          z.y = z.target.y;
+          continue;
+        }
+        const dx = z.target.x - z.x;
+        const dy = z.target.y - z.y;
+        const dist = Math.hypot(dx, dy);
+        const step = ZARO_SPEED * dt;
+        if (dist <= step) {
+          // 到達：取り付いて恐怖
+          z.x = z.target.x;
+          z.y = z.target.y;
+          z.attached = true;
+          fearEnemy(z.target, bb['attack@fear'] ?? 0);
+        } else {
+          z.x += (dx / dist) * step;
+          z.y += (dy / dist) * step;
+        }
+      }
+      // 1秒ごと：取り付いたザーロの周囲の敵に術ダメージ（重複不可：1体につき1回）
+      u.zaroTimer -= dt;
+      if (u.zaroTimer > 0) continue;
+      u.zaroTimer += 1;
+      const r = bb['attack@range_radius'] ?? 0.9;
+      const hit = new Set<Enemy>();
+      for (const z of u.zaros) {
+        if (!z.attached) continue;
+        emit([9, u.input.uid, Math.round(z.x * 100), Math.round(z.y * 100)]);
+        for (const e of enemies) if (e.alive && e.spawned && Math.hypot(e.x - z.x, e.y - z.y) <= r) hit.add(e);
+      }
+      for (const e of hit) {
+        deal(u, e, hitDamage(u.curAtk * (bb['attack@magic_atk_scale'] ?? 1), 'arts', effDefense(e), u.input.mods));
+        if (whitw2Stage(u) >= 2) neutralize(e, u.tb[0]['attack@silence_duration'] ?? 2);
+      }
+    }
+  };
+  const zaroFrame = (): [number, number, number, number][] =>
+    rt.flatMap((u) => u.zaros.map((z): [number, number, number, number] => [u.input.uid, Math.round(z.x * 100), Math.round(z.y * 100), z.attached ? 1 : 0]));
   /** 配置時に発動するスキル（ウタゲ：HP減少と効果時間、グラベル：バリア） */
   const onDeployed = (u: Runtime) => {
     const s = u.skill;
@@ -3011,7 +3116,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.defense.res = currentRes(e);
       }
       const path = e.input.path;
-      const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) * tileEnemySpeed(e) : 1) * (e.enraged ? (e.input.spec.enrage?.speedMult ?? 1) : 1);
+      const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) * tileEnemySpeed(e) * zaroSlow(e) : 1) * (e.enraged ? (e.input.spec.enrage?.speedMult ?? 1) : 1);
       if (t < e.fearUntil) {
         // 恐怖：来た道を逃げる（ブロックされない）
         e.d = Math.max(0, e.d - speed * dt);
@@ -3113,6 +3218,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       tickBossSkills();
       tickEnemyStates();
       tickTexas();
+      tickZaro();
       // 【サルゴン】の強化の層数（最大・時間平均）
       if (g.sargon) {
         let cur = 0;
@@ -3198,6 +3304,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         baseAtk(def, star, mods, outerAtkPct + peak + (activeNow && (!PHILAE[def.charId] || u.philaeBoost) ? s.atkPct : 0)) +
         (t < u.inspireUntil ? u.inspireAtk : 0) +
         talentAtkFlat(u);
+      u.curAtk = atk;
       const aspd =
         stats.aspd +
         (mods.aspd ?? 0) +
@@ -3216,7 +3323,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // 陣法術師はスキル中しか攻撃しない
       // ヴィルトゥオーサはスキルでのみ攻撃、フィラエはスキル中は攻撃しない
       const canAttack =
-        !heal && !(def.subProfession === 'phalanx' && !activeNow) && !(field && SKILL_ONLY_ATTACK.has(def.charId)) && !(PHILAE[def.charId] && u.skillLeft > 0);
+        !heal && !(def.subProfession === 'phalanx' && !activeNow) && !(field && SKILL_ONLY_ATTACK.has(def.charId)) && !(PHILAE[def.charId] && u.skillLeft > 0) &&
+        // 荒蕪ラップランドS3：浮遊ユニットはザーロとして戦場を飛び回るので通常攻撃しない
+        !(field && def.charId === WHITW2 && u.skillLeft > 0);
 
       // 医療：治療行動（吟遊者は範囲内の全員を毎秒攻撃力の10%回復）
       if (heal && field) {
@@ -3306,6 +3415,19 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           if (targets.length >= 3 || (inSkill && targets.length >= 2)) emit([2, uid, inSkill ? 1 : 0], `area${uid}`, 0.3);
         }
         const dealtBefore = u.result.damage;
+        if (def.subProfession === 'funnel') {
+          // 浮遊ユニット：各ユニットが対象を攻撃し、同じ敵を連続で攻撃するほど倍率が上がる
+          const [e0, m0] = targets[0];
+          if (u.funnelTarget === e0) u.funnelStack++;
+          else {
+            u.funnelTarget = e0;
+            u.funnelStack = 0;
+          }
+          const fs = Math.min(funnelCap(u, activeNow), FUNNEL.init + FUNNEL.delta * u.funnelStack);
+          const n = funnelCount(u, activeNow);
+          for (let k = 0; k < n; k++) strike(u, e0, atk, fs * m0 * talentScale(u, e0, activeNow));
+          if (whitw2Stage(u) >= 2) neutralize(e0, u.tb[0]['attack@silence_duration'] ?? 2);
+        } else
         for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1) * talentScale(u, e, activeNow));
         if (def.charId === TITI) {
           for (const [e] of targets) {
@@ -3396,6 +3518,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         sg: sargonFrame(),
         sc: siracusaFrame(),
         st: stealthFrame(),
+        zr: zaroFrame(),
         c: Math.floor(cost),
       });
     }
@@ -3416,6 +3539,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       sg: sargonFrame(),
         sc: siracusaFrame(),
         st: stealthFrame(),
+        zr: zaroFrame(),
       c: Math.floor(cost),
     });
   }

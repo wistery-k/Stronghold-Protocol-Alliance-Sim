@@ -357,7 +357,7 @@ export const TALENT_STATUS: Record<string, [TalentImpl, string?][]> = {
   char_4082_qiubai: [['none'], ['none', 'バインドは未再現']],
   char_1047_halo2: [['none', '停頓は未再現'], ['partial', '7秒の滞在は、出現からの時間で近似']],
   char_1014_nearl2: [['none', '配置時の効果は未再現'], ['full']],
-  char_1038_whitw2: [['none'], ['full']],
+  char_1038_whitw2: [['full', '浮遊ユニットの段階強化（上限+10%・特殊能力無効化・数+1）'], ['full']],
   char_4116_blkkgt: [['partial', '確率は期待値。戦慄は未再現'], ['none', '戦慄は未再現']],
   char_1016_agoat2: [['none'], ['full']],
 };

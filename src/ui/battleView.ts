@@ -390,7 +390,7 @@ function enemyRadius(m: { boss: boolean; maxHp: number }): number {
 }
 
 /** 演出の表示時間（秒） */
-const FX_LIFE = [0.18, 0.4, 0.4, 0.3, 0.45, 0, 0, 0, 0.7];
+const FX_LIFE = [0.18, 0.4, 0.4, 0.3, 0.45, 0, 0, 0, 0.7, 0.55];
 const DMG_CLASS = ['phys', 'arts', 'true'];
 
 /**
@@ -511,6 +511,13 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
           nodes.push(s('circle', { cx: p1.x, cy: p1.y, r: 30, class: 'fx-heal-ring', opacity: op }));
           break;
         }
+        case 9: {
+          // ザーロの術ダメージ：広がる輪
+          const x = (ev[3] / 100) * S + S / 2;
+          const y = (ev[4] / 100) * S + S / 2;
+          nodes.push(s('circle', { cx: x, cy: y, r: S * 0.9 * (0.5 + 0.5 * (age / life)), class: 'fx-zaro-pulse', opacity: op }));
+          break;
+        }
         case 8: {
           // 剣雨：上から剣が降り、命中点に星形（スタン）
           const x = (ev[3] / 100) * S + S / 2;
@@ -603,6 +610,28 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   // 演出（攻撃・範囲攻撃・敵の射撃）
   const fxLayer = s('g', { class: 'rp-fx' });
   svg.append(fxLayer);
+  // 荒蕪ラップランドS3のザーロ（狼の頭の形。取り付くと周囲に減速範囲の点線）
+  const zaroLayer = s('g', { class: 'rp-zaros' });
+  svg.append(zaroLayer);
+  const WOLF = '-11,9 -13,-11 -4,-5 0,-9 4,-5 13,-11 11,9 0,14';
+  const drawZaros = (a: NonNullable<BattleResult['frames']>[number], b: NonNullable<BattleResult['frames']>[number], f: number) => {
+    const za = a.zr ?? [];
+    const zb = b.zr ?? [];
+    if (!za.length) {
+      if (zaroLayer.childNodes.length) zaroLayer.replaceChildren();
+      return;
+    }
+    const nodes: SVGElement[] = [];
+    za.forEach((z, i) => {
+      const n = zb[i] && zb[i][0] === z[0] ? zb[i] : z;
+      const x = ((z[1] + (n[1] - z[1]) * f) / 100) * S + S / 2;
+      const y = ((z[2] + (n[2] - z[2]) * f) / 100) * S + S / 2;
+      if (z[3]) nodes.push(s('circle', { cx: x, cy: y, r: S * 0.9, class: 'rp-zaro-aura' }));
+      else nodes.push(s('line', { x1: (z[1] / 100) * S + S / 2, y1: (z[2] / 100) * S + S / 2, x2: x, y2: y, class: 'rp-zaro-trail' }));
+      nodes.push(s('polygon', { points: WOLF, transform: `translate(${x},${y})`, class: `rp-zaro${z[3] ? ' on' : ''}` }));
+    });
+    zaroLayer.replaceChildren(...nodes);
+  };
   const fxDraw = replayFx(r, units, S);
   const enemyNodes = new Map<number, { g: SVGElement; bar: SVGElement; barW: number }>();
   const enemyNode = (id: number) => {
@@ -691,6 +720,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     }
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';
     fxDraw(fxLayer, t, a, b, f);
+    drawZaros(a, b, f);
     const skill = new Set(a.s);
     for (const [uid, g] of unitNodes) g.classList.toggle('skill', skill.has(uid));
     const states = new Map((a.u ?? []).map((x) => [x[0], x]));
@@ -815,6 +845,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）'),
   );
 }

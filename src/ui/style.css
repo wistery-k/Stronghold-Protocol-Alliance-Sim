@@ -1284,6 +1284,33 @@ aside {
 .rp-unit.stealth {
   opacity: 0.45;
 }
+.rp-zaro {
+  fill: #e05aa8;
+  stroke: #fff;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 4px rgba(224, 90, 168, 0.9));
+}
+.rp-zaro.on {
+  fill: #c2185b;
+}
+.rp-zaro-trail {
+  stroke: #e05aa8;
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.45;
+}
+.rp-zaro-aura {
+  fill: rgba(224, 90, 168, 0.1);
+  stroke: #e05aa8;
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+  pointer-events: none;
+}
+.fx-zaro-pulse {
+  fill: none;
+  stroke: #ff7ac8;
+  stroke-width: 4;
+}
 .fx-stun {
   fill: rgba(255, 200, 40, 0.18);
   stroke: #ffc828;

@@ -705,6 +705,33 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(reach(23, 'down') < reach(3, 'up')).toBe(true);
   });
 
+  it('浮遊ユニット：同じ敵を攻撃し続けるほどダメージが上がる（20%から110%まで）', () => {
+    const rock = UNITS.find((u) => u.charId === 'char_4040_rockr')!;
+    ENEMIES.test_fn = { name: 'f', hp: 1e9, def: 0, res: 0, speed: 0, blockCnt: 1, flying: false, boss: true, elite: false, lifeReduce: 1 };
+    setActiveMap('legacy');
+    const dmg = (limit: number) => {
+      const { inputs, globals } = buildSimInputs([{ uid: 1, defId: rock.id, star: 1, pos: 33, dir: 'right' }], [], {});
+      return simulateBattle(inputs, { round: 1, levelId: 'test', timeLimit: limit, moveMultiplier: 0.5, spawns: [{ enemy: 'test_fn', count: 1, interval: 0, delay: 0, spawn: 1 }] }, { globals }).perUnit[0];
+    };
+    const a = dmg(6);
+    const b = dmg(12);
+    // 後半の6秒の方が1回あたりのダメージが大きい
+    expect((b.damage - a.damage) / Math.max(1, b.hits - a.hits) > a.damage / Math.max(1, a.hits)).toBe(true);
+  });
+
+  it('荒蕪ラップランドS3：ザーロ（浮遊ユニット+2）が近い敵を追い、取り付くと恐怖・減速・1秒ごとの術ダメージ', () => {
+    const w = UNITS.find((u) => u.charId === 'char_1038_whitw2')!;
+    ENEMIES.test_zz = { name: 'z', hp: 30000, def: 100, res: 0, speed: 0.8, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    setActiveMap('legacy');
+    const { inputs, globals } = buildSimInputs([{ uid: 1, defId: w.id, star: 2, pos: 24, dir: 'down' }], [], {});
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 70, moveMultiplier: 0.5, spawns: [{ enemy: 'test_zz', count: 10, interval: 4, delay: 0, spawn: 1 }] };
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    expect(r.perUnit[0].skillCasts).toBe(1);
+    expect(Math.max(...r.frames!.map((f) => (f.zr ?? []).length))).toBeGreaterThanOrEqual(3);
+    expect((r.fx ?? []).filter((x) => x[1] === 9).length).toBeGreaterThan(0);
+    expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 4) !== 0))).toBe(true);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか
