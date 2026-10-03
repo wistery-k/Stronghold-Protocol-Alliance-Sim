@@ -121,6 +121,9 @@ export function placeHint(defId: string, pos: number): string | null {
   return canPlace(pos, defId) ? null : tileAt(pos) === 'high' ? '高台には遠距離オペレーターのみ' : '置けないマス';
 }
 
+const ELEM_SHORT = ['灼', '神', '侵', '凋'];
+const ELEM_FULL = ['灼燃損傷', '神経損傷', '侵蝕損傷', '凋亡損傷'];
+
 /** 敵の特殊能力のバッジ */
 function enemyBadges(e: EnemySpec) {
   const out: HTMLElement[] = [];
@@ -497,6 +500,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   const unitNodes = new Map<number, SVGElement>();
   const unitBars = new Map<number, SVGElement>();
   const unitSp = new Map<number, { bar: SVGElement; label: SVGElement }>();
+  /** 元素損傷の小さな丸（左上） */
+  const unitElem = new Map<number, { g: SVGElement; x: number; y: number; key: string }>();
   for (const u of units) {
     if (u.pos === undefined) continue;
     const def = getUnit(u.defId);
@@ -519,6 +524,9 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     const spLabel = s('text', { x: x + S - 12, y: y + 24, 'text-anchor': 'end', class: 'rp-unit-skill' }, '');
     g.append(spBar, spLabel);
     unitSp.set(u.uid, { bar: spBar, label: spLabel });
+    const elemG = s('g', { class: 'rp-elem' });
+    g.append(elemG);
+    unitElem.set(u.uid, { g: elemG, x: x + 22, y: y + 21, key: '' });
     unitNodes.set(u.uid, g);
     svg.append(g);
   }
@@ -540,6 +548,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     const g = s(
       'g',
       { class: `rp-enemy${m.boss ? ' boss' : ''}${m.flying ? ' fly' : ''}` },
+      // 周囲攻撃の範囲（深溟のミキサーなど）
+      m.aura ? s('circle', { r: m.aura * S, class: 'rp-aura' }) : null,
       s('circle', { r: rad, class: 'rp-enemy-body' }),
       s('rect', { x: -rad, y: -rad - 12, width: rad * 2, height: 6, class: 'rp-hp-bg' }),
       bar,
@@ -610,6 +620,38 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
         mode === 4 ? (val > 0 ? `再配置${Math.ceil(val / 10)}` : 'コスト待ち') : v < 0 ? '' : mode === 1 ? `${(val / 10).toFixed(0)}秒` : mode === 2 ? `弾${val}` : ammo !== undefined && ammo !== null ? `弾${ammo}` : '';
       sp.label.classList.toggle('waiting', mode === 4);
     }
+    // 元素損傷（1以上溜まっているものだけ）。丸の周りのリングが爆発までの蓄積
+    const elems = new Map<number, [number, number][]>();
+    for (const [uid, type, pct] of a.ue ?? []) (elems.get(uid) ?? elems.set(uid, []).get(uid)!).push([type, pct]);
+    for (const [uid, el] of unitElem) {
+      const list = unitNodes.get(uid)?.classList.contains('down') ? [] : (elems.get(uid) ?? []);
+      const key = list.map((x) => x.join(':')).join(',');
+      if (key === el.key) continue;
+      el.key = key;
+      el.g.replaceChildren(
+        ...list.map(([type, pct], i) => {
+          const cx = el.x + i * 21;
+          const R = 8;
+          const c = 2 * Math.PI * R;
+          const burst = pct > 100;
+          return s(
+            'g',
+            { class: `rp-elem-dot elem-${type}${burst ? ' burst' : ''}` },
+            s('circle', { cx, cy: el.y, r: R, class: 'rp-elem-bg' }),
+            s('circle', {
+              cx,
+              cy: el.y,
+              r: R,
+              class: 'rp-elem-ring',
+              'stroke-dasharray': `${(c * (burst ? pct - 100 : pct)) / 100} ${c}`,
+              transform: `rotate(-90 ${cx} ${el.y})`,
+            }),
+            s('text', { x: cx, y: el.y + 3.8, 'text-anchor': 'middle', class: 'rp-elem-label' }, ELEM_SHORT[type]),
+            s('title', {}, `${ELEM_FULL[type]}：${burst ? `爆発中（残り${pct - 100}%）` : `${pct}%`}`),
+          );
+        }),
+      );
+    }
     timeLabel.textContent = `${t.toFixed(1)}秒`;
     costLabel.textContent = a.c !== undefined ? `コスト ${a.c}` : '';
     slider.value = String(Math.round(t * 10));
@@ -661,6 +703,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・凋亡。リングが爆発までの蓄積、塗りつぶしは爆発中）'),
   );
 }

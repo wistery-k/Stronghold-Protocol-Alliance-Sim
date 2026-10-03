@@ -1197,6 +1197,39 @@ aside {
   stroke-opacity: 1;
   stroke-width: 4;
 }
+.rp-aura {
+  fill: rgba(192, 124, 255, 0.08);
+  stroke: #c07cff;
+  stroke-opacity: 0.55;
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+  pointer-events: none;
+}
+.rp-elem-dot { --el: #ccc; }
+.rp-elem-dot.elem-0 { --el: #ff7a3d; }
+.rp-elem-dot.elem-1 { --el: #c07cff; }
+.rp-elem-dot.elem-2 { --el: #4fc7c9; }
+.rp-elem-dot.elem-3 { --el: #9ccf55; }
+.rp-elem-bg {
+  fill: rgba(0, 0, 0, 0.55);
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 3;
+}
+.rp-elem-ring {
+  fill: none;
+  stroke: var(--el);
+  stroke-width: 3;
+}
+.rp-elem-label {
+  fill: var(--el);
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.rp-elem-dot.burst .rp-elem-bg { fill: var(--el); }
+.rp-elem-dot.burst .rp-elem-label { fill: #000; }
+.rp-elem-dot.burst { animation: rp-elem-pulse 0.8s ease-in-out infinite alternate; }
+@keyframes rp-elem-pulse { from { opacity: 1; } to { opacity: 0.45; } }
 .rp-hp-bg {
   fill: #000;
   opacity: 0.5;

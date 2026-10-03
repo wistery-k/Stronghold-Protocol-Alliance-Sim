@@ -71,6 +71,8 @@ export interface EnemyMeta {
   maxHp: number;
   /** 懸賞の資金 */
   bounty?: number;
+  /** 周囲攻撃の半径（マス） */
+  aura?: number;
 }
 
 /** リプレイ用のコマ：敵ごとに [id, x*100, y*100, HP%] と、スキル中のユニット */
@@ -87,6 +89,8 @@ export interface ReplayFrame {
    * 4: 再配置待ち（ゲージ=経過%、値=残り秒×10。0ならコスト待ち）
    */
   u?: [number, number, number, number, number, number?][];
+  /** オペレーターの元素損傷 [uid, 種類（0灼燃・1神経・2侵蝕・3凋亡）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1以上溜まっているものだけ */
+  ue?: [number, number, number][];
 }
 
 /**
@@ -2566,6 +2570,19 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         return [u.input.uid, hp, Math.min(100, Math.round((u.sp / s.spCost) * 100)), 0, 0, u.input.def.subProfession === 'hunter' ? Math.floor(u.huntAmmo) : undefined];
       });
 
+  const ELEM_ORDER: ElementType[] = ['burning', 'neural', 'erosion', 'apoptosis'];
+  const elemFrame = (): [number, number, number][] => {
+    const out: [number, number, number][] = [];
+    for (const u of rt) {
+      if (u.input.pos === undefined || !u.alive) continue;
+      ELEM_ORDER.forEach((type, i) => {
+        if (opBursting(u, type)) out.push([u.input.uid, i, 100 + Math.max(1, Math.round(((u.elem[type] ?? 0) / OP_ELEMENT_MAX) * 100))]);
+        else if ((u.elem[type] ?? 0) >= 1) out.push([u.input.uid, i, Math.min(100, Math.max(1, Math.round(((u.elem[type] ?? 0) / OP_ELEMENT_MAX) * 100)))]);
+      });
+    }
+    return out;
+  };
+
   const steps = Math.round(timeLimit / dt);
   const sampleEvery = Math.max(1, Math.round(0.5 / dt));
   const frameEvery = Math.max(1, Math.round(0.2 / dt));
@@ -2826,6 +2843,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e: enemies.filter((e) => e.alive).map(enemyFrame),
         s: rt.filter((u) => u.alive && (u.skillLeft > 0 || u.ammoLeft > 0)).map((u) => u.input.uid),
         u: unitFrame(),
+        ue: elemFrame(),
         c: Math.floor(cost),
       });
     }
@@ -2842,6 +2860,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       e: enemies.filter((e) => e.alive).map(enemyFrame),
       s: [],
       u: unitFrame(),
+      ue: elemFrame(),
       c: Math.floor(cost),
     });
   }
@@ -2950,7 +2969,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     freezes: r.freezes,
     opBursts: r.opBursts,
     enBursts: r.enBursts,
-    enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying, maxHp: e.input.spec.hp, bounty: e.input.bounty })),
+    enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined })),
     bountyGold: bountyKilled.reduce((sum, e) => sum + (e.input.bounty ?? 0), 0),
     bountyKills: bountyKilled.length,
     frames: opts.record ? r.frames : undefined,
