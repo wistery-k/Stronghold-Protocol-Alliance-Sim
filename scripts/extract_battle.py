@@ -214,6 +214,12 @@ def main():
             # HPが一定割合を下回ると受けるダメージが減る（仮想敵：冑）
             if '1.hp_ratio' in bb and '1.damage_scale' in bb:
                 e['lowHpGuard'] = {'ratio': bb['1.hp_ratio']['value'], 'scale': bb['1.damage_scale']['value']}
+            # 【灭顶之灾】<刺胄之弹>（仮想敵：冑のスキル1）。弾の数値は本家データに無いため、
+            # 同じ効果を持つ手下（冑を斬る剣）のスキルの値（スタン10秒・毎秒200の物理・15回で撃破）を使う
+            if any('灭顶之灾' in a for a in abilities):
+                sk = next((x for x in (ed.get('skills') or []) if x.get('prefabKey') == '1'), None)
+                if sk:
+                    e['bomb'] = {'cooldown': sk['cooldown'], 'init': sk['initCooldown'], 'stun': 10, 'dotDps': 200, 'dotDuration': 10, 'hits': 15}
             # 通常攻撃は「ランダムな対象に射線で術ダメージ」
             if 'attack' in e and any('法术' in a for a in abilities[:1]):
                 e['attack']['arts'] = True

@@ -380,7 +380,9 @@ const DMG_CLASS = ['phys', 'arts', 'true'];
 function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
   const fx = r.fx ?? [];
   const zones = fx.filter((e) => e[1] === 5 || e[1] === 6);
-  const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6);
+  // <刺胄之弹>の着弾：3×3マスのスタン範囲
+  const stuns = fx.filter((e) => e[1] === 7);
+  const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6 && e[1] !== 7);
   const byUid = new Map(units.map((u) => [u.uid, u]));
   const center = (pos: number) => ({ x: cellX(pos) * S + S / 2, y: cellY(pos) * S + S / 2 });
   const rangeCache = new Map<string, number[]>();
@@ -420,6 +422,13 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
       const t0 = z[0] / 100;
       if (t < t0 || t > t0 + z[6] / 10) continue;
       nodes.push(s('circle', { cx: (z[3] / 100) * S + S / 2, cy: (z[4] / 100) * S + S / 2, r: (z[5] / 100) * S, class: z[1] === 6 ? 'fx-pollution' : 'fx-zone' }));
+    }
+    for (const z of stuns) {
+      const t0 = z[0] / 100;
+      if (t < t0 || t > t0 + z[4] / 10) continue;
+      const cx = z[2] / 100;
+      const cy = z[3] / 100;
+      nodes.push(s('rect', { x: (cx - 1) * S + 3, y: (cy - 1) * S + 3, width: 3 * S - 6, height: 3 * S - 6, rx: 12, class: 'fx-stun' }));
     }
     for (let i = firstAfter(t - maxLife); i < events.length && events[i][0] / 100 <= t; i++) {
       const ev = events[i];

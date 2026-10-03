@@ -51,6 +51,13 @@ export interface EnemySpec {
   attack?: { kind: 'melee' | 'ranged'; atk: number; interval: number; range: number; arts: boolean; aura?: boolean; randomTarget?: boolean };
   /** 大型のボス：移動せず、マップ右上の2列×3行（BOSS_CELLS）を占める。対象を中心とする効果は BOSS_CENTER が中心 */
   large?: boolean;
+  /**
+   * 【灭顶之灾】攻撃力が最も高い味方に<刺胄之弹>を撃つ（init 秒後から cooldown 秒ごと）。着弾で目標と周囲8マスの味方を stun 秒スタンさせ、
+   * dotDuration 秒間、毎秒 dotDps の物理ダメージ。弾は飛行中に hits 回攻撃すると撃ち落とせる。HPが lowHpGuard.ratio 未満なら2発
+   */
+  bomb?: { cooldown: number; init: number; stun: number; dotDps: number; dotDuration: number; hits: number };
+  /** 敵の弾（<刺胄之弹>）：飛行中の的。突破・撃破の数には入れない */
+  projectile?: boolean;
   /** HPが ratio を下回ると、受けるダメージが scale 倍 */
   lowHpGuard?: { ratio: number; scale: number };
   /** ボスの手下：フィールド内を自由に飛び回り、防衛地点には入らない。無敵（攻撃の対象にならない）で、ボスが倒れると消える */

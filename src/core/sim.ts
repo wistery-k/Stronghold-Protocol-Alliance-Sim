@@ -107,6 +107,7 @@ export interface ReplayFrame {
  * - 4 治療：[uid, 対象uid]
  * - 5 設置した範囲（ブリキなど）：[uid, x×100, y×100, 半径×100, 秒数×10]
  * - 6 敵の汚染秽蝕：[敵id, x×100, y×100, 半径×100, 秒数×10]
+ * - 7 ボスの弾の着弾（周囲8マスをスタン）：[x×100, y×100, スタン秒数×10]
  */
 export type FxEvent = number[];
 
@@ -455,7 +456,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -554,6 +555,8 @@ const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius:
 
 /** 狩人：最大弾数、攻撃時の攻撃力倍率、攻撃をやめてから装填が始まるまでと1発の装填時間（秒） */
 const HUNTER_AMMO = 8;
+/** <刺胄之弹>の飛ぶ速さ（マス/秒。本家の値が不明なため仮） */
+const BOMB_SPEED = 1;
 /** 呪癒師：与ダメージのうち味方の回復に回る割合 */
 const INCANTATION_HEAL = 0.5;
 /** 旋輪射手：旋回投擲物の速度（マス/秒）。射出時15、回収時3.75。手元に戻るまで次の攻撃はできない */
@@ -738,6 +741,9 @@ interface Enemy {
   sleepBy: Runtime | null;
   /** ボスの手下：飛び回る先 */
   roamTo: { x: number; y: number } | null;
+  /** 【灭顶之灾】次に弾を撃つ時刻（ボス）／弾の着弾先と効果（弾） */
+  bombAt: number;
+  bombTo: { pos: number; stun: number; dotDps: number; dotDuration: number } | null;
   /** 囚人：拘束中か、拘束中に攻撃した回数 */
   confined: boolean;
   confAttacks: number;
@@ -797,6 +803,10 @@ interface Runtime {
   redistTimer: number;
   /** 睡眠（ティティのスキル：致命傷を受けた味方が眠る。HPが全回復するかスキル終了まで） */
   sleepUntil: number;
+  /** スタン（<刺胄之弹>）と、毎秒の物理ダメージ */
+  stunUntil: number;
+  dotUntil: number;
+  dotDps: number;
   /** 戦術【食腐の蝶】：味方が倒れるたびに得た攻撃力の層 */
   qalaisaStacks: number;
   /** 戦術【薬枚実験】：護盾（被弾1回を無効化）と確率の累積 */
@@ -915,6 +925,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       inspireUntil: -1,
       redistTimer: 0,
       sleepUntil: -1,
+      stunUntil: -1,
+      dotUntil: -1,
+      dotDps: 0,
       mberryShield: 0,
       mberryAcc: 0,
       lastAttackAt: -99,
@@ -1157,6 +1170,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       sleepAt: -1,
       sleepBy: null,
       roamTo: null,
+      bombAt: input.spec.bomb ? input.spawnAt + input.spec.bomb.init : -1,
+      bombTo: null,
     });
   /** シミュレーター内の決定的な乱数（ボスの攻撃対象・手下の移動先） */
   let seed = 0x2545f491;
@@ -1219,6 +1234,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const killEnemy = (e: Enemy, by: Runtime | null) => {
     release(e);
+    // <刺胄之弹>を撃ち落とした：撃破には数えない
+    if (e.input.spec.projectile) {
+      e.alive = false;
+      return;
+    }
     // 復活する敵：攻撃回数で倒せる状態になってその場に留まる
     const rv = e.input.spec.revive;
     if (rv && !e.revived && e.reviveAt === null && !neutral(e)) {
@@ -1888,7 +1908,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   // ------------------------------------------------------------
   const elemMax = (o: Runtime) => Math.max(0, ...(Object.values(o.elem) as number[]));
   const opBursting = (o: Runtime, type: ElementType) => t < (o.elemBurst[type] ?? -1);
-  const stunned = (o: Runtime) => t < (o.elemBurst.neural ?? -1) || t < o.ts.selfFrozenUntil || t < o.sleepUntil;
+  const stunned = (o: Runtime) => t < (o.elemBurst.neural ?? -1) || t < o.ts.selfFrozenUntil || t < o.sleepUntil || t < o.stunUntil;
   /** 元素損傷の回復（多い種類から） */
   const healElement = (o: Runtime, amount: number) => {
     for (const type of (Object.keys(o.elem) as ElementType[]).sort((a, b) => (o.elem[b] ?? 0) - (o.elem[a] ?? 0))) {
@@ -2631,6 +2651,74 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
 
+  // ---- 【灭顶之灾】<刺胄之弹> ----
+  const bombSpec = (hits: number): EnemyInputSpec => ({
+    name: '刺冑の弾',
+    hp: hits,
+    def: 0,
+    res: 0,
+    speed: BOMB_SPEED,
+    blockCnt: 1,
+    flying: true,
+    boss: false,
+    lifeReduce: 0,
+    hitsToKill: true,
+    projectile: true,
+  });
+  /** ボスが弾を撃つ（攻撃力が最も高い味方へ。HPが一定割合未満なら2発） */
+  const fireBombs = (boss: Enemy) => {
+    const b = boss.input.spec.bomb!;
+    const guard = boss.input.spec.lowHpGuard;
+    const n = guard && boss.hp / boss.input.spec.hp < guard.ratio ? 2 : 1;
+    const targets = rt
+      .filter((u) => u.alive && u.input.pos !== undefined)
+      .sort((x, y) => baseAtk(y.input.def, y.input.star, y.input.mods) - baseAtk(x.input.def, x.input.star, x.input.mods))
+      .slice(0, n);
+    for (const u of targets) {
+      const ne = newEnemy({ key: 'bomb', spec: bombSpec(b.hits), spawnAt: t, path: null }, enemies.length + 1);
+      ne.spawned = true;
+      ne.alive = true;
+      ne.x = boss.x;
+      ne.y = boss.y - 1;
+      ne.bombTo = { pos: u.input.pos!, stun: b.stun, dotDps: b.dotDps, dotDuration: b.dotDuration };
+      enemies.push(ne);
+    }
+  };
+  const flyBomb = (e: Enemy) => {
+    const to = e.bombTo!;
+    const tx = cellX(to.pos);
+    const ty = cellY(to.pos);
+    const dist = Math.hypot(tx - e.x, ty - e.y);
+    const step = BOMB_SPEED * dt;
+    if (dist > step) {
+      e.x += ((tx - e.x) / dist) * step;
+      e.y += ((ty - e.y) / dist) * step;
+      return;
+    }
+    // 着弾：目標と周囲8マスの味方をスタンさせ、毎秒物理ダメージ
+    e.alive = false;
+    emit([7, Math.round(tx * 100), Math.round(ty * 100), Math.round(to.stun * 10)]);
+    for (const u of rt) {
+      if (!u.alive || u.input.pos === undefined) continue;
+      if (Math.abs(cellX(u.input.pos) - tx) > 1 || Math.abs(cellY(u.input.pos) - ty) > 1) continue;
+      u.stunUntil = Math.max(u.stunUntil, t + to.stun);
+      u.dotUntil = t + to.dotDuration;
+      u.dotDps = to.dotDps;
+      for (const b of u.blocked) b.blockedBy = null;
+      u.blocked = [];
+      onSleepStun(u.input.pos);
+    }
+  };
+  const tickBossSkills = () => {
+    for (const e of enemies) {
+      if (!e.alive || !e.input.spec.bomb || e.bombAt < 0 || t < e.bombAt) continue;
+      fireBombs(e);
+      e.bombAt = t + e.input.spec.bomb.cooldown;
+    }
+    // スタン中の毎秒ダメージ
+    for (const u of rt) if (u.alive && t < u.dotUntil) takeDamage(u, mitigate(u, u.dotDps, false) * dt);
+  };
+
   const roam = (e: Enemy) => {
     if (!e.roamTo) {
       // 出現位置：ボスのそば
@@ -2670,6 +2758,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.defense.res = currentRes(e);
       }
       if (!e.alive) continue;
+      // <刺胄之弹>：着弾先へ飛び、着くと爆発する
+      if (e.input.spec.projectile) {
+        flyBomb(e);
+        continue;
+      }
       // 大型のボス：移動しない
       if (e.input.spec.large) {
         e.x = BOSS_CENTER.x;
@@ -2785,6 +2878,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       tickZones();
       tickPollution();
       tickSleep();
+      tickBossSkills();
       // 【サルゴン】の強化の層数（最大・時間平均）
       if (g.sargon) {
         let cur = 0;
@@ -3154,8 +3248,8 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     const sp = e.input.spec;
     const timedOut = !e.leaked && (e.alive || !e.spawned);
     if (!e.leaked && !timedOut) continue;
-    // ボスの手下は防衛地点に入らない（突破に数えない）
-    if (sp.roam) continue;
+    // ボスの手下は防衛地点に入らない（突破に数えない）。弾も数えない
+    if (sp.roam || sp.projectile) continue;
     let loss = sp.lifeReduce;
     if (timedOut && sp.boss) {
       const ratio = e.hp / sp.hp;
@@ -3169,21 +3263,23 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     leakMap.set(e.input.key, l);
   }
   const isKilled = (e: (typeof r.enemies)[number]) => e.spawned && !e.alive && !e.leaked;
-  const killed = r.enemies.filter(isKilled).length;
-  const bountyKilled = r.enemies.filter((e) => e.input.bounty && isKilled(e));
-  const totalHp = r.enemies.reduce((s, e) => s + e.input.spec.hp, 0);
+  // ボスの弾（<刺胄之弹>）は敵の数に入れない
+  const counted = r.enemies.filter((e) => !e.input.spec.projectile);
+  const killed = counted.filter(isKilled).length;
+  const bountyKilled = counted.filter((e) => e.input.bounty && isKilled(e));
+  const totalHp = counted.reduce((s, e) => s + e.input.spec.hp, 0);
   const perUnit = r.units.map((u) => ({ ...u.result, damage: Math.round(u.result.damage) }));
   return {
     round: spec.round,
     timeLimit: limit,
     elapsed: Math.round(r.t * 100) / 100,
-    total: r.enemies.length,
+    total: counted.length,
     killed,
-    leaked: r.enemies.length - killed,
+    leaked: counted.length - killed,
     lifeLoss,
     leaks: [...leakMap.values()],
     bossRemaining,
-    cleared: killed === r.enemies.length,
+    cleared: killed === counted.length,
     totalDamage: perUnit.reduce((s, u) => s + u.damage, 0),
     totalHp,
     perUnit,

@@ -5415,6 +5415,14 @@
    "lowHpGuard": {
     "ratio": 0.2,
     "scale": 0.5
+   },
+   "bomb": {
+    "cooldown": 25.0,
+    "init": 20.0,
+    "stun": 10,
+    "dotDps": 200,
+    "dotDuration": 10,
+    "hits": 15
    }
   },
   "enemy_10027_vtsk": {
@@ -5452,6 +5460,14 @@
    "lowHpGuard": {
     "ratio": 0.2,
     "scale": 0.5
+   },
+   "bomb": {
+    "cooldown": 25.0,
+    "init": 20.0,
+    "stun": 10,
+    "dotDps": 200,
+    "dotDuration": 10,
+    "hits": 15
    }
   },
   "enemy_9014_acstma": {

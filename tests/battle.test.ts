@@ -515,6 +515,33 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect([...xs]).toEqual(['700,200']);
   });
 
+  it('冑の【灭顶之灾】：攻撃力最高の味方へ弾を撃ち、着弾で周囲をスタン。弾は撃ち落とせて、敵の数には入らない', () => {
+    ENEMIES.test_bomb_boss = { ...ENEMIES.enemy_9013_acstmk, hp: 1e8, attack: undefined };
+    setActiveMap('legacy');
+    const spec: RoundSpec = { round: 14, levelId: 'test', timeLimit: 40, moveMultiplier: 0.5, spawns: [{ enemy: 'test_bomb_boss', count: 1, interval: 0, delay: 0, spawn: 0 }] };
+    // 近距離だけ（飛んでいる弾を落とせない）→ 着弾する
+    const melee = buildSimInputs([{ uid: 1, defId: byProf('defender').id, star: 1, pos: 31, dir: 'right' }], [], {});
+    const r1 = simulateBattle(melee.inputs, spec, { globals: melee.globals, record: true });
+    const hits1 = (r1.fx ?? []).filter((f) => f[1] === 7);
+    expect(hits1.length).toBeGreaterThan(0);
+    expect(r1.total).toBe(1);
+    expect(r1.perUnit[0].taken).toBeGreaterThan(0);
+    // 弾の通り道を狙える狙撃が複数いれば、撃ち落とせることがある（少なくとも着弾は減る）
+    const snipers = buildSimInputs(
+      [
+        { uid: 1, defId: byProf('defender').id, star: 1, pos: 31, dir: 'right' },
+        { uid: 2, defId: byProf('sniper').id, star: 2, pos: 23, dir: 'right' },
+        { uid: 3, defId: byProf('sniper').id, star: 2, pos: 24, dir: 'right' },
+        { uid: 4, defId: byProf('sniper').id, star: 2, pos: 15, dir: 'right' },
+      ],
+      [],
+      {},
+    );
+    const r2 = simulateBattle(snipers.inputs, spec, { globals: snipers.globals, record: true });
+    expect((r2.fx ?? []).filter((f) => f[1] === 7).length <= hits1.length).toBe(true);
+    expect(r2.total).toBe(1);
+  });
+
   it('シークレットコア版の手下は飛び回り、防衛地点に入らず、無敵で、ボスが倒れると消える', () => {
     ENEMIES.test_boss2 = { ...ENEMIES.enemy_9013_acstmk_2, hp: 3000, def: 0, attack: undefined };
     ENEMIES.test_minion = { ...ENEMIES.enemy_9014_acstma, minionOf: 'test_boss2' };

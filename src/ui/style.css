@@ -1250,6 +1250,13 @@ aside {
   font-weight: 700;
   pointer-events: none;
 }
+.fx-stun {
+  fill: rgba(255, 200, 40, 0.18);
+  stroke: #ffc828;
+  stroke-width: 3;
+  stroke-dasharray: 8 6;
+  pointer-events: none;
+}
 .rp-hp-bg {
   fill: #000;
   opacity: 0.5;
