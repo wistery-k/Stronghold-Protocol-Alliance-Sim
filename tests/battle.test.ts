@@ -667,6 +667,36 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 4) !== 0))).toBe(true);
   });
 
+  it('山海衆精鋭：隠匿が解けた後の最初の攻撃は攻撃力2倍', () => {
+    const spec0 = ENEMIES.enemy_1299_ymkilr;
+    expect(spec0.ambush).toBe(2);
+    const run = (ambush?: number) => {
+      ENEMIES.test_amb = { ...spec0, hp: 1e9, ambush };
+      const spec = oneEnemy('test_amb', false, { ...ENEMIES.test_amb });
+      return run0(spec);
+    };
+    const run0 = (spec: RoundSpec) => {
+      const { inputs, globals } = buildSimInputs([{ uid: 1, defId: byProf('defender').id, star: 2, pos: 34, dir: 'right' }], [], {});
+      return simulateBattle(inputs, { ...spec, timeLimit: 4 }, { globals }).perUnit[0].taken;
+    };
+    expect(run(2)).toBeGreaterThan(run(undefined));
+  });
+
+  it('元核のマレフィセント：攻撃を受けると速くなり、周囲に神経損傷を与え続ける', () => {
+    const spec0 = ENEMIES.enemy_1439_dslntf;
+    expect(spec0.enrage?.element).toBe('neural');
+    ENEMIES.test_mal = { ...spec0, hp: 1e9 };
+    const spec = oneEnemy('test_mal', false, { ...ENEMIES.test_mal });
+    // 攻撃が届かない：臨戦にならない／狙撃が攻撃する：臨戦になって速く進む
+    const reach = (pos: number, dir: 'down' | 'up') => {
+      const { inputs, globals } = buildSimInputs([{ uid: 1, defId: byProf('sniper').id, star: 2, pos, dir }], [], {});
+      const r = simulateBattle(inputs, { ...spec, timeLimit: 30 }, { globals, record: true });
+      // 12秒時点の位置（左ほど進んでいる）
+      return r.frames!.find((f) => f.t >= 12)?.e[0]?.[1] ?? -1;
+    };
+    expect(reach(23, 'down') < reach(3, 'up')).toBe(true);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか

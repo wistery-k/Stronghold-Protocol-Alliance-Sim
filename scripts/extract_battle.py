@@ -252,6 +252,22 @@ def main():
         # 抵抗：異常状態（寒冷・凍結など）の時間が短くなる
         if 'buff.one_minus_status_resistance' in bb:
             e['statusResist'] = -bb['buff.one_minus_status_resistance']['value']
+        # 隠匿が解けた後の最初の攻撃の倍率（山海衆精鋭・密使）
+        sk_inv = next((x for x in (ed.get('skills') or []) if x.get('prefabKey') == 'InvisibleCombat'), None)
+        if sk_inv:
+            sbb = {b['key']: b['value'] for b in (sk_inv.get('blackboard') or [])}
+            if sbb.get('atk_scale'):
+                e['ambush'] = sbb['atk_scale']
+        # 臨戦状態：攻撃を受けると移動速度が上がり、周囲に元素損傷を与え続ける（元核のマレフィセント）
+        if any('受到伤害时进入临战状态' in a for a in abilities):
+            etype2 = next((ELEMENT_TAGS[tag] for a in abilities for tag in ELEMENT_TAGS if tag in a), None)
+            e['enrage'] = {
+                'speedMult': bb.get('0.move_speed', {'value': 1})['value'],
+                'element': etype2,
+                'ratio': bb.get('1.ep_damage_ratio', {'value': 0})['value'],
+                'interval': bb.get('1.interval', {'value': 1})['value'],
+                'radius': bb.get('1.range_radius', {'value': 0})['value'],
+            }
         # 挑発レベル（高いほど味方に優先して狙われる）
         taunt = enemy_value(at, 'tauntLevel', 0) or 0
         if taunt:

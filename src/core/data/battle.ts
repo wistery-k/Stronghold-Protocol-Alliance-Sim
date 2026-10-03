@@ -63,6 +63,10 @@ export interface EnemySpec {
    * 突進中は無敵が切れ、hits 回攻撃されると撃ち落とされる（地上に落ちて動かず、受けるダメージ dmgScale 倍、受けたダメージの一部がボスにも入る）
    */
   dive?: { cooldown: number; init: number; stun: number; dotDps: number; dotDuration: number; hits: number; dmgScale: number };
+  /** 隠匿が解けた後の最初の攻撃の攻撃力倍率（山海衆精鋭） */
+  ambush?: number;
+  /** 臨戦状態：攻撃を受けると移動速度×speedMult、interval 秒ごとに半径 radius の味方へ攻撃力×ratio の元素損傷（元核のマレフィセント） */
+  enrage?: { speedMult: number; element: ElementType | null; ratio: number; interval: number; radius: number };
   /** 挑発レベル：味方はブロック中の敵の次に、挑発レベルの高い敵を優先して狙う */
   taunt?: number;
   /** 敵の弾（<刺胄之弹>）：飛行中の的。突破・撃破の数には入れない */

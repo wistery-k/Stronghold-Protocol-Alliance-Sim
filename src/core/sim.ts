@@ -465,7 +465,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt' | 'ambush' | 'enrage'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -761,6 +761,11 @@ interface Enemy {
   stunUntil: number;
   /** 恐怖（ブロックされず、攻撃せず、来た道を逃げる） */
   fearUntil: number;
+  /** 山海衆精鋭：隠匿が解けた後の最初の攻撃がまだ残っている */
+  ambushReady: boolean;
+  /** 元核のマレフィセント：臨戦状態と、次に元素損傷を与えるまでの時間 */
+  enraged: boolean;
+  enrageTimer: number;
   /** ボスの手下：飛び回る先 */
   roamTo: { x: number; y: number } | null;
   /** 【灭顶之灾】次に弾を撃つ時刻（ボス）／弾の着弾先と効果（弾） */
@@ -1205,6 +1210,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       roamTo: null,
       stunUntil: -1,
       fearUntil: -1,
+      ambushReady: true,
+      enraged: false,
+      enrageTimer: 0,
       bombAt: input.spec.bomb ? input.spawnAt + input.spec.bomb.init : -1,
       bombTo: null,
       summonAt: input.spec.summon ? input.spawnAt + input.spec.summon.init : -1,
@@ -1335,6 +1343,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const deal = (u: Runtime, e: Enemy, amount: number) => {
     if (!e.alive || amount <= 0) return;
+    // 元核のマレフィセント：攻撃を受けると臨戦状態
+    if (e.input.spec.enrage && !e.enraged) e.enraged = true;
     // ボスの手下は無敵（突進中・撃ち落とされた後を除く）
     if (e.input.spec.roam) {
       if (e.minion === 'roam' || e.minion === 'back') return;
@@ -2765,7 +2775,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (!target || !target.alive) continue;
       if (a.kind === 'ranged') emit([3, e.id, target.input.uid, a.arts ? 1 : 0]);
       const free = lib && !e.confined;
-      hurt(target, enemyAtk(e, a.atk * (free ? 1 + lib.atk : 1)) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
+      // 山海衆精鋭：隠匿が解けた後の最初の攻撃は攻撃力上昇
+      const ambush = e.input.spec.ambush && e.ambushReady ? e.input.spec.ambush : 1;
+      if (e.input.spec.ambush) e.ambushReady = false;
+      hurt(target, enemyAtk(e, a.atk * (free ? 1 + lib.atk : 1) * ambush) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
       if (e.input.spec.element) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
       e.atkTimer = a.interval;
       if (lib && e.confined && ++e.confAttacks >= lib.times) liberate(e);
@@ -2822,6 +2835,24 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // 着弾：目標と周囲8マスの味方をスタンさせ、毎秒物理ダメージ
     e.alive = false;
     blast(to.pos, to.stun, to.dotDps, to.dotDuration);
+  };
+  /** 隠匿中は次の攻撃の倍率を戻す。臨戦状態の敵は周囲に元素損傷を与え続ける */
+  const tickEnemyStates = () => {
+    for (const e of enemies) {
+      if (!e.alive || !e.spawned) continue;
+      if (e.input.spec.ambush && isStealthed(e)) e.ambushReady = true;
+      const en = e.input.spec.enrage;
+      if (!en || !e.enraged || !en.element || !en.ratio) continue;
+      e.enrageTimer -= dt;
+      if (e.enrageTimer > 0) continue;
+      e.enrageTimer += en.interval;
+      const atk = e.input.spec.attack?.atk ?? 0;
+      for (const u of rt) {
+        if (!u.alive || u.input.pos === undefined) continue;
+        if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > en.radius) continue;
+        addOpElement(u, en.element, atk * en.ratio * weakFactor(e));
+      }
+    }
   };
   const tickBossSkills = () => {
     for (const e of enemies) {
@@ -2974,7 +3005,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.defense.res = currentRes(e);
       }
       const path = e.input.path;
-      const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) * tileEnemySpeed(e) : 1);
+      const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) * tileEnemySpeed(e) : 1) * (e.enraged ? (e.input.spec.enrage?.speedMult ?? 1) : 1);
       if (t < e.fearUntil) {
         // 恐怖：来た道を逃げる（ブロックされない）
         e.d = Math.max(0, e.d - speed * dt);
@@ -3073,6 +3104,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       tickPollution();
       tickSleep();
       tickBossSkills();
+      tickEnemyStates();
       tickTexas();
       // 【サルゴン】の強化の層数（最大・時間平均）
       if (g.sargon) {

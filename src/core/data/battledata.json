@@ -3598,6 +3598,13 @@
     "interval": 3.0,
     "range": 0,
     "arts": false
+   },
+   "enrage": {
+    "speedMult": 4.0,
+    "element": "neural",
+    "ratio": 0.1,
+    "interval": 1.0,
+    "radius": 2.5
    }
   },
   "enemy_1148_dssbr": {
@@ -3983,6 +3990,7 @@
     "range": 0,
     "arts": false
    },
+   "ambush": 2.0,
    "stealth": true
   },
   "enemy_1043_zomsbr": {
@@ -4173,6 +4181,7 @@
     "range": 0,
     "arts": false
    },
+   "ambush": 2.0,
    "stealth": true
   },
   "enemy_1422_lrsldr_2": {
