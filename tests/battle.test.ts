@@ -652,6 +652,21 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.frames!.some((f) => f.t > 7.5 && f.s.includes(1))).toBe(true);
   });
 
+  it('【シラクーザ】Lv2：確定ダメージを別に記録し、恐怖で敵が逃げる（ブロック不可・攻撃しない）', () => {
+    const sira = UNITS.filter((u) => u.bonds.includes('siracusa'));
+    const picked = [...new Map(sira.map((u) => [u.charId, u])).values()].slice(0, 6);
+    expect(picked.length).toBe(6);
+    ENEMIES.test_fear = { name: 'f', hp: 1e9, def: 0, res: 0, speed: 0.6, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    setActiveMap('legacy');
+    const board: OwnedUnit[] = picked.map((u, i) => ({ uid: i + 1, defId: u.id, star: 1, pos: 28 + i, dir: 'right' }));
+    const { inputs, globals, statuses } = buildSimInputs(board, [], {});
+    expect(statuses.find((x) => x.id === 'siracusa')!.level).toBe(2);
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_fear', count: 3, interval: 3, delay: 0, spawn: 1 }] };
+    const r = simulateBattle(inputs, spec, { globals, activeAlliances: new Set(['siracusa']), record: true });
+    expect(r.perUnit.reduce((a, u) => a + (u.siracusaDamage ?? 0), 0)).toBeGreaterThan(0);
+    expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 4) !== 0))).toBe(true);
+  });
+
   it('連鎖術師は近くの敵へ跳躍し、離れた敵には跳ばない', () => {
     const chain = UNITS.find((u) => u.name === 'レイズ')!;
     // 1回の攻撃（同じ時刻）で何体に命中したか

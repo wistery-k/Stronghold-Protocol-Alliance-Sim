@@ -42,6 +42,8 @@ export interface SimUnitResult {
   taken: number;
   /** 回復した量（医療） */
   healed: number;
+  /** 与ダメージのうち【シラクーザ】Lv2の確定ダメージ */
+  siracusaDamage?: number;
   /** 最初に倒れた時刻（倒れなければ null） */
   downAt: number | null;
   /** 撤退（倒れた・コスト不足）回数と再配置回数 */
@@ -81,7 +83,7 @@ export interface EnemyMeta {
 /** リプレイ用のコマ：敵ごとに [id, x*100, y*100, HP%] と、スキル中のユニット */
 export interface ReplayFrame {
   t: number;
-  /** [id, x×100, y×100, HP%, 状態ビット（1 = 解放済みの囚人、2 = スタン中）] */
+  /** [id, x×100, y×100, HP%, 状態ビット（1 = 解放済みの囚人、2 = スタン中、4 = 恐怖中）] */
   e: [number, number, number, number, number?][];
   s: number[];
   /** 所持コスト */
@@ -752,6 +754,8 @@ interface Enemy {
   sleepBy: Runtime | null;
   /** スタン（移動・攻撃しない） */
   stunUntil: number;
+  /** 恐怖（ブロックされず、攻撃せず、来た道を逃げる） */
+  fearUntil: number;
   /** ボスの手下：飛び回る先 */
   roamTo: { x: number; y: number } | null;
   /** 【灭顶之灾】次に弾を撃つ時刻（ボス）／弾の着弾先と効果（弾） */
@@ -1195,6 +1199,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       sleepBy: null,
       roamTo: null,
       stunUntil: -1,
+      fearUntil: -1,
       bombAt: input.spec.bomb ? input.spawnAt + input.spec.bomb.init : -1,
       bombTo: null,
       summonAt: input.spec.summon ? input.spawnAt + input.spec.summon.init : -1,
@@ -1260,6 +1265,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (b) b.blocked = b.blocked.filter((x) => x !== e);
       e.blockedBy = null;
     }
+  };
+
+  /** 恐怖：ブロック不可となり、付与者と逆方向（来た道）へ逃げる。逃げている間は攻撃しない */
+  const fearEnemy = (e: Enemy, seconds: number) => {
+    if (!e.alive || seconds <= 0 || e.input.spec.large || e.input.spec.boss) return;
+    e.fearUntil = Math.max(e.fearUntil, t + seconds * (1 - (e.input.spec.statusResist ?? 0)));
+    release(e);
   };
 
   const killEnemy = (e: Enemy, by: Runtime | null) => {
@@ -1366,7 +1378,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u.fearAcc += g.siracusa.procProb;
         if (u.fearAcc >= 1) {
           u.fearAcc -= 1;
-          neutralize(e, g.siracusa.fear);
+          fearEnemy(e, g.siracusa.fear);
         }
       }
     }
@@ -1390,7 +1402,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (type !== 'heal' && mods.lifeOnHit) healUnit(u, u, u.maxHp * mods.lifeOnHit);
     if (type !== 'heal') {
       if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken);
-      if (g.siracusa?.members.has(uid) && t - u.ts.deployedAt < g.siracusa.procWindow) deal(u, e, g.siracusa.procProb * g.siracusa.procDmg * e.defense.damageTaken);
+      if (g.siracusa?.members.has(uid) && t - u.ts.deployedAt < g.siracusa.procWindow && g.siracusa.procProb > 0) {
+        const before = u.result.damage;
+        deal(u, e, g.siracusa.procProb * g.siracusa.procDmg * e.defense.damageTaken);
+        u.result.siracusaDamage = (u.result.siracusaDamage ?? 0) + (u.result.damage - before);
+      }
       if (type === 'arts' && g.arcane?.members.has(uid) && dmg > 0) e.arcaneUntil = t + g.arcane.duration;
       // 元素損傷：ヴィクトリアの鉄鎚・灼熱（術ダメージの一部を灼燃損傷に）
       if (type === 'arts' && mods.burnOnArts && dmg > 0) addEnElement(e, 'burning', dmg * mods.burnOnArts, u);
@@ -2688,7 +2704,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const enemyFrame = (e: Enemy): [number, number, number, number, number?] => {
     const f: [number, number, number, number, number?] = [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)];
     // 4つ目以降：ビット1 = 解放済みの囚人、ビット2 = スタン中
-    const flags = (e.input.spec.liberty && !e.confined ? 1 : 0) | (t < e.stunUntil ? 2 : 0);
+    const flags = (e.input.spec.liberty && !e.confined ? 1 : 0) | (t < e.stunUntil ? 2 : 0) | (t < e.fearUntil ? 4 : 0);
     if (flags) f.push(flags);
     return f;
   };
@@ -2700,7 +2716,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const lib = e.input.spec.liberty;
       // 解放後の囚人はHPが回復する
       if (lib?.regen && !e.confined) e.hp = Math.min(e.maxHp, e.hp + lib.regen * dt);
-      if (isFrozen(e) || asleep(e) || t < e.stunUntil) continue;
+      if (isFrozen(e) || asleep(e) || t < e.stunUntil || t < e.fearUntil) continue;
       if (e.atkTimer > 0) {
         // 寒冷中は攻撃速度が下がる。拘束中の囚人も攻撃速度が下がる
         const conf = lib && e.confined ? Math.max(0.1, (100 + lib.confAspd) / 100) : 1;
@@ -2952,6 +2968,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
       const path = e.input.path;
       const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) * tileEnemySpeed(e) : 1);
+      if (t < e.fearUntil) {
+        // 恐怖：来た道を逃げる（ブロックされない）
+        e.d = Math.max(0, e.d - speed * dt);
+        const fi = Math.min(Math.floor(e.d), path.length - 2);
+        const ff = e.d - fi;
+        e.x = cellX(path[fi]) + (cellX(path[fi + 1]) - cellX(path[fi])) * ff;
+        e.y = cellY(path[fi]) + (cellY(path[fi + 1]) - cellY(path[fi])) * ff;
+        continue;
+      }
       const curTile = path[Math.min(Math.round(e.d), path.length - 1)];
       const nd = e.d + speed * dt;
       const nextTile = path[Math.min(Math.round(nd), path.length - 1)];

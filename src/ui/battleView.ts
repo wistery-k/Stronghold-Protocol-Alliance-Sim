@@ -287,13 +287,20 @@ function damageBars(r: BattleResult) {
         'li',
         null,
         h('span', { class: 'bar-name' }, u.name, ' ', starBadge(u.star)),
-        h('span', { class: 'bar-track' }, h('span', { class: 'bar-fill', style: `width:${(u.damage / max) * 100}%` })),
+        h(
+          'span',
+          { class: 'bar-track' },
+          // 【シラクーザ】Lv2の確定ダメージは別の色で積み上げる
+          h('span', { class: 'bar-fill', style: `width:${((u.damage - (u.siracusaDamage ?? 0)) / max) * 100}%` }),
+          u.siracusaDamage ? h('span', { class: 'bar-fill siracusa', title: '【シラクーザ】の確定ダメージ', style: `width:${(u.siracusaDamage / max) * 100}%` }) : null,
+        ),
         h('span', { class: 'bar-val' }, `${fmt(u.damage)}（${pct(u.damage / total)}）`),
         h(
           'span',
           { class: 'bar-sub muted' },
           `撃破 ${u.kills}・DPS ${fmt(u.damage / Math.max(1, r.elapsed))}・スキル${u.skillCasts}回・被ダメ ${fmt(u.taken ?? 0)}`,
           u.healed ? `・回復 ${fmt(u.healed)}` : '',
+          u.siracusaDamage ? h('span', { class: 'siracusa-txt' }, `・シラクーザ確定 ${fmt(u.siracusaDamage)}`) : '',
           u.downAt !== null && u.downAt !== undefined ? h('span', { class: 'ng' }, `・${u.downAt.toFixed(0)}秒で撤退`) : '',
           u.retreats > 1 ? h('span', { class: 'ng' }, `（計${u.retreats}回）`) : '',
           u.redeploys ? `・再配置${u.redeploys}回` : '',
@@ -672,6 +679,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       n.g.style.display = '';
       n.g.classList.toggle('freed', ((e[4] ?? 0) & 1) !== 0);
       n.g.classList.toggle('stunned', ((e[4] ?? 0) & 2) !== 0);
+      n.g.classList.toggle('feared', ((e[4] ?? 0) & 4) !== 0);
       seen.add(e[0]);
     }
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';

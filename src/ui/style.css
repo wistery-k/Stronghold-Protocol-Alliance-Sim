@@ -578,8 +578,22 @@ aside {
   background: var(--panel-2);
   border-radius: 5px;
   overflow: hidden;
+  display: flex;
+}
+.bar-fill.siracusa {
+  background: #e05aa8;
+  border-radius: 0 5px 5px 0;
+}
+.siracusa-txt {
+  color: #e05aa8;
+}
+.rp-enemy.feared .rp-enemy-body {
+  stroke: #b06bff;
+  stroke-opacity: 1;
+  stroke-width: 5;
 }
 .bar-fill {
+  flex: none;
   display: block;
   height: 100%;
   background: var(--accent);
