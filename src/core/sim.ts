@@ -2746,7 +2746,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         // 周囲の味方全員に攻撃し続ける（換気口の上の味方は対象外）
         const free = lib && !e.confined;
         for (const u of rt) {
-          if (!u.alive || u.input.pos === undefined || unitTile(u) === 'smog') continue;
+          if (!u.alive || u.input.pos === undefined || unitTile(u) === 'smog' || unitStealthed(u)) continue;
           if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
           emit([3, e.id, u.input.uid, a.arts ? 1 : 0]);
           hurt(u, enemyAtk(e, a.atk * (free ? 1 + lib.atk : 1)) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
@@ -2810,7 +2810,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const b = boss.input.spec.bomb!;
     const n = 1;
     const targets = rt
-      .filter((u) => u.alive && u.input.pos !== undefined)
+      .filter((u) => u.alive && u.input.pos !== undefined && !unitStealthed(u))
       .sort((x, y) => baseAtk(y.input.def, y.input.star, y.input.mods) - baseAtk(x.input.def, x.input.star, x.input.mods))
       .slice(0, n);
     for (const u of targets) {
@@ -2853,7 +2853,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       e.enrageTimer += en.interval;
       const atk = e.input.spec.attack?.atk ?? 0;
       for (const u of rt) {
-        if (!u.alive || u.input.pos === undefined) continue;
+        if (!u.alive || u.input.pos === undefined || unitStealthed(u)) continue;
         if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > en.radius) continue;
         addOpElement(u, en.element, atk * en.ratio * weakFactor(e));
       }
@@ -2888,7 +2888,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const ty = cellY(pos);
     emit([7, Math.round(tx * 100), Math.round(ty * 100), Math.round(stun * 10)]);
     for (const u of rt) {
-      if (!u.alive || u.input.pos === undefined) continue;
+      // ステルスの味方は範囲攻撃も受けない（迷彩とは別の状態）
+      if (!u.alive || u.input.pos === undefined || unitStealthed(u)) continue;
       if (Math.abs(cellX(u.input.pos) - tx) > 1 || Math.abs(cellY(u.input.pos) - ty) > 1) continue;
       u.stunUntil = Math.max(u.stunUntil, t + stun);
       u.dotUntil = t + dotDuration;
@@ -2916,7 +2917,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (e.minion === 'roam' && dv && e.diveAt >= 0 && t >= e.diveAt) {
       // 攻撃力が最も低い味方へ突進
       const target = rt
-        .filter((u) => u.alive && u.input.pos !== undefined)
+        .filter((u) => u.alive && u.input.pos !== undefined && !unitStealthed(u))
         .sort((x, y) => baseAtk(x.input.def, x.input.star, x.input.mods) - baseAtk(y.input.def, y.input.star, y.input.mods))[0];
       e.diveAt = t + dv.cooldown;
       if (target) {
