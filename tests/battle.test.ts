@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENEMY_PATHS, GOAL, MAPS, SPAWNS, canPlace, setActiveMap, tileAt } from '../src/core/board';
+import { ENEMY_PATHS, GOAL, MAPS, RANDOM_MAPS, SPAWNS, canPlace, setActiveMap, tileAt } from '../src/core/board';
 import { ENEMIES, ENEMY_GROUPS, ROUNDS, pickRoundGroup, roundSpec, type EnemySpec, type RoundSpec } from '../src/core/data/battle';
 import { UNITS } from '../src/core/data/units';
 import { buildSimInputs, createGame, roundGroupOf } from '../src/core/game';
@@ -23,6 +23,13 @@ function run(board: OwnedUnit[], spec: RoundSpec) {
 }
 
 describe('マップ', () => {
+  it('低難易度のみのマップ1は抽選されない', () => {
+    expect(RANDOM_MAPS.some((m) => m.id === 'm1')).toBe(false);
+    expect(RANDOM_MAPS.length).toBe(7);
+    for (let seed = 1; seed <= 40; seed++) expect(createGame(seed).mapId === 'm1').toBe(false);
+    setActiveMap('legacy');
+  });
+
   it('本家の8マップはどれも出現地点が2つで、防衛地点まで経路がある', () => {
     for (const m of MAPS) {
       setActiveMap(m.id);

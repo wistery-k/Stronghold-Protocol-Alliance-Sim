@@ -56,7 +56,7 @@ import {
 } from './items';
 import { getItem, itemState } from './data/items';
 import { ALLIANCES, ALLIANCE_IDS, CORE_IDS } from './data/alliances';
-import { MAPS, autoCell, bestDirection, canPlace, normalizePositions, setActiveMap, unitAt } from './board';
+import { RANDOM_MAPS, autoCell, bestDirection, canPlace, normalizePositions, setActiveMap, unitAt } from './board';
 import {
   BENCH_SIZE,
   CHOICE_LOCK_MESSAGE,
@@ -215,7 +215,7 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
   for (const u of UNITS) pool[u.id] = POOL_COPIES[u.tier];
   const band = opts.band ?? null;
   // マップはショップとは別系統の乱数で抽選する
-  const mapId = opts.mapId ?? MAPS[new Rng(seed ^ 0x3a9b1c55).int(MAPS.length)].id;
+  const mapId = opts.mapId ?? RANDOM_MAPS[new Rng(seed ^ 0x3a9b1c55).int(RANDOM_MAPS.length)].id;
   setActiveMap(mapId);
   const state: GameState = {
     mapId,

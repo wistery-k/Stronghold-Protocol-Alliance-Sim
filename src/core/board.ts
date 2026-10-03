@@ -23,11 +23,13 @@ export interface MapDef {
   id: string;
   name: string;
   layout: string[];
+  /** 低難易度のみに出るマップ（ゲーム開始時の抽選には含めない。サンドボックスでは選べる） */
+  lowOnly?: boolean;
 }
 
 export const MAPS: MapDef[] = [
-  { id: 'm1', name: 'マップ1', layout: ['431111172', '431B33174', '431BB3174', '611444112'] },
-  { id: 'm2', name: 'マップ2', layout: ['41BB11172', '41331BB74', '413314474', '611114412'] },
+  { id: 'm1', name: 'マップ1（低難易度のみ）', layout: ['431111172', '431B33174', '431BB3174', '611444112'], lowOnly: true },
+  { id: 'm2', name: 'マップ2', layout: ['411111172', '413311174', '413314474', '611114412'] },
   { id: 'm3', name: 'マップ3', layout: ['444311172', '444B155B4', '4551133B4', '611111112'] },
   { id: 'm4', name: 'マップ4（活性源石）', layout: ['4BB444B72', '4311X1174', '4311X1174', '611444112'] },
   { id: 'm5', name: 'マップ5（高台）', layout: ['445111472', '445141474', '445141474', '611141112'] },
@@ -37,6 +39,8 @@ export const MAPS: MapDef[] = [
 ];
 /** テスト・古いセーブデータ用の以前の仮マップ */
 export const LEGACY_MAP: MapDef = { id: 'legacy', name: '旧マップ', layout: ['444555112', '445553134', '455533134', '611111112'] };
+/** ゲーム開始時に抽選されるマップ（高難易度に出るもの） */
+export const RANDOM_MAPS: MapDef[] = MAPS.filter((m) => !m.lowOnly);
 export const getMap = (id: string | null | undefined): MapDef => MAPS.find((m) => m.id === id) ?? LEGACY_MAP;
 
 export type TileType = 'ground' | 'spawn' | 'safe' | 'wall' | 'high' | 'goal' | 'floor' | 'barricade' | 'infection' | 'mire' | 'smog' | 'deepsea';

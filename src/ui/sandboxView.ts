@@ -7,7 +7,7 @@ import { DEPLOY_CAP, MAX_STACKS } from '../core/rules';
 import { battleTimeLimit, simulateBattle, type BattleResult } from '../core/sim';
 import type { AllianceId, OwnedUnit, Star } from '../core/types';
 import { alliancePanel, unitCard } from './components';
-import { MAPS, autoCell, bestDirection, canPlace, setActiveMap } from '../core/board';
+import { MAPS, RANDOM_MAPS, autoCell, bestDirection, canPlace, setActiveMap } from '../core/board';
 import { battleSummary, mapGrid, predictionLine, roundInfo } from './battleView';
 import { h } from './dom';
 
@@ -30,7 +30,7 @@ export interface SandboxState {
 export const SANDBOX_MAX_UNITS = DEPLOY_CAP;
 
 export function createSandbox(): SandboxState {
-  return { units: [], round: 14, group: null, replay: null, stacks: {}, nextUid: 1, selectedUid: null, mapId: MAPS[0].id };
+  return { units: [], round: 14, group: null, replay: null, stacks: {}, nextUid: 1, selectedUid: null, mapId: RANDOM_MAPS[0].id };
 }
 
 export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) => void) => void): HTMLElement {
