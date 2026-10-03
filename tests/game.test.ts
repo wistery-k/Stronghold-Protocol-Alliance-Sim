@@ -569,6 +569,18 @@ describe('スズランの堅守特性', () => {
     // マッターホルン +2、ノーシス +5（どちらも1回ずつ）
     expect((s.stacks.kjerag ?? 0) - before).toBe(7);
   });
+
+  it('ラウンド14・15の準備フェーズ開始時にも発動する', () => {
+    for (const round of [13, 14]) {
+      let s = createGame(1, { mapId: 'legacy' });
+      s = { ...s, round, life: 999, board: [{ ...ou(1, 'スズラン', 2), pos: 22, dir: 'right' }, { ...ou(2, 'マッターホルン'), pos: 23, dir: 'right' }] };
+      const before = s.stacks.kjerag ?? 0;
+      s = applyAction(s, { type: 'battle' }).state;
+      s = applyAction(s, { type: 'next' }).state;
+      expect(s.round).toBe(round + 1);
+      expect((s.stacks.kjerag ?? 0) - before).toBe(2);
+    }
+  });
 });
 
 describe('盟約加算数', () => {
