@@ -291,8 +291,12 @@ def main():
             e['unblockable'] = True
             e['float'] = True
         # 墓守の石像：一度目に倒れると石像形態（防御力・術耐性が上がり、その場で動かない）になり、一定時間後に飛行形態で復活
+        # 通常形態は近距離の物理攻撃、飛行形態は遠距離の術攻撃（射程は rangeRadius）
         if 'stone.duration' in bb:
-            e['stone'] = {'def': bb['stone.def']['value'], 'res': bb['stone.magic_resistance']['value'], 'duration': bb['stone.duration']['value']}
+            e['stone'] = {'def': bb['stone.def']['value'], 'res': bb['stone.magic_resistance']['value'], 'duration': bb['stone.duration']['value'],
+                          'flyRange': e['attack']['range'] if 'attack' in e else 1.6}
+            if 'attack' in e:
+                e['attack'] = {**e['attack'], 'kind': 'melee', 'range': 0, 'arts': False}
         # 仮想敵：泥濘：狙われにくい。ブロックされると相手に寄生し、毎秒攻撃力×atk_scale の術ダメージ、受ける元素損傷×ep_damage_scale。
         # 寄生した相手の元素損傷が爆発すると、周囲4マスの他の味方に同じ種類の元素損傷（量はデータに無いので500）
         if '1.atk_scale' in bb and '1.ep_damage_scale' in bb and apply_way == 'NONE':

@@ -67,10 +67,13 @@ export interface EnemySpec {
     /** init 秒後から cooldown 秒ごとに、次の攻撃が times 連撃（「帝国の甲冑」） */
     multi?: { init: number; cooldown: number; times: number };
   };
-  /** 低空浮揚：ブロックされず、近距離攻撃の対象にならない（掠海のフローター） */
+  /** 低空浮揚：ブロックされず、近距離攻撃の対象にならない。スタン・凍結で失い、以降は地上ユニット（近距離攻撃のみ）になる（掠海のフローター） */
   float?: boolean;
-  /** 一度目に倒れると duration 秒間、石像形態（防御力+def・術耐性 res、動かず攻撃しない）。その後、飛行形態で動き出す（墓守の石像） */
-  stone?: { def: number; res: number; duration: number };
+  /**
+   * 墓守の石像：通常形態は近距離の物理攻撃。一度目に倒れるとHP100%で duration 秒間、石像形態（防御力+def・術耐性+res、動かず攻撃しない）。
+   * その後、飛行形態（障害物を無視して防衛地点へ直進、射程 flyRange の遠距離術攻撃）
+   */
+  stone?: { def: number; res: number; duration: number; flyRange: number };
   /**
    * ブロックされると相手に寄生：interval 秒ごとに攻撃力 atk×scale の術ダメージ、相手が受ける元素損傷×epTaken。
    * 寄生した相手の元素損傷が爆発すると、周囲4マスの他の味方に同じ種類の元素損傷 spread（仮想敵：泥濘）

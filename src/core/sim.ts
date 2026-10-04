@@ -3283,6 +3283,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const tickEnemyStates = () => {
     for (const e of enemies) {
       if (!e.alive || !e.spawned) continue;
+      // 掠海のフローター：スタン・凍結で低空浮揚を失い、以降は地上ユニット（ブロックでき、近距離攻撃のみ）
+      if (e.input.spec.float && (t < e.stunUntil || isFrozen(e))) {
+        const at = e.input.spec.attack;
+        e.input = { ...e.input, spec: { ...e.input.spec, float: false, unblockable: false, attack: at ? { ...at, kind: 'melee', range: 0 } : at } };
+      }
       // 仮想敵：泥濘：ブロックしている相手に寄生して術ダメージを与え続ける
       const ps = e.input.spec.parasite;
       if (ps) {
@@ -3467,7 +3472,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.stoneUntil = -1;
         e.defense.def = Math.max(0, e.defense.def - sn.def);
         e.defense.res = Math.max(0, e.defense.res - sn.res);
-        e.input = { ...e.input, spec: { ...e.input.spec, flying: true } };
+        // 飛行形態：遠距離の術攻撃、障害物を無視して防衛地点へ直進
+        const at = e.input.spec.attack;
+        const here: [number, number] = [Math.round(e.x), Math.round(e.y)];
+        const path = routeCells([here, [cellX(GOAL), cellY(GOAL)]]);
+        e.input = { ...e.input, path, spec: { ...e.input.spec, flying: true, attack: at ? { ...at, kind: 'ranged', range: sn.flyRange, arts: true } : at } };
+        e.d = 0;
         release(e);
       }
       if (!e.input.path || e.blockedBy !== null) continue;

@@ -961,6 +961,14 @@ describe('寒冷・凍結とスキルの細部', () => {
       expect(r.frames!.some((f) => (f.ue ?? []).some((x) => x[0] === 1 && x[1] === 2))).toBe(true);
       const s = one('enemy_2025_syufo', { hp: 1e9 }, [{ uid: 1, defId: sn, star: 2, pos: 24, dir: 'down' }]);
       expect(s.perUnit[0].hits).toBeGreaterThan(0);
+      // 凍結すると低空浮揚を失って地上ユニットになり、ブロックされる（近距離も攻撃できる）
+      ENEMIES.t_float = { ...ENEMIES.enemy_2025_syufo, hp: 1e9 };
+      setActiveMap('legacy');
+      const { inputs, globals } = buildSimInputs([{ uid: 1, defId: sn, star: 2, pos: 24, dir: 'down' }, { uid: 2, defId: def2, star: 2, pos: 31, dir: 'right' }], [], {});
+      inputs[0].mods = { ...inputs[0].mods, coldProb: 1, coldDur: 3 };
+      const g = simulateBattle(inputs, { round: 1, levelId: 'test', timeLimit: 40, moveMultiplier: 0.5, spawns: [{ enemy: 't_float', count: 1, interval: 0, delay: 0, spawn: 1 }] }, { globals });
+      expect(g.freezes).toBeGreaterThan(0);
+      expect(g.perUnit.find((u) => u.uid === 2)!.hits).toBeGreaterThan(0);
     });
 
     it('枯朽サルカズ戦車：地面マスの味方だけを攻撃し、数回ごとに汚染秽蝕を残す', () => {
@@ -977,6 +985,9 @@ describe('寒冷・凍結とスキルの細部', () => {
       const r = one('enemy_1172_dugago', { hp: 3000, def: 0, refract: 0, stone: { def: 99999, res: 30, duration: 10 } }, [{ uid: 1, defId: sn, star: 2, pos: 24, dir: 'down' }], 80);
       expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 32) !== 0))).toBe(true);
       expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 64) !== 0))).toBe(true);
+      // 飛行形態は防衛地点へ向かって進む
+      const flyXs = r.frames!.flatMap((f) => f.e.filter((e) => ((e[4] ?? 0) & 64) !== 0).map((e) => e[1]));
+      expect(flyXs[flyXs.length - 1] < flyXs[0]).toBe(true);
     });
 
     it('「帝国の甲冑」：出現時にHPが最も高い味方へ複数回の物理ダメージ', () => {

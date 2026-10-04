@@ -158,8 +158,9 @@ function enemyBadges(e: EnemySpec) {
     const el = en.element ? ELEM_FULL[['burning', 'neural', 'erosion', 'apoptosis'].indexOf(en.element)] : '';
     b('臨戦', `攻撃を受けると臨戦状態：移動速度×${en.speedMult}${el ? `、${en.interval}秒ごとに半径${en.radius}マスの味方へ攻撃力の${Math.round(en.ratio * 100)}%の${el}` : ''}`, 'sp');
   }
-  if (e.float) b('低空浮揚', '低空浮揚：ブロックできず、近距離オペレーターは攻撃できない', 'fly');
-  if (e.stone) b('石像', `一度目に倒れると${e.stone.duration}秒間、石像形態（HP全快・防御力+${e.stone.def}・術耐性+${e.stone.res}、動かず攻撃しない）になり、その後は飛行形態で進む`, 'sp');
+  if (e.float) b('低空浮揚', '低空浮揚：ブロックできず、近距離オペレーターは攻撃できない。スタン・凍結で失い、以降は地上ユニット（近距離攻撃のみ）になる', 'fly');
+  if (e.stone)
+    b('石像', `一度目に倒れるとHP100%で${e.stone.duration}秒間、石像形態（防御力+${e.stone.def}・術耐性+${e.stone.res}、動かず攻撃しない）になり、その後は飛行形態（障害物を無視して防衛地点へ直進、射程${e.stone.flyRange}の遠距離術攻撃）`, 'sp');
   if (e.parasite) b('寄生', `ブロックした相手に寄生し、${e.parasite.interval}秒ごとに攻撃力の${Math.round(e.parasite.scale * 100)}%の術ダメージ。相手が受ける元素損傷×${e.parasite.epTaken}、相手の元素損傷が爆発すると周囲4マスの味方に同じ元素損傷${e.parasite.spread}。狙われにくい`, 'sp');
   if (e.appearStrike) b('出現時攻撃', `出現時、HPが最も高い味方とその周囲8マスでHPが最も高い味方に攻撃力の物理ダメージを${e.appearStrike}回`, 'sp');
   if (e.attack?.groundOnly) b('地面のみ', `地面マスの味方だけを攻撃。ブロックしている相手には攻撃力×${e.attack.meleeScale ?? 1}${e.attack.pollute ? `、${e.attack.pollute.every}回目ごとの攻撃は目標に汚染秽蝕（${e.attack.pollute.duration}秒）を残す` : ''}`, 'sp');

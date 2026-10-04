@@ -4569,16 +4569,17 @@
    "elite": true,
    "lifeReduce": 1,
    "attack": {
-    "kind": "ranged",
+    "kind": "melee",
     "atk": 550,
     "interval": 4.0,
-    "range": 1.6,
+    "range": 0,
     "arts": false
    },
    "stone": {
     "def": 800.0,
     "res": 30.0,
-    "duration": 10.0
+    "duration": 10.0,
+    "flyRange": 1.6
    },
    "refract": 70.0
   },
