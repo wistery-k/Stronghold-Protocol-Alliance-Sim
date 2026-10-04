@@ -893,6 +893,10 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect((r.fx ?? []).some((x) => x[1] === 0 && x[2] === 1 && x[0] / 100 > from && x[0] / 100 < to)).toBe(true);
     // 20秒で本体に戻る
     expect(to - from < 20.5).toBe(true);
+    // 堅守特性：倒れた時か身替りと入れ替わった時、有効化中の【エーギル】【不屈】+5
+    const s2 = simulateBattle(inputs, { round: 1, levelId: 'test', timeLimit: 30, moveMultiplier: 0.5, spawns: [{ enemy: 'test_dk', count: 1, interval: 0, delay: 0, spawn: 1 }] }, { globals, activeAlliances: new Set(['egir', 'indom']) });
+    expect(s2.stackGains.indom ?? 0).toBeGreaterThanOrEqual(5);
+    expect(s2.stackGains.egir ?? 0).toBeGreaterThanOrEqual(5);
   });
 
   it('カゼマルS2：HPが減り、周囲に紙人形（身替り）を召喚して出現時に周囲の敵へ術ダメージ。スキル終了で消える', () => {

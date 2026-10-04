@@ -1298,7 +1298,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
   const enemies: Enemy[] = enemyInputs.map((input, i) => newEnemy(input, i + 1)).sort((a, b) => a.input.spawnAt - b.input.spawnAt);
 
-  const gainStacks = (ev: GarrisonEvent, times = 1) => {
+  const gainStacks = (ev: GarrisonEvent, times = 1, cause = STACK_CAUSE[ev.kind]) => {
     const amount = Math.min(ev.count * times, ev.max - ev.gained);
     if (amount <= 0) return;
     const targets: AllianceId[] =
@@ -1310,8 +1310,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const bonus = ev.bonus * times;
     for (const b of targets) {
       stackGains[b] = (stackGains[b] ?? 0) + amount + bonus;
-      addSource(ev.uid, ev.name, b, amount, STACK_CAUSE[ev.kind]);
-      if (bonus > 0) addSource(ev.uid, ev.name, b, bonus, `${STACK_CAUSE[ev.kind]}（シヴィライト・エテルナの追加）`);
+      addSource(ev.uid, ev.name, b, amount, cause);
+      if (bonus > 0) addSource(ev.uid, ev.name, b, bonus, `${cause}（シヴィライト・エテルナの追加）`);
     }
   };
 
@@ -1854,6 +1854,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     u.hp = u.maxHp;
     u.dollTick = 1;
+    // 「倒れた時か身替りと入れ替わった時」の堅守特性（帰溟スペクター。S2終了後の入れ替わりも含む）
+    for (const ev of u.events) if (ev.kind === 'dead') gainStacks(ev, 1, '身替りと入れ替わり');
   };
   const restoreDoll = (u: Runtime) => {
     if (u.saved) Object.assign(u, u.saved);
