@@ -807,6 +807,7 @@ interface Enemy {
   flameSp: number;
   flameUntil: number;
   flameTarget: number | null;
+  flameTimer: number;
   enrageTimer: number;
   /** ボスの手下：飛び回る先 */
   roamTo: { x: number; y: number } | null;
@@ -1286,6 +1287,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       flameSp: input.spec.flame?.init ?? 0,
       flameUntil: -1,
       flameTarget: null,
+      flameTimer: 0,
       enrageTimer: 0,
       bombAt: input.spec.bomb ? input.spawnAt + input.spec.bomb.init : -1,
       bombTo: null,
@@ -3037,27 +3039,30 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
 
   /**
-   * 火炎放射（祝祭のジャズ奏者）：通常攻撃はしない。SPは毎秒1溜まり、溜まっている時にステルスが解けると即座に放射を始め、
+   * 火炎放射（祝祭のジャズ奏者）：ステルス中は攻撃しない。SPは毎秒1溜まり、溜まっている時にステルスが解けると即座に放射を始め、
    * 対象1人に最大 duration 秒、攻撃間隔ごとに攻撃力×scale の術ダメージと灼熱損傷を与え続ける。
-   * 対象の撤退・自身のスタンなどで中断。終わるとSPは0から
+   * 対象の撤退・自身のスタンなどで中断。終わるとSPは0から。放射していない間（SPを溜めている間）は、ステルスが解けていれば通常攻撃。
+   * 戻り値：この時間の行動を済ませたか（false なら通常攻撃へ）
    */
-  const flameAttack = (e: Enemy, a: NonNullable<EnemySpec['attack']>, fl: NonNullable<EnemySpec['flame']>) => {
+  const flameAttack = (e: Enemy, a: NonNullable<EnemySpec['attack']>, fl: NonNullable<EnemySpec['flame']>): boolean => {
     if (e.flameUntil >= 0) {
       const target = e.flameTarget !== null ? byUid.get(e.flameTarget) : undefined;
       if (t >= e.flameUntil || !target || !target.alive) {
         e.flameUntil = -1;
-        return;
+        e.atkTimer = 0;
+        return true;
       }
       if (e.blockedBy === null) e.stallUntil = t + dt * 2;
-      if ((e.atkTimer -= dt * tileEnemyAtkRate(e)) > 0) return;
-      e.atkTimer += a.interval;
+      if ((e.flameTimer -= dt * tileEnemyAtkRate(e)) > 0) return true;
+      e.flameTimer += fl.interval;
       emit([3, e.id, target.input.uid, 1]);
       hurt(target, enemyAtk(e, a.atk * fl.scale) * weakFactor(e), true, e);
       if (e.input.spec.element) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
-      return;
+      return true;
     }
     e.flameSp = Math.min(fl.cost, e.flameSp + dt);
-    if (isStealthed(e) || e.flameSp < fl.cost) return;
+    if (isStealthed(e)) return true;
+    if (e.flameSp < fl.cost) return false;
     let target: Runtime | undefined = e.blockedBy !== null ? byUid.get(e.blockedBy) : undefined;
     if (!target) {
       for (const u of rt) {
@@ -3066,11 +3071,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         if (!target || unitTaunt(u) > unitTaunt(target) || (unitTaunt(u) === unitTaunt(target) && u.order > target.order)) target = u;
       }
     }
-    if (!target) return;
+    if (!target) return false;
     e.flameSp = 0;
     e.flameUntil = t + fl.duration;
     e.flameTarget = target.input.uid;
-    e.atkTimer = 0;
+    e.flameTimer = 0;
+    return true;
   };
 
   const enemyAttacks = () => {
@@ -3086,10 +3092,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         if (fl) e.flameUntil = -1;
         continue;
       }
-      if (fl) {
-        flameAttack(e, a, fl);
-        continue;
-      }
+      if (fl && flameAttack(e, a, fl)) continue;
       if (e.atkTimer > 0) {
         // 寒冷中は攻撃速度が下がる。拘束中の囚人も攻撃速度が下がる
         const conf = lib && e.confined ? Math.max(0.1, (100 + lib.confAspd) / 100) : 1;
@@ -3150,7 +3153,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const ambush = e.input.spec.ambush && e.ambushReady ? e.input.spec.ambush : 1;
       if (e.input.spec.ambush) e.ambushReady = false;
       hurt(target, enemyAtk(e, a.atk * (free ? 1 + lib.atk : 1) * ambush) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
-      if (e.input.spec.element) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
+      // 祝祭のジャズ奏者の灼熱損傷は火炎放射だけ
+      if (e.input.spec.element && !fl) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
       e.atkTimer = a.interval;
       if (lib && e.confined && ++e.confAttacks >= lib.times) liberate(e);
       // 遠距離攻撃の間は一瞬足を止める

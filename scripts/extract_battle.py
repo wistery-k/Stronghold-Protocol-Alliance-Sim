@@ -262,8 +262,11 @@ def main():
             fbb = {b_['key']: b_['value'] for b_ in (fire.get('blackboard') or [])}
             radius = ed['rangeRadius']['m_value'] if ed['rangeRadius']['m_defined'] else 2.5
             dur = next((v for k, v in fbb.items() if k.endswith('[cd].duration')), 10.6)
-            e['attack'] = {'kind': 'ranged', 'atk': atk, 'interval': fbb.get('hit_interval', 0.5), 'range': radius, 'arts': True}
-            e['flame'] = {'scale': fbb.get('atk_scale', 1), 'init': fire['initCooldown'], 'cost': fire['cooldown'], 'duration': dur}
+            bat = enemy_value(at, 'baseAttackTime', 1.0) or 1.0
+            aspd = enemy_value(at, 'attackSpeed', 100.0) or 100.0
+            # 放射していない間（ステルスが解けている時）は通常攻撃（物理）
+            e['attack'] = {'kind': 'ranged', 'atk': atk, 'interval': round(bat * 100 / aspd, 3), 'range': radius, 'arts': False}
+            e['flame'] = {'scale': fbb.get('atk_scale', 1), 'init': fire['initCooldown'], 'cost': fire['cooldown'], 'duration': dur, 'interval': fbb.get('hit_interval', 0.5)}
             if fbb.get('ep_damage_ratio'):
                 e['element'] = {'type': 'burning', 'ratio': fbb['ep_damage_ratio']}
         # 元素損傷：攻撃時に攻撃力×比率の元素損傷を与える（種類は図鑑の説明から）

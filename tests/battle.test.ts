@@ -936,6 +936,9 @@ describe('寒冷・凍結とスキルの細部', () => {
     const r = simulateBattle(b.inputs, spec, { globals: b.globals, record: true });
     expect(r.perUnit[0].taken).toBeGreaterThan(0);
     expect(r.frames!.some((f) => (f.ue ?? []).some((x) => x[0] === 1 && x[1] === 0))).toBe(true);
+    // 放射の前（SPを溜めている間）は通常攻撃（1秒ごと）。ブロックされたのはSPが溜まる前（3+経過<10秒）
+    const shots = (r.fx ?? []).filter((x) => x[1] === 3).map((x) => x[0] / 100);
+    expect(shots.some((s) => s < 7)).toBe(true);
   });
 
   it('アンジェリーナS3：スキル発動中のみ攻撃する', () => {
