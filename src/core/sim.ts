@@ -100,6 +100,8 @@ export interface ReplayFrame {
   sc?: number[];
   /** ステルス中のオペレーターの uid */
   st?: number[];
+  /** 離陸中のオペレーターの uid（ティッピ） */
+  lf?: number[];
   /** 荒蕪ラップランドS3のザーロ [uid, x×100, y×100, 取り付いていれば1] */
   zr?: [number, number, number, number][];
   /** オペレーターの元素損傷 [uid, 種類（0灼燃・1神経・2侵蝕・3壊死）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1以上溜まっているものだけ */
@@ -566,6 +568,9 @@ const ELEMENT_SKILL: Record<string, 'virtuosa' | 'nymph'> = {
 };
 /** スキルでのみ攻撃するオペレーター */
 const SKILL_ONLY_ATTACK = new Set(['char_245_cello']);
+/** ティッピ：スキルは攻撃を受けると自動発動し、その攻撃を回避して離陸する（離陸中は地上の敵をブロックせず狙われず、空中の敵をブロック・攻撃できる。攻撃は3連撃） */
+const TIPPI = 'char_4191_tippi';
+const TIPPI_HITS = 3;
 /** スキル発動中のみ攻撃行動を行う（アンジェリーナS3） */
 const SKILL_ACTIVE_ONLY_ATTACK = new Set(['char_291_aglina']);
 /** スキル中は攻撃しなくなる（スズラン・クオーラ・キャサリン・バブル） */
@@ -1511,7 +1516,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const list = enemies.filter((e) => {
       if (!e.alive) return false;
       if (!field) return true;
-      if (isFlying(e) && u.melee) return false;
+      if (isFlying(e) && u.melee && !lifted(u)) return false;
       // ステルス：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
       if (isStealthed(e)) return false;
       // ボスの手下は無敵（攻撃の対象にならない。突進中・撃ち落とされた後は狙える）
@@ -1581,6 +1586,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const endSkill = (u: Runtime) => {
     setSkillHp(u, false);
+    if (cid(u) === TIPPI) land(u);
     talentOnSkillEnd(u);
     // 戦術【回収利用】：地上オペレーターのスキル終了時、周囲4マスのランダムな味方1名のSP回復
     if (g.humus && u.melee && u.input.pos !== undefined) {
@@ -1610,6 +1616,16 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
 
+  /** 離陸：ブロック中の地上の敵を放す */
+  const takeOff = (u: Runtime) => {
+    for (const b of u.blocked) if (!b.input.spec.flying) b.blockedBy = null;
+    u.blocked = u.blocked.filter((b) => b.input.spec.flying);
+  };
+  /** 着陸：ブロック中の空中の敵を放す */
+  const land = (u: Runtime) => {
+    for (const b of u.blocked) if (b.input.spec.flying) b.blockedBy = null;
+    u.blocked = u.blocked.filter((b) => !b.input.spec.flying);
+  };
   const castSkill = (u: Runtime, outerAtkPct: number) => {
     const { mods, uid, def, star } = u.input;
     const s = u.skill;
@@ -1730,6 +1746,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u.alive &&
         !stunned(u) &&
         u.input.pos === tile &&
+        // 離陸中（ティッピ）は空中の敵だけ、それ以外は地上の敵だけをブロックする
+        lifted(u) === !!e.input.spec.flying &&
         u.blocked.reduce((s, b) => s + b.input.spec.blockCnt, 0) + e.input.spec.blockCnt <= u.block + (u.skillLeft > 0 || u.ammoLeft > 0 ? u.skill.blockAdd : 0),
     );
 
@@ -2015,6 +2033,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
 
+  /** ティッピの離陸中 */
+  const lifted = (u: Runtime) => cid(u) === TIPPI && u.skillLeft > 0;
+  /** 離陸中の味方は地上の敵の攻撃対象にならない */
+  const untargetable = (u: Runtime, e: Enemy) => lifted(u) && !e.input.spec.flying;
   /** 狙われやすさ（装備＋スキル中の taunt_level。バブル） */
   const unitTaunt = (u: Runtime) => (u.input.mods.taunt ?? 0) + (u.skillLeft > 0 ? (u.skill.bb.taunt_level ?? 0) : 0);
   /** 固定値の被ダメージ軽減（海溝の実験体）。1回分のダメージから差し引く */
@@ -2066,6 +2088,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
 
   const hurt = (u: Runtime, raw: number, arts: boolean, src: Enemy, defPen = 0) => {
+    // ティッピ：SPが溜まっていれば攻撃を受けた瞬間にスキルが自動発動し、その攻撃を回避して離陸
+    if (field && cid(u) === TIPPI && u.skillLeft <= 0 && u.skill.spCost > 0 && u.sp >= u.skill.spCost && !stunned(u)) {
+      castSkill(u, 0);
+      takeOff(u);
+      return;
+    }
     philaeCounter(u);
     if (talentOnHurt(u, arts, src)) return;
     // 聖約イグゼキュター：スキル中は近接攻撃を確率で回避し、弾薬を補充（期待値）
@@ -2886,7 +2914,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         // 周囲の味方全員に攻撃し続ける（換気口の上の味方は対象外）
         const free = lib && !e.confined;
         for (const u of rt) {
-          if (!u.alive || u.input.pos === undefined || unitTile(u) === 'smog' || unitStealthed(u)) continue;
+          if (!u.alive || u.input.pos === undefined || unitTile(u) === 'smog' || unitStealthed(u) || untargetable(u, e)) continue;
           if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
           emit([3, e.id, u.input.uid, a.arts ? 1 : 0]);
           hurt(u, enemyAtk(e, a.atk * (free ? 1 + lib.atk : 1)) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
@@ -2900,7 +2928,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       else if (a.kind === 'ranged' && a.randomTarget) {
         // 範囲内のランダムな対象（換気口の上の味方は除く）
         const cands = rt.filter(
-          (u) => u.alive && u.input.pos !== undefined && unitTile(u) !== 'smog' && !unitStealthed(u) && Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) <= a.range,
+          (u) => u.alive && u.input.pos !== undefined && unitTile(u) !== 'smog' && !unitStealthed(u) && !untargetable(u, e) && Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) <= a.range,
         );
         if (cands.length) target = cands[Math.floor(rand() * cands.length)];
       } else if (a.kind === 'ranged') {
@@ -2908,7 +2936,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           if (!u.alive || u.input.pos === undefined) continue;
           if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
           // 換気口の上の味方・ステルスの味方は遠距離攻撃の対象にならない
-          if (unitTile(u) === 'smog' || unitStealthed(u)) continue;
+          if (unitTile(u) === 'smog' || unitStealthed(u) || untargetable(u, e)) continue;
           const tu = unitTaunt(u);
           const tt = target ? unitTaunt(target) : 0;
           if (!target || tu > tt || (tu === tt && u.order > target.order)) target = u;
@@ -2965,7 +2993,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const b = boss.input.spec.bomb!;
     const n = 1;
     const targets = rt
-      .filter((u) => u.alive && u.input.pos !== undefined && !unitStealthed(u))
+      .filter((u) => u.alive && u.input.pos !== undefined && !unitStealthed(u) && !untargetable(u, boss))
       .sort((x, y) => baseAtk(y.input.def, y.input.star, y.input.mods) - baseAtk(x.input.def, x.input.star, x.input.mods))
       .slice(0, n);
     for (const u of targets) {
@@ -3008,7 +3036,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       e.enrageTimer += en.interval;
       const atk = e.input.spec.attack?.atk ?? 0;
       for (const u of rt) {
-        if (!u.alive || u.input.pos === undefined || unitStealthed(u)) continue;
+        if (!u.alive || u.input.pos === undefined || unitStealthed(u) || untargetable(u, e)) continue;
         if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > en.radius) continue;
         addOpElement(u, en.element, atk * en.ratio * weakFactor(e));
       }
@@ -3179,7 +3207,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const curTile = path[Math.min(Math.round(e.d), path.length - 1)];
       const nd = e.d + speed * dt;
       const nextTile = path[Math.min(Math.round(nd), path.length - 1)];
-      if (!e.input.spec.flying && !e.input.spec.unblockable) {
+      if (!e.input.spec.unblockable && (!e.input.spec.flying || (field && !e.input.spec.projectile && !e.input.spec.roam && rt.some(lifted)))) {
         // 今いるマス・次に入るマスにブロックできるユニットがいれば止まる
         const b = blockerAt(curTile, e) ?? (nextTile !== curTile ? blockerAt(nextTile, e) : undefined);
         if (b) {
@@ -3339,7 +3367,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
       // スキル発動判定（攻撃役は攻撃範囲に敵がいる時だけ発動する）
       const skillActive = () => u.skillLeft > 0 || u.ammoLeft > 0;
-      if (!s.passive && !skillActive() && t >= u.recastAt && u.sp >= s.spCost && s.spCost > 0 && !opBursting(u, 'apoptosis') && (heal
+      if (!s.passive && !skillActive() && t >= u.recastAt && u.sp >= s.spCost && s.spCost > 0 && !(field && def.charId === TIPPI) && !opBursting(u, 'apoptosis') && (heal
           ? !field || injuredInRange(u, true).length > 0
           : field && (SUPPORT_SKILL[def.charId] === 'nextHeal' || SUPPORT_SKILL[def.charId] === 'areaHeal')
             ? injuredNear(u).length > 0
@@ -3369,7 +3397,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const scale = activeNow && !s.instant && !s.passive ? s.atkScale : 1;
       // 旋輪射手（ケイパー）：スキル中は攻撃時に投擲物を追加で放つ（cnt 個）
       const loop = def.subProfession === 'loopshooter';
-      const hits = activeNow && !s.instant ? (loop && !s.passive && s.bb.cnt ? s.bb.cnt : s.hits) : 1;
+      const hits = activeNow && !s.instant ? (def.charId === TIPPI && u.skillLeft > 0 ? TIPPI_HITS : loop && !s.passive && s.bb.cnt ? s.bb.cnt : s.hits) : 1;
       // 陣法術師はスキル中しか攻撃しない
       // ヴィルトゥオーサはスキルでのみ攻撃、フィラエはスキル中は攻撃しない
       const canAttack =
@@ -3568,6 +3596,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         sg: sargonFrame(),
         sc: siracusaFrame(),
         st: stealthFrame(),
+        lf: rt.filter((u) => u.alive && lifted(u)).map((u) => u.input.uid),
         zr: zaroFrame(),
         c: Math.floor(cost),
       });
@@ -3589,6 +3618,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       sg: sargonFrame(),
         sc: siracusaFrame(),
         st: stealthFrame(),
+        lf: rt.filter((u) => u.alive && lifted(u)).map((u) => u.input.uid),
         zr: zaroFrame(),
       c: Math.floor(cost),
     });

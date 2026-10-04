@@ -855,6 +855,28 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(flyer.path).toEqual(routeCells(fly.route!));
   });
 
+  it('ティッピ：攻撃を受けるとスキルが自動発動して回避・離陸。離陸中は地上の敵を放し、空中の敵をブロックして攻撃する', () => {
+    const tippi = UNITS.find((u) => u.name === 'ティッピ')!;
+    setActiveMap('legacy');
+    const board: OwnedUnit[] = [{ uid: 1, defId: tippi.id, star: 1, pos: 33, dir: 'right' }];
+    // 地上の近接の敵：SPが溜まった後の被弾で離陸し、敵は通り抜ける
+    ENEMIES.test_tg = { name: 'g', hp: 1e9, def: 0, res: 0, speed: 0.6, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1, attack: { kind: 'melee', atk: 100, interval: 1, range: 0, arts: false } };
+    const a = buildSimInputs(board, [], {});
+    const g = simulateBattle(a.inputs, { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_tg', count: 1, interval: 0, delay: 0, spawn: 1 }] }, { globals: a.globals, record: true });
+    expect(g.perUnit[0].skillCasts).toBeGreaterThan(0);
+    expect(g.frames!.some((f) => (f.lf ?? []).includes(1))).toBe(true);
+    expect(g.leaked).toBe(1);
+    // 空中の敵：離陸するまでは攻撃できない。離陸後はブロックして攻撃する
+    ENEMIES.test_tf = { name: 'f', hp: 1e9, def: 0, res: 0, speed: 0.6, blockCnt: 1, flying: true, boss: false, elite: false, lifeReduce: 1, attack: { kind: 'ranged', atk: 100, interval: 1, range: 1.5, arts: false } };
+    const b = buildSimInputs(board, [], {});
+    const f = simulateBattle(b.inputs, { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_tf', count: 1, interval: 0, delay: 10, spawn: 1 }] }, { globals: b.globals, record: true });
+    expect(f.perUnit[0].skillCasts).toBeGreaterThan(0);
+    expect(f.perUnit[0].hits).toBeGreaterThan(0);
+    // ブロックで足止めされる（ブロックしない場合より突破が遅い）
+    const free = simulateBattle([], { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_tf', count: 1, interval: 0, delay: 10, spawn: 1 }] }, {});
+    expect(f.elapsed > free.elapsed).toBe(true);
+  });
+
   it('アンジェリーナS3：スキル発動中のみ攻撃する', () => {
     ENEMIES.test_ag = { name: 'a', hp: 1e6, def: 100, res: 0, speed: 0.4, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
     const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_ag', count: 10, interval: 4, delay: 0, spawn: 1 }] };
