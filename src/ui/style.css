@@ -1303,7 +1303,7 @@ aside {
   stroke: #8a5a00;
   stroke-width: 1.5;
 }
-.rp-enemy.stealth,
+/* 離陸中の味方（ティッピ）。味方の g は座標を属性でなく子要素に持つので transform を使える（敵の g には使わない） */
 .rp-unit.lifted {
   transform: translateY(-9px);
   filter: drop-shadow(0 12px 3px rgba(0, 0, 0, 0.5));
@@ -1311,6 +1311,7 @@ aside {
 .rp-unit {
   transition: transform 0.2s;
 }
+.rp-enemy.stealth,
 .rp-unit.stealth {
   opacity: 0.45;
 }
