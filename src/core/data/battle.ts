@@ -69,7 +69,7 @@ export interface EnemySpec {
   enrage?: { speedMult: number; element: ElementType | null; ratio: number; interval: number; radius: number };
   /** 火炎放射（祝祭のジャズ奏者）：ステルス中は攻撃しない。ステルスが解けていて放射していない間は通常攻撃。初期SP init・必要SP cost（毎秒1）。SPが溜まっていてステルスが解けると即座に放射し、
    *  対象1人に最大 duration 秒、攻撃間隔ごとに攻撃力×scale の術ダメージ（と灼熱損傷）。対象の撤退・スタンで中断 */
-  flame?: { scale: number; init: number; cost: number; duration: number; interval: number };
+  flame?: { scale: number; init: number; cost: number; duration: number; interval: number; range: number };
   /** 一度だけ爆弾を投げる（目標と周囲 radius マスに攻撃力の物理ダメージ）。その後は攻撃せず、移動速度×speedMult（バクダンバチ） */
   throwOnce?: { radius: number; speedMult: number };
   /** 挑発レベル：味方はブロック中の敵の次に、挑発レベルの高い敵を優先して狙う */

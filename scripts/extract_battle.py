@@ -264,9 +264,9 @@ def main():
             dur = next((v for k, v in fbb.items() if k.endswith('[cd].duration')), 10.6)
             bat = enemy_value(at, 'baseAttackTime', 1.0) or 1.0
             aspd = enemy_value(at, 'attackSpeed', 100.0) or 100.0
-            # 放射していない間（ステルスが解けている時）は通常攻撃（物理）
-            e['attack'] = {'kind': 'ranged', 'atk': atk, 'interval': round(bat * 100 / aspd, 3), 'range': radius, 'arts': False}
-            e['flame'] = {'scale': fbb.get('atk_scale', 1), 'init': fire['initCooldown'], 'cost': fire['cooldown'], 'duration': dur, 'interval': fbb.get('hit_interval', 0.5)}
+            # 放射していない間（ステルスが解けている時）は、ブロックしている相手に通常攻撃（物理・近接）
+            e['attack'] = {'kind': 'melee', 'atk': atk, 'interval': round(bat * 100 / aspd, 3), 'range': 0, 'arts': False}
+            e['flame'] = {'scale': fbb.get('atk_scale', 1), 'init': fire['initCooldown'], 'cost': fire['cooldown'], 'duration': dur, 'interval': fbb.get('hit_interval', 0.5), 'range': radius}
             if fbb.get('ep_damage_ratio'):
                 e['element'] = {'type': 'burning', 'ratio': fbb['ep_damage_ratio']}
         # 元素損傷：攻撃時に攻撃力×比率の元素損傷を与える（種類は図鑑の説明から）

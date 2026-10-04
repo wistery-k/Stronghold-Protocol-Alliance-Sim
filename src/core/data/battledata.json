@@ -4044,10 +4044,10 @@
    "elite": true,
    "lifeReduce": 1,
    "attack": {
-    "kind": "ranged",
+    "kind": "melee",
     "atk": 650,
     "interval": 1.0,
-    "range": 2.5,
+    "range": 0,
     "arts": false
    },
    "flame": {
@@ -4055,7 +4055,8 @@
     "init": 3.0,
     "cost": 10.0,
     "duration": 10.6,
-    "interval": 0.5
+    "interval": 0.5,
+    "range": 2.5
    },
    "element": {
     "type": "burning",

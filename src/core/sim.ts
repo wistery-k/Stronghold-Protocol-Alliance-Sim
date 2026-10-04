@@ -3067,7 +3067,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (!target) {
       for (const u of rt) {
         if (!u.alive || u.input.pos === undefined || unitTile(u) === 'smog' || unitStealthed(u) || untargetable(u, e)) continue;
-        if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
+        if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > fl.range) continue;
         if (!target || unitTaunt(u) > unitTaunt(target) || (unitTaunt(u) === unitTaunt(target) && u.order > target.order)) target = u;
       }
     }
