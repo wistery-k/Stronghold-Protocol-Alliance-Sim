@@ -4053,8 +4053,8 @@
    "flame": {
     "scale": 0.2,
     "init": 3.0,
-    "cycle": 10.0,
-    "duration": 6.0
+    "cost": 10.0,
+    "duration": 10.6
    },
    "element": {
     "type": "burning",

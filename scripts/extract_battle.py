@@ -255,16 +255,15 @@ def main():
                 sbb = {b['key']: b['value'] for b in (sk.get('blackboard') or [])}
                 e['dive'] = {'cooldown': sk['cooldown'], 'init': sk['initCooldown'], 'stun': sbb.get('stun', 10), 'dotDps': sbb.get('dot_damage', 200),
                              'dotDuration': sbb.get('dot_duration', 10), 'hits': int(sbb.get('max_hit_cnt', 15)), 'dmgScale': sbb.get('damage_scale', 1)}
-        # 火炎放射（祝祭のジャズ奏者）：ステルス中は攻撃しない。ステルスが解けると init 秒後から cycle 秒ごとに duration 秒間、
-        # hit_interval 秒ごとに攻撃力×atk_scale の術ダメージと攻撃力×ep_damage_ratio の灼熱損傷を範囲内の味方1人に与え続ける。
-        # 放射の持続時間はデータの enemy_cnvsax[cd].interval（6秒）と解釈
+        # 火炎放射（祝祭のジャズ奏者）：通常攻撃はしない。初期SP（initCooldown）・必要SP（cooldown）が溜まっていて、ステルスが解けると即座に放射。
+        # 対象1人に最大 [cd].duration 秒、hit_interval 秒ごとに攻撃力×atk_scale の術ダメージと攻撃力×ep_damage_ratio の灼熱損傷
         fire = next((x for x in (ed.get('skills') or []) if x.get('prefabKey') == 'fire'), None)
         if fire and apply_way == 'ALL' and atk > 0:
             fbb = {b_['key']: b_['value'] for b_ in (fire.get('blackboard') or [])}
             radius = ed['rangeRadius']['m_value'] if ed['rangeRadius']['m_defined'] else 2.5
-            dur = next((v for k, v in fbb.items() if k.endswith('[cd].interval')), 6.0)
+            dur = next((v for k, v in fbb.items() if k.endswith('[cd].duration')), 10.6)
             e['attack'] = {'kind': 'ranged', 'atk': atk, 'interval': fbb.get('hit_interval', 0.5), 'range': radius, 'arts': True}
-            e['flame'] = {'scale': fbb.get('atk_scale', 1), 'init': fire['initCooldown'], 'cycle': fire['cooldown'], 'duration': dur}
+            e['flame'] = {'scale': fbb.get('atk_scale', 1), 'init': fire['initCooldown'], 'cost': fire['cooldown'], 'duration': dur}
             if fbb.get('ep_damage_ratio'):
                 e['element'] = {'type': 'burning', 'ratio': fbb['ep_damage_ratio']}
         # 元素損傷：攻撃時に攻撃力×比率の元素損傷を与える（種類は図鑑の説明から）

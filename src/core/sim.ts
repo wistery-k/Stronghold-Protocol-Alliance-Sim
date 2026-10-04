@@ -803,8 +803,10 @@ interface Enemy {
   enraged: boolean;
   /** バクダンバチ：爆弾を投げた後 */
   thrown: boolean;
-  /** 火炎放射の開始時刻（ステルス中は -1） */
-  flameAt: number;
+  /** 火炎放射：SP・放射が終わる時刻（放射していなければ -1）・対象 */
+  flameSp: number;
+  flameUntil: number;
+  flameTarget: number | null;
   enrageTimer: number;
   /** ボスの手下：飛び回る先 */
   roamTo: { x: number; y: number } | null;
@@ -1281,7 +1283,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       ambushReady: true,
       enraged: false,
       thrown: false,
-      flameAt: -1,
+      flameSp: input.spec.flame?.init ?? 0,
+      flameUntil: -1,
+      flameTarget: null,
       enrageTimer: 0,
       bombAt: input.spec.bomb ? input.spawnAt + input.spec.bomb.init : -1,
       bombTo: null,
@@ -3032,6 +3036,43 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return f;
   };
 
+  /**
+   * 火炎放射（祝祭のジャズ奏者）：通常攻撃はしない。SPは毎秒1溜まり、溜まっている時にステルスが解けると即座に放射を始め、
+   * 対象1人に最大 duration 秒、攻撃間隔ごとに攻撃力×scale の術ダメージと灼熱損傷を与え続ける。
+   * 対象の撤退・自身のスタンなどで中断。終わるとSPは0から
+   */
+  const flameAttack = (e: Enemy, a: NonNullable<EnemySpec['attack']>, fl: NonNullable<EnemySpec['flame']>) => {
+    if (e.flameUntil >= 0) {
+      const target = e.flameTarget !== null ? byUid.get(e.flameTarget) : undefined;
+      if (t >= e.flameUntil || !target || !target.alive) {
+        e.flameUntil = -1;
+        return;
+      }
+      if (e.blockedBy === null) e.stallUntil = t + dt * 2;
+      if ((e.atkTimer -= dt * tileEnemyAtkRate(e)) > 0) return;
+      e.atkTimer += a.interval;
+      emit([3, e.id, target.input.uid, 1]);
+      hurt(target, enemyAtk(e, a.atk * fl.scale) * weakFactor(e), true, e);
+      if (e.input.spec.element) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
+      return;
+    }
+    e.flameSp = Math.min(fl.cost, e.flameSp + dt);
+    if (isStealthed(e) || e.flameSp < fl.cost) return;
+    let target: Runtime | undefined = e.blockedBy !== null ? byUid.get(e.blockedBy) : undefined;
+    if (!target) {
+      for (const u of rt) {
+        if (!u.alive || u.input.pos === undefined || unitTile(u) === 'smog' || unitStealthed(u) || untargetable(u, e)) continue;
+        if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
+        if (!target || unitTaunt(u) > unitTaunt(target) || (unitTaunt(u) === unitTaunt(target) && u.order > target.order)) target = u;
+      }
+    }
+    if (!target) return;
+    e.flameSp = 0;
+    e.flameUntil = t + fl.duration;
+    e.flameTarget = target.input.uid;
+    e.atkTimer = 0;
+  };
+
   const enemyAttacks = () => {
     for (const e of enemies) {
       const a = e.input.spec.attack;
@@ -3039,17 +3080,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const lib = e.input.spec.liberty;
       // 解放後の囚人はHPが回復する
       if (lib?.regen && !e.confined) e.hp = Math.min(e.maxHp, e.hp + lib.regen * dt);
-      if (isFrozen(e) || asleep(e) || t < e.stunUntil || t < e.fearUntil) continue;
-      // 火炎放射：ステルス中は攻撃しない。解けると一定時間後から周期的に放射し続ける
       const fl = e.input.spec.flame;
+      if (isFrozen(e) || asleep(e) || t < e.stunUntil || t < e.fearUntil) {
+        // 火炎放射はスタンなどで中断される
+        if (fl) e.flameUntil = -1;
+        continue;
+      }
       if (fl) {
-        if (isStealthed(e)) {
-          e.flameAt = -1;
-          continue;
-        }
-        if (e.flameAt < 0) e.flameAt = t + fl.init;
-        if (t >= e.flameAt + fl.duration) e.flameAt += fl.cycle;
-        if (t < e.flameAt) continue;
+        flameAttack(e, a, fl);
+        continue;
       }
       if (e.atkTimer > 0) {
         // 寒冷中は攻撃速度が下がる。拘束中の囚人も攻撃速度が下がる
@@ -3110,7 +3149,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // 山海衆精鋭：ステルスが解けた後の最初の攻撃は攻撃力上昇
       const ambush = e.input.spec.ambush && e.ambushReady ? e.input.spec.ambush : 1;
       if (e.input.spec.ambush) e.ambushReady = false;
-      hurt(target, enemyAtk(e, a.atk * (fl?.scale ?? 1) * (free ? 1 + lib.atk : 1) * ambush) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
+      hurt(target, enemyAtk(e, a.atk * (free ? 1 + lib.atk : 1) * ambush) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
       if (e.input.spec.element) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
       e.atkTimer = a.interval;
       if (lib && e.confined && ++e.confAttacks >= lib.times) liberate(e);
