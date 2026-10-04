@@ -1318,6 +1318,25 @@ aside {
   stroke-dasharray: 6 4;
   fill: #f3ecfb;
 }
+.rp-ghost-field {
+  pointer-events: none;
+}
+.rp-ghost-area {
+  fill: rgba(40, 150, 210, 0.22);
+  stroke: #2a9fd6;
+  stroke-width: 4;
+  animation: rp-ghost-pulse 1s ease-in-out infinite alternate;
+}
+.rp-ghost-wave {
+  fill: none;
+  stroke: #7fd4ff;
+  stroke-width: 3;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rp-ghost-wave 1s ease-out infinite;
+}
+@keyframes rp-ghost-pulse { from { fill-opacity: 0.5; stroke-opacity: 1; } to { fill-opacity: 1; stroke-opacity: 0.55; } }
+@keyframes rp-ghost-wave { from { transform: scale(0.35); opacity: 0.9; } to { transform: scale(1); opacity: 0; } }
 .rp-token-box {
   fill: #f8f3e6;
   stroke: #8a5cc2;
