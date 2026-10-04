@@ -3,7 +3,7 @@ import { ENEMY_PATHS, GOAL, MAPS, RANDOM_MAPS, SPAWNS, canPlace, setActiveMap, t
 import { ENEMIES, ENEMY_GROUPS, ROUNDS, pickRoundGroup, roundSpec, type EnemySpec, type RoundSpec } from '../src/core/data/battle';
 import { UNITS } from '../src/core/data/units';
 import { buildSimInputs, createGame, roundGroupOf } from '../src/core/game';
-import { simulateBattle } from '../src/core/sim';
+import { roundEnemies, routeCells, simulateBattle } from '../src/core/sim';
 import type { OwnedUnit } from '../src/core/types';
 
 const byProf = (p: string) => UNITS.find((u) => u.profession === p && u.tier <= 3)!;
@@ -808,6 +808,41 @@ describe('寒冷・凍結とスキルの細部', () => {
     };
     expect(hitsInSkill('スズラン')).toBe(0);
     expect(hitsInSkill('荒蕪ラップランド')).toBeGreaterThan(0);
+  });
+
+  it('バクダンバチ：一度だけ爆弾を投げて目標と周囲8マスに物理ダメージ、その後は攻撃せず速くなる', () => {
+    const bee = ENEMIES.enemy_1040_bombd;
+    expect(bee.throwOnce?.radius).toBe(1);
+    ENEMIES.test_bee = { ...bee, hp: 1e9 };
+    setActiveMap('legacy');
+    const sn = byProf('sniper').id;
+    // 下段の経路沿いに隣り合う2人と、離れた1人
+    const board: OwnedUnit[] = [
+      { uid: 1, defId: sn, star: 1, pos: 24, dir: 'down' },
+      { uid: 2, defId: sn, star: 1, pos: 25, dir: 'down' },
+      { uid: 3, defId: sn, star: 1, pos: 19, dir: 'down' },
+    ];
+    const { inputs, globals } = buildSimInputs(board, [], {});
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_bee', count: 1, interval: 0, delay: 0, spawn: 1 }] };
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    expect((r.fx ?? []).filter((x) => x[1] === 7).length).toBe(1);
+    const taken = (uid: number) => r.perUnit.find((u) => u.uid === uid)!.taken;
+    expect(taken(1) > 0 && taken(2) > 0).toBe(true);
+    expect(taken(3)).toBe(0);
+    // 投げた後は速い（同じ経路を投げずに進む場合より早く突破する）
+    const calm = simulateBattle([], spec, { record: true });
+    expect(r.elapsed < calm.elapsed).toBe(true);
+  });
+
+  it('飛行の敵は本家の飛行経路（経由点）を通る', () => {
+    expect(routeCells([[8, 3], [6, 3], [6, 1], [7, 0]])).toEqual([35, 34, 33, 24, 15, 7]);
+    // ラウンド1の飛行枠には経路がある
+    const fly = ROUNDS[0].spawns.find((s) => s.flySlot)!;
+    expect(fly.route![0]).toEqual([8, 3]);
+    expect(fly.route![fly.route!.length - 1]).toEqual([0, 3]);
+    setActiveMap('legacy');
+    const flyer = roundEnemies({ ...ROUNDS[0], spawns: [fly] }).find((e) => e.spec.flying)!;
+    expect(flyer.path).toEqual(routeCells(fly.route!));
   });
 
   it('アンジェリーナS3：スキル発動中のみ攻撃する', () => {

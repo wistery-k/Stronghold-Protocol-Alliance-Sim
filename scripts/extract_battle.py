@@ -217,6 +217,11 @@ def main():
             radius = ed['rangeRadius']['m_value'] if ed['rangeRadius']['m_defined'] else 1.0
             dtypes = ((cn_handbook.get(key) or {}).get('damageType') or ['PHYSIC'])
             e['attack'] = {'kind': 'ranged', 'atk': atk, 'interval': round(bat * 100 / aspd, 3), 'range': radius, 'arts': dtypes[0] == 'MAGIC', 'aura': True}
+        # バクダンバチ：通常攻撃せず、一度だけ爆弾を投げて（攻撃力の物理・目標と周囲8マス）、その後は移動速度が上がる
+        boomb = next((x for x in (ed.get('skills') or []) if x.get('prefabKey') == 'boomb'), None)
+        if boomb and e.get('attack'):
+            mv = next((b_['value'] for b_ in (boomb.get('blackboard') or []) if b_['key'] == 'move_speed'), 0)
+            e['throwOnce'] = {'radius': 1, 'speedMult': 1 + mv}
         # 大型のボス：移動せず、マップ右上の2列×3行を占める
         if re.sub(r'_\d$', '', key) in LARGE_BOSSES:
             e['large'] = True
@@ -388,6 +393,12 @@ def main():
                     # 枠は飛行用（飛行の経路）と地上用の2組。ラウンドの敵グループに合う組だけが使われる
                     if entry_['role'] and route.get('motionMode') == 'FLY':
                         entry_['flySlot'] = True
+                    # 飛行の経路（本家の経由点）。盤面と同じ 9×4（行9〜12・列2〜10、防衛地点が行9・列2）のステージだけ。
+                    # ボス戦（ラウンド14・15）は盤面の形が違うので使わない
+                    end = route['endPosition']
+                    if route.get('motionMode') == 'FLY' and (end['row'], end['col']) == (9, 2):
+                        pts = [route['startPosition'], *[c['position'] for c in (route.get('checkpoints') or []) if c['type'] == 'MOVE'], end]
+                        entry_['route'] = [[q['col'] - 2, 12 - q['row']] for q in pts]
                     spawns.append(entry_)
         rounds.append({
             'round': r,

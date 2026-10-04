@@ -67,6 +67,8 @@ export interface EnemySpec {
   ambush?: number;
   /** 臨戦状態：攻撃を受けると移動速度×speedMult、interval 秒ごとに半径 radius の味方へ攻撃力×ratio の元素損傷（元核のマレフィセント） */
   enrage?: { speedMult: number; element: ElementType | null; ratio: number; interval: number; radius: number };
+  /** 一度だけ爆弾を投げる（目標と周囲 radius マスに攻撃力の物理ダメージ）。その後は攻撃せず、移動速度×speedMult（バクダンバチ） */
+  throwOnce?: { radius: number; speedMult: number };
   /** 挑発レベル：味方はブロック中の敵の次に、挑発レベルの高い敵を優先して狙う */
   taunt?: number;
   /** 敵の弾（<刺胄之弹>）：飛行中の的。突破・撃破の数には入れない */
@@ -99,6 +101,8 @@ export interface SpawnSpec {
   bounty?: number;
   /** 飛行用の枠（飛行の敵グループのラウンドだけ使う。それ以外のラウンドは地上用の枠を使う） */
   flySlot?: boolean;
+  /** 飛行の経路（本家の経由点、[列, 行]）。無ければ地上の経路を通る */
+  route?: [number, number][];
 }
 
 /** 敵グループの種類（主力部隊は常に出る。ほかの6種から3種がゲーム開始時に選ばれる） */

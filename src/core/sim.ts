@@ -472,7 +472,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt' | 'ambush' | 'enrage'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt' | 'ambush' | 'enrage' | 'throwOnce'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -784,6 +784,8 @@ interface Enemy {
   ambushReady: boolean;
   /** 元核のマレフィセント：臨戦状態と、次に元素損傷を与えるまでの時間 */
   enraged: boolean;
+  /** バクダンバチ：爆弾を投げた後 */
+  thrown: boolean;
   enrageTimer: number;
   /** ボスの手下：飛び回る先 */
   roamTo: { x: number; y: number } | null;
@@ -1247,6 +1249,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       fearUntil: -1,
       ambushReady: true,
       enraged: false,
+      thrown: false,
       enrageTimer: 0,
       bombAt: input.spec.bomb ? input.spawnAt + input.spec.bomb.init : -1,
       bombTo: null,
@@ -2867,7 +2870,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const enemyAttacks = () => {
     for (const e of enemies) {
       const a = e.input.spec.attack;
-      if (!a || !e.alive || e.reviveAt !== null) continue;
+      if (!a || !e.alive || e.reviveAt !== null || e.thrown) continue;
       const lib = e.input.spec.liberty;
       // 解放後の囚人はHPが回復する
       if (lib?.regen && !e.confined) e.hp = Math.min(e.maxHp, e.hp + lib.regen * dt);
@@ -2912,6 +2915,21 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
       if (!target || !target.alive) continue;
       if (a.kind === 'ranged') emit([3, e.id, target.input.uid, a.arts ? 1 : 0]);
+      const th = e.input.spec.throwOnce;
+      if (th && target.input.pos !== undefined) {
+        // バクダンバチ：目標と周囲のマスの味方に物理ダメージ（1回だけ）。その後は攻撃せず速くなる
+        const tx = cellX(target.input.pos);
+        const ty = cellY(target.input.pos);
+        emit([7, Math.round(tx * 100), Math.round(ty * 100), 6]);
+        for (const u of rt) {
+          if (!u.alive || u.input.pos === undefined || unitStealthed(u)) continue;
+          if (Math.abs(cellX(u.input.pos) - tx) > th.radius || Math.abs(cellY(u.input.pos) - ty) > th.radius) continue;
+          hurt(u, enemyAtk(e, a.atk) * weakFactor(e), a.arts, e);
+        }
+        e.thrown = true;
+        if (e.blockedBy === null) e.stallUntil = t + RANGED_ATTACK_STALL;
+        continue;
+      }
       const free = lib && !e.confined;
       // 山海衆精鋭：ステルスが解けた後の最初の攻撃は攻撃力上昇
       const ambush = e.input.spec.ambush && e.ambushReady ? e.input.spec.ambush : 1;
@@ -3147,7 +3165,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.defense.res = currentRes(e);
       }
       const path = e.input.path;
-      const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) * tileEnemySpeed(e) * zaroSlow(e) : 1) * (e.enraged ? (e.input.spec.enrage?.speedMult ?? 1) : 1);
+      const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) * tileEnemySpeed(e) * zaroSlow(e) : 1) * (e.enraged ? (e.input.spec.enrage?.speedMult ?? 1) : 1) * (e.thrown ? (e.input.spec.throwOnce?.speedMult ?? 1) : 1);
       if (t < e.fearUntil) {
         // 恐怖：来た道を逃げる（ブロックされない）
         e.d = Math.max(0, e.d - speed * dt);
@@ -3590,13 +3608,29 @@ export function scaledEnemy(enemy: EnemySpec): EnemySpec {
   return { ...enemy, hp: Math.max(1, Math.round(enemy.hp * hpScale)), speed: enemy.speed * ENEMY_SPEED_SCALE, attack };
 }
 
+/** 経由点 [列, 行] を1マスずつのマス番号の列にする（斜めの区間は斜めに1マスずつ進む） */
+export function routeCells(route: [number, number][]): number[] {
+  const out = [cellPos(route[0][0], route[0][1])];
+  for (let i = 1; i < route.length; i++) {
+    let [x, y] = route[i - 1];
+    const [tx, ty] = route[i];
+    while (x !== tx || y !== ty) {
+      x += Math.sign(tx - x);
+      y += Math.sign(ty - y);
+      out.push(cellPos(x, y));
+    }
+  }
+  return out;
+}
+
 /** ラウンドの敵の出現予定（出現マスは本家の出現地点に合わせる） */
 export function roundEnemies(spec: RoundSpec): EnemyInput[] {
   const out: EnemyInput[] = [];
   for (const s of spec.spawns) {
     const enemy = ENEMIES[s.enemy];
     if (!enemy) continue;
-    const path = ENEMY_PATHS[s.spawn % ENEMY_PATHS.length];
+    // 飛行の敵は本家の飛行経路（経由点）を通る
+    const path = s.route && enemy.flying ? routeCells(s.route) : ENEMY_PATHS[s.spawn % ENEMY_PATHS.length];
     const scaled = scaledEnemy(enemy);
     const ds = enemy.deadSpawn;
     const child = ds && ENEMIES[ds.enemy] ? { key: ds.enemy, spec: scaledEnemy(ENEMIES[ds.enemy]), count: ds.count } : undefined;
