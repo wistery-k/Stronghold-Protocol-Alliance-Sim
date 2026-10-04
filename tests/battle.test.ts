@@ -835,7 +835,7 @@ describe('寒冷・凍結とスキルの細部', () => {
   });
 
   it('活性源石の上の敵は毎秒HPを失い、リプレイに記録される', () => {
-    ENEMIES.test_inf = { name: 'i', hp: 30000, def: 0, res: 0, speed: 1, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    ENEMIES.test_inf = { name: 'i', hp: 1000, def: 0, res: 0, speed: 1, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
     setActiveMap('m4');
     const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 40, moveMultiplier: 0.5, spawns: [{ enemy: 'test_inf', count: 1, interval: 0, delay: 0, spawn: 1 }] };
     const r = simulateBattle([], spec, { record: true });
