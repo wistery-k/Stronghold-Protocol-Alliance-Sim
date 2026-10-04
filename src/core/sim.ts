@@ -478,7 +478,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt' | 'ambush' | 'enrage' | 'throwOnce'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt' | 'ambush' | 'enrage' | 'throwOnce' | 'flame'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -803,6 +803,8 @@ interface Enemy {
   enraged: boolean;
   /** バクダンバチ：爆弾を投げた後 */
   thrown: boolean;
+  /** 火炎放射の開始時刻（ステルス中は -1） */
+  flameAt: number;
   enrageTimer: number;
   /** ボスの手下：飛び回る先 */
   roamTo: { x: number; y: number } | null;
@@ -1279,6 +1281,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       ambushReady: true,
       enraged: false,
       thrown: false,
+      flameAt: -1,
       enrageTimer: 0,
       bombAt: input.spec.bomb ? input.spawnAt + input.spec.bomb.init : -1,
       bombTo: null,
@@ -3037,6 +3040,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // 解放後の囚人はHPが回復する
       if (lib?.regen && !e.confined) e.hp = Math.min(e.maxHp, e.hp + lib.regen * dt);
       if (isFrozen(e) || asleep(e) || t < e.stunUntil || t < e.fearUntil) continue;
+      // 火炎放射：ステルス中は攻撃しない。解けると一定時間後から周期的に放射し続ける
+      const fl = e.input.spec.flame;
+      if (fl) {
+        if (isStealthed(e)) {
+          e.flameAt = -1;
+          continue;
+        }
+        if (e.flameAt < 0) e.flameAt = t + fl.init;
+        if (t >= e.flameAt + fl.duration) e.flameAt += fl.cycle;
+        if (t < e.flameAt) continue;
+      }
       if (e.atkTimer > 0) {
         // 寒冷中は攻撃速度が下がる。拘束中の囚人も攻撃速度が下がる
         const conf = lib && e.confined ? Math.max(0.1, (100 + lib.confAspd) / 100) : 1;
@@ -3096,7 +3110,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // 山海衆精鋭：ステルスが解けた後の最初の攻撃は攻撃力上昇
       const ambush = e.input.spec.ambush && e.ambushReady ? e.input.spec.ambush : 1;
       if (e.input.spec.ambush) e.ambushReady = false;
-      hurt(target, enemyAtk(e, a.atk * (free ? 1 + lib.atk : 1) * ambush) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
+      hurt(target, enemyAtk(e, a.atk * (fl?.scale ?? 1) * (free ? 1 + lib.atk : 1) * ambush) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
       if (e.input.spec.element) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
       e.atkTimer = a.interval;
       if (lib && e.confined && ++e.confAttacks >= lib.times) liberate(e);

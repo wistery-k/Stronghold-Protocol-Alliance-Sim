@@ -4043,6 +4043,23 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 650,
+    "interval": 0.5,
+    "range": 2.5,
+    "arts": true
+   },
+   "flame": {
+    "scale": 0.2,
+    "init": 3.0,
+    "cycle": 10.0,
+    "duration": 6.0
+   },
+   "element": {
+    "type": "burning",
+    "ratio": 0.1
+   },
    "stealth": true
   },
   "enemy_10042_prtrop_2": {

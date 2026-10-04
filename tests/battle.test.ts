@@ -921,6 +921,23 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.perUnit.length).toBe(1);
   });
 
+  it('祝祭のジャズ奏者：ステルス中は攻撃せず、ステルスが解ける（ブロックされる）と火炎放射で術ダメージと灼熱損傷', () => {
+    const jazz = ENEMIES.enemy_10034_cnvsax;
+    expect(jazz.attack?.atk).toBe(650);
+    expect(jazz.flame?.scale).toBe(0.2);
+    ENEMIES.test_jazz = { ...jazz, hp: 1e9 };
+    setActiveMap('legacy');
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 40, moveMultiplier: 0.5, spawns: [{ enemy: 'test_jazz', count: 1, interval: 0, delay: 0, spawn: 1 }] };
+    // 経路沿いの狙撃だけ：ステルスのままなので攻撃されない
+    const a = buildSimInputs([{ uid: 1, defId: byProf('sniper').id, star: 1, pos: 24, dir: 'down' }], [], {});
+    expect(simulateBattle(a.inputs, spec, { globals: a.globals }).perUnit[0].taken).toBe(0);
+    // 重装がブロック：ステルスが解けて火炎放射を受ける（灼熱損傷も溜まる）
+    const b = buildSimInputs([{ uid: 1, defId: byProf('defender').id, star: 2, pos: 33, dir: 'right' }], [], {});
+    const r = simulateBattle(b.inputs, spec, { globals: b.globals, record: true });
+    expect(r.perUnit[0].taken).toBeGreaterThan(0);
+    expect(r.frames!.some((f) => (f.ue ?? []).some((x) => x[0] === 1 && x[1] === 0))).toBe(true);
+  });
+
   it('アンジェリーナS3：スキル発動中のみ攻撃する', () => {
     ENEMIES.test_ag = { name: 'a', hp: 1e6, def: 100, res: 0, speed: 0.4, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
     const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_ag', count: 10, interval: 4, delay: 0, spawn: 1 }] };
