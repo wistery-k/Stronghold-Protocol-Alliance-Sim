@@ -2861,8 +2861,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const enemyFrame = (e: Enemy): [number, number, number, number, number?] => {
     const f: [number, number, number, number, number?] = [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)];
-    // 4つ目以降：ビット1 = 解放済みの囚人、ビット2 = スタン中
-    const flags = (e.input.spec.liberty && !e.confined ? 1 : 0) | (t < e.stunUntil ? 2 : 0) | (t < e.fearUntil ? 4 : 0) | (isStealthed(e) ? 8 : 0);
+    // 4つ目以降：ビット1 = 解放済みの囚人、2 = スタン中、4 = 恐怖、8 = ステルス、16 = 活性源石の上（強化と継続ダメージ）
+    const flags =
+      (e.input.spec.liberty && !e.confined ? 1 : 0) | (t < e.stunUntil ? 2 : 0) | (t < e.fearUntil ? 4 : 0) | (isStealthed(e) ? 8 : 0) | (enemyGroundTile(e) === 'infection' ? 16 : 0);
     if (flags) f.push(flags);
     return f;
   };
@@ -2917,7 +2918,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (a.kind === 'ranged') emit([3, e.id, target.input.uid, a.arts ? 1 : 0]);
       const th = e.input.spec.throwOnce;
       if (th && target.input.pos !== undefined) {
-        // バクダンバチ：目標と周囲のマスの味方に物理ダメージ（1回だけ）。その後は攻撃せず速くなる
+        // バクダンバチ：目標と周囲のマスの味方に攻撃力の100%の物理ダメージ（1回だけ。攻撃力の補正もそのまま掛かる）。その後は攻撃せず速くなる
         const tx = cellX(target.input.pos);
         const ty = cellY(target.input.pos);
         emit([7, Math.round(tx * 100), Math.round(ty * 100), 6]);

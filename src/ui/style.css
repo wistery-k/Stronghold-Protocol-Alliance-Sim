@@ -1206,6 +1206,21 @@ aside {
   stroke-opacity: 1;
   stroke-width: 4;
 }
+.rp-infect {
+  display: none;
+  fill: #e07cf5;
+  stroke: #fff;
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+.rp-enemy.infected .rp-infect {
+  display: inline;
+  animation: rp-infect-pulse 0.7s ease-in-out infinite alternate;
+}
+.rp-enemy.infected .rp-enemy-body {
+  filter: drop-shadow(0 0 5px #d36be8);
+}
+@keyframes rp-infect-pulse { from { opacity: 1; } to { opacity: 0.4; } }
 .rp-enemy.freed .rp-enemy-body {
   stroke: #ffb020;
   stroke-opacity: 1;

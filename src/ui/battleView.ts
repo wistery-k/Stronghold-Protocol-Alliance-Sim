@@ -669,6 +669,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       // 周囲攻撃の範囲（深溟のミキサーなど）
       m.aura ? s('circle', { r: m.aura * S, class: 'rp-aura' }) : null,
       s('circle', { r: rad, class: 'rp-enemy-body' }),
+      // 活性源石の上：右上に源石の結晶（攻撃力・攻撃速度アップと継続ダメージ中）
+      s('polygon', { points: `${rad * 0.75},${-rad * 0.75 - 7} ${rad * 0.75 + 5},${-rad * 0.75} ${rad * 0.75},${-rad * 0.75 + 7} ${rad * 0.75 - 5},${-rad * 0.75}`, class: 'rp-infect' }),
       s('rect', { x: -rad, y: -rad - 12, width: rad * 2, height: 6, class: 'rp-hp-bg' }),
       bar,
     );
@@ -718,6 +720,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       n.g.classList.toggle('stunned', ((e[4] ?? 0) & 2) !== 0);
       n.g.classList.toggle('feared', ((e[4] ?? 0) & 4) !== 0);
       n.g.classList.toggle('stealth', ((e[4] ?? 0) & 8) !== 0);
+      n.g.classList.toggle('infected', ((e[4] ?? 0) & 16) !== 0);
       seen.add(e[0]);
     }
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';
@@ -847,6 +850,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）'),
   );
 }
