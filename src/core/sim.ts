@@ -478,7 +478,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt' | 'ambush' | 'enrage' | 'throwOnce' | 'flame'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt' | 'ambush' | 'enrage' | 'throwOnce' | 'flame' | 'float' | 'stone' | 'parasite' | 'appearStrike'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -808,6 +808,15 @@ interface Enemy {
   flameUntil: number;
   flameTarget: number | null;
   flameTimer: number;
+  /** 攻撃回数（汚染秽蝕の放出） */
+  atkCount: number;
+  /** 次の連撃が使える時刻 */
+  multiAt: number;
+  /** 墓守の石像：石像形態が終わる時刻（-1 なら石像ではない）・石像になったか */
+  stoneUntil: number;
+  stoned: boolean;
+  /** 寄生の攻撃タイマー */
+  parasiteTimer: number;
   enrageTimer: number;
   /** ボスの手下：飛び回る先 */
   roamTo: { x: number; y: number } | null;
@@ -1288,6 +1297,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       flameUntil: -1,
       flameTarget: null,
       flameTimer: 0,
+      atkCount: 0,
+      multiAt: input.spawnAt + (input.spec.attack?.multi?.init ?? 0),
+      stoneUntil: -1,
+      stoned: false,
+      parasiteTimer: 0,
       enrageTimer: 0,
       bombAt: input.spec.bomb ? input.spawnAt + input.spec.bomb.init : -1,
       bombTo: null,
@@ -1383,6 +1397,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       e.maxHp = rv.hits;
       return;
     }
+    // 墓守の石像：一度目に倒れると石像形態（HPは最大値、防御力・術耐性が上がり、動かず攻撃しない）
+    const sn = e.input.spec.stone;
+    if (sn && !e.stoned && !neutral(e)) {
+      e.stoned = true;
+      e.stoneUntil = t + sn.duration;
+      e.hp = e.maxHp;
+      e.defense.def += sn.def;
+      e.defense.res = Math.min(100, e.defense.res + sn.res);
+      return;
+    }
+    e.stoneUntil = -1;
     e.alive = false;
     e.reviveAt = null;
     // ボスが倒れると手下も消える
@@ -1549,7 +1574,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const list = enemies.filter((e) => {
       if (!e.alive) return false;
       if (!field) return true;
-      if (isFlying(e) && u.melee && !lifted(u)) return false;
+      if ((isFlying(e) || e.input.spec.float) && u.melee && !lifted(u)) return false;
       // ステルス：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
       if (isStealthed(e)) return false;
       // ボスの手下は無敵（攻撃の対象にならない。突進中・撃ち落とされた後は狙える）
@@ -2359,8 +2384,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
   /** 味方が受ける元素損傷の倍率（素質・周囲の効果） */
+  /** 仮想敵：泥濘に寄生されているか（ブロックしている泥濘） */
+  const parasiteOf = (o: Runtime) => enemies.find((e) => e.alive && e.input.spec.parasite && e.blockedBy === o.input.uid);
   const opElementTaken = (o: Runtime) => {
     let m = 1 - (ELEMENT_TALENT[o.input.def.charId]?.elementResist ?? 0);
+    // 寄生された味方は受ける元素損傷が増える
+    const ps = parasiteOf(o)?.input.spec.parasite;
+    if (ps) m *= ps.epTaken;
     for (const h of rt) {
       const tal = ELEMENT_TALENT[h.input.def.charId];
       if (!h.alive || !tal || o.input.pos === undefined || !h.rangeNormal?.has(o.input.pos)) continue;
@@ -2381,6 +2411,16 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // 爆発
     o.elemBurst[type] = t + OP_BURST_DURATION[type];
     opBursts++;
+    // 寄生された味方が爆発すると、周囲4マスの他の味方に同じ種類の元素損傷
+    const host = parasiteOf(o)?.input.spec.parasite;
+    if (host && o.input.pos !== undefined) {
+      const ox = cellX(o.input.pos);
+      const oy = cellY(o.input.pos);
+      for (const n of rt) {
+        if (n === o || !n.alive || n.input.pos === undefined || Math.abs(cellX(n.input.pos) - ox) + Math.abs(cellY(n.input.pos) - oy) !== 1) continue;
+        addOpElement(n, type, host.spread);
+      }
+    }
     if (type === 'neural') {
       // 神経損傷の爆発：スタン（ティティの堅守特性の対象）
       if (field && o.input.pos !== undefined) onSleepStun(o.input.pos);
@@ -3033,7 +3073,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const f: [number, number, number, number, number?] = [e.id, Math.round(e.x * 100), Math.round(e.y * 100), Math.round((e.hp / e.maxHp) * 100)];
     // 4つ目以降：ビット1 = 解放済みの囚人、2 = スタン中、4 = 恐怖、8 = ステルス、16 = 活性源石の上（強化と継続ダメージ）
     const flags =
-      (e.input.spec.liberty && !e.confined ? 1 : 0) | (t < e.stunUntil ? 2 : 0) | (t < e.fearUntil ? 4 : 0) | (isStealthed(e) ? 8 : 0) | (enemyGroundTile(e) === 'infection' ? 16 : 0);
+      (e.input.spec.liberty && !e.confined ? 1 : 0) | (t < e.stunUntil ? 2 : 0) | (t < e.fearUntil ? 4 : 0) | (isStealthed(e) ? 8 : 0) | (enemyGroundTile(e) === 'infection' ? 16 : 0) |
+      (e.stoneUntil >= 0 ? 32 : 0) |
+      (e.stoned && e.stoneUntil < 0 ? 64 : 0);
     if (flags) f.push(flags);
     return f;
   };
@@ -3082,7 +3124,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const enemyAttacks = () => {
     for (const e of enemies) {
       const a = e.input.spec.attack;
-      if (!a || !e.alive || e.reviveAt !== null || e.thrown) continue;
+      if (!a || !e.alive || e.reviveAt !== null || e.thrown || e.stoneUntil >= 0) continue;
       const lib = e.input.spec.liberty;
       // 解放後の囚人はHPが回復する
       if (lib?.regen && !e.confined) e.hp = Math.min(e.maxHp, e.hp + lib.regen * dt);
@@ -3126,6 +3168,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           if (Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) > a.range) continue;
           // 換気口の上の味方・ステルスの味方は遠距離攻撃の対象にならない
           if (unitTile(u) === 'smog' || unitStealthed(u) || untargetable(u, e)) continue;
+          // 地面マスの味方だけを攻撃する敵（枯朽サルカズ戦車）
+          if (a.groundOnly && !canBlockAt(u.input.pos)) continue;
           const tu = unitTaunt(u);
           const tt = target ? unitTaunt(target) : 0;
           if (!target || tu > tt || (tu === tt && u.order > target.order)) target = u;
@@ -3152,10 +3196,31 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // 山海衆精鋭：ステルスが解けた後の最初の攻撃は攻撃力上昇
       const ambush = e.input.spec.ambush && e.ambushReady ? e.input.spec.ambush : 1;
       if (e.input.spec.ambush) e.ambushReady = false;
-      hurt(target, enemyAtk(e, a.atk * (free ? 1 + lib.atk : 1) * ambush) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
-      // 祝祭のジャズ奏者の灼熱損傷は火炎放射だけ
-      if (e.input.spec.element && !fl) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
+      // 近距離（ブロックしている相手）と遠距離で倍率が違う敵（枯朽サルカズ戦車・「帝国の甲冑」）
+      const melee = e.blockedBy === target.input.uid;
+      const scaleAll = melee ? (a.meleeScale ?? 1) : (a.rangedScale ?? 1);
+      e.atkCount++;
       e.atkTimer = a.interval;
+      // 枯朽サルカズ戦車：数回攻撃した後の攻撃は、目標の位置に汚染秽蝕を残す（ダメージなし）
+      if (a.pollute && e.atkCount % a.pollute.every === 0 && target.input.pos !== undefined) {
+        const px = cellX(target.input.pos);
+        const py = cellY(target.input.pos);
+        pollutions.push({ x: px, y: py, until: t + a.pollute.duration, ...a.pollute });
+        emit([6, e.id, Math.round(px * 100), Math.round(py * 100), Math.round(a.pollute.radius * 100), Math.round(a.pollute.duration * 10)]);
+        if (a.kind === 'ranged' && e.blockedBy === null) e.stallUntil = t + RANGED_ATTACK_STALL;
+        continue;
+      }
+      // 「帝国の甲冑」：周期的に、次の攻撃が連撃（チャージ攻撃）
+      let times = 1;
+      if (a.multi && t >= e.multiAt) {
+        times = a.multi.times;
+        e.multiAt = t + a.multi.cooldown;
+      }
+      for (let i = 0; i < times && target.alive; i++) {
+        hurt(target, enemyAtk(e, a.atk * scaleAll * (free ? 1 + lib.atk : 1) * ambush) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
+        // 祝祭のジャズ奏者の灼熱損傷は火炎放射だけ
+        if (e.input.spec.element && !fl) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
+      }
       if (lib && e.confined && ++e.confAttacks >= lib.times) liberate(e);
       // 遠距離攻撃の間は一瞬足を止める
       if (a.kind === 'ranged' && e.blockedBy === null) e.stallUntil = t + RANGED_ATTACK_STALL;
@@ -3218,6 +3283,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const tickEnemyStates = () => {
     for (const e of enemies) {
       if (!e.alive || !e.spawned) continue;
+      // 仮想敵：泥濘：ブロックしている相手に寄生して術ダメージを与え続ける
+      const ps = e.input.spec.parasite;
+      if (ps) {
+        const host = e.blockedBy !== null ? byUid.get(e.blockedBy) : undefined;
+        if (host?.alive && !isFrozen(e) && !asleep(e) && t >= e.stunUntil) {
+          if ((e.parasiteTimer -= dt) <= 0) {
+            e.parasiteTimer += ps.interval;
+            hurt(host, enemyAtk(e, ps.atk * ps.scale) * weakFactor(e), true, e);
+          }
+        } else e.parasiteTimer = 0;
+      }
       if (e.input.spec.ambush && isStealthed(e)) e.ambushReady = true;
       const en = e.input.spec.enrage;
       if (!en || !e.enraged || !en.element || !en.ratio) continue;
@@ -3333,11 +3409,29 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.y += (dy / dist) * step;
   };
 
+  /** 「帝国の甲冑」：出現時、HPが最も高い味方に狙いを定め、その味方と周囲8マスでHPが最も高い味方に攻撃力の物理ダメージを複数回 */
+  const appearStrike = (e: Enemy) => {
+    const atk = e.input.spec.attack?.atk ?? 0;
+    const alive = rt.filter((u) => u.alive && u.input.pos !== undefined && !unitStealthed(u) && !untargetable(u, e));
+    const lock = alive.sort((a, b) => b.hp - a.hp)[0];
+    if (!lock || !atk) return;
+    const lx = cellX(lock.input.pos!);
+    const ly = cellY(lock.input.pos!);
+    for (let i = 0; i < (e.input.spec.appearStrike ?? 0); i++) {
+      const target = alive
+        .filter((u) => u.alive && Math.abs(cellX(u.input.pos!) - lx) <= 1 && Math.abs(cellY(u.input.pos!) - ly) <= 1)
+        .sort((a, b) => b.hp - a.hp)[0];
+      if (!target) break;
+      emit([3, e.id, target.input.uid, 0]);
+      hurt(target, enemyAtk(e, atk) * weakFactor(e), false, e);
+    }
+  };
   const moveEnemies = () => {
     for (const e of enemies) {
       if (!e.spawned && e.input.spawnAt <= t + 1e-9) {
         e.spawned = true;
         e.alive = true;
+        if (e.input.spec.appearStrike && field) appearStrike(e);
       }
       // 脆弱が切れる
       if (e.vulnUntil >= 0 && t >= e.vulnUntil) {
@@ -3365,6 +3459,16 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (e.input.spec.roam) {
         roam(e);
         continue;
+      }
+      // 墓守の石像：石像形態の間は動かず、時間が来たら飛行形態になって動き出す
+      if (e.stoneUntil >= 0) {
+        if (t < e.stoneUntil) continue;
+        const sn = e.input.spec.stone!;
+        e.stoneUntil = -1;
+        e.defense.def = Math.max(0, e.defense.def - sn.def);
+        e.defense.res = Math.max(0, e.defense.res - sn.res);
+        e.input = { ...e.input, spec: { ...e.input.spec, flying: true } };
+        release(e);
       }
       if (!e.input.path || e.blockedBy !== null) continue;
       // 復活待ち：その場に留まり、時間が来たら元のHPで復活する
@@ -3959,7 +4063,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     enBursts: r.enBursts,
     sargon: r.sargon,
     siracusa: r.siracusa,
-    enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined, large: e.input.spec.large || undefined })),
+    enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying && !e.stoned, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined, large: e.input.spec.large || undefined })),
     bountyGold: bountyKilled.reduce((sum, e) => sum + (e.input.bounty ?? 0), 0),
     bountyKills: bountyKilled.length,
     frames: opts.record ? r.frames : undefined,

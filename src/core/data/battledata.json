@@ -3514,7 +3514,20 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 500,
+    "interval": 4.0,
+    "range": 2.6,
+    "arts": false
+   },
+   "unblockable": true,
+   "float": true,
+   "element": {
+    "type": "erosion",
+    "ratio": 0.5
+   }
   },
   "enemy_2021_syfish": {
    "name": "骨海のワンダラー",
@@ -3723,7 +3736,7 @@
    }
   },
   "enemy_9007_acelem": {
-   "name": "仮想敵：淤困",
+   "name": "仮想敵：泥濘",
    "hp": 36000,
    "def": 200,
    "res": 40.0,
@@ -3732,7 +3745,15 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "parasite": {
+    "scale": 0.3,
+    "interval": 1.0,
+    "atk": 600,
+    "epTaken": 1.3,
+    "spread": 500
+   },
+   "taunt": -1
   },
   "enemy_1234_dsubrl": {
    "name": "深溟のミキサー",
@@ -3807,7 +3828,23 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 750,
+    "interval": 4.5,
+    "range": 2.2,
+    "arts": false,
+    "groundOnly": true,
+    "meleeScale": 2.0,
+    "pollute": {
+     "every": 3,
+     "high": 25.0,
+     "low": 50.0,
+     "duration": 10.0,
+     "radius": 1.0
+    }
+   }
   },
   "enemy_1267_nhpbr": {
    "name": "枯朽サルカズ戦士",
@@ -3932,7 +3969,23 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 850,
+    "interval": 4.5,
+    "range": 2.2,
+    "arts": false,
+    "groundOnly": true,
+    "meleeScale": 2.0,
+    "pollute": {
+     "every": 3,
+     "high": 25.0,
+     "low": 50.0,
+     "duration": 10.0,
+     "radius": 1.0
+    }
+   }
   },
   "enemy_1270_nhstlk_2": {
    "name": "狂った逐腐獣",
@@ -4515,6 +4568,18 @@
    "boss": false,
    "elite": true,
    "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 550,
+    "interval": 4.0,
+    "range": 1.6,
+    "arts": false
+   },
+   "stone": {
+    "def": 800.0,
+    "res": 30.0,
+    "duration": 10.0
+   },
    "refract": 70.0
   },
   "enemy_9011_acrefr": {
@@ -5477,7 +5542,21 @@
    "flying": false,
    "boss": false,
    "elite": true,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "attack": {
+    "kind": "ranged",
+    "atk": 1020,
+    "interval": 5.0,
+    "range": 1.5,
+    "arts": false,
+    "rangedScale": 0.8,
+    "multi": {
+     "init": 10.0,
+     "cooldown": 15.0,
+     "times": 3
+    }
+   },
+   "appearStrike": 8
   },
   "enemy_9013_acstmk_2": {
    "name": "仮想敵：冑",

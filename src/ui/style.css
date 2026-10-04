@@ -1206,6 +1206,12 @@ aside {
   stroke-opacity: 1;
   stroke-width: 4;
 }
+.rp-enemy.stone .rp-enemy-body {
+  fill: #8d939c;
+  stroke: #4a4f57;
+  stroke-width: 5;
+  stroke-opacity: 1;
+}
 .rp-infect {
   display: none;
   fill: #e07cf5;

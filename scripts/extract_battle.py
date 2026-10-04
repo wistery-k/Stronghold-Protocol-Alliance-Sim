@@ -34,6 +34,8 @@ ENEMY_NAME_OVERRIDES = {
     'enemy_9009_acfort': '仮想敵：黒雲',
     'enemy_9006_actoxi': '仮想敵：蝕裂',
     'enemy_9011_acrefr': '仮想敵：鏡膜',
+    # 大陸版「假想敌：淤困」。日本語版のプレイヤーの呼び名に合わせる
+    'enemy_9007_acelem': '仮想敵：泥濘',
 }
 
 # 懸賞は、序盤（3〜4ラウンド）向けの enemyeffect_10〜15_4〜6（I〜III）を使う
@@ -255,6 +257,48 @@ def main():
                 sbb = {b['key']: b['value'] for b in (sk.get('blackboard') or [])}
                 e['dive'] = {'cooldown': sk['cooldown'], 'init': sk['initCooldown'], 'stun': sbb.get('stun', 10), 'dotDps': sbb.get('dot_damage', 200),
                              'dotDuration': sbb.get('dot_duration', 10), 'hits': int(sbb.get('max_hit_cnt', 15)), 'dmgScale': sbb.get('damage_scale', 1)}
+        # 近距離と遠距離を使い分ける敵（applyWay ALL）：ブロックされていればブロックしている相手、いなければ範囲内の相手を攻撃
+        # （掠海のフローター・枯朽サルカズ戦車・墓守の石像・「帝国の甲冑」）
+        ALL_ENEMIES = {'enemy_2025_syufo', 'enemy_1272_nhtank', 'enemy_1172_dugago', 'enemy_10027_vtsk'}
+        if apply_way == 'ALL' and atk > 0 and re.sub(r'_\d$', '', key) in ALL_ENEMIES:
+            bat = enemy_value(at, 'baseAttackTime', 2.0) or 2.0
+            aspd = enemy_value(at, 'attackSpeed', 100.0) or 100.0
+            radius = ed['rangeRadius']['m_value'] if ed['rangeRadius']['m_defined'] else 1.5
+            dtypes = ((cn_handbook.get(key) or cn_handbook.get(re.sub(r'_\d$', '', key)) or {}).get('damageType') or ['PHYSIC'])
+            e['attack'] = {'kind': 'ranged', 'atk': atk, 'interval': round(bat * 100 / aspd, 3), 'range': radius, 'arts': dtypes[0] == 'MAGIC'}
+            # 枯朽サルカズ戦車：地面マスの味方だけを攻撃し、近接（ブロックしている相手）は攻撃力×2。
+            # sp 回攻撃すると次の攻撃で目標の位置に「蝕む穢れ」（汚染秽蝕。HP50%超で毎秒 high、以下で low のHP減少、life 秒）
+            if 'empty.attack@chuang_atk_scale' in bb:
+                e['attack']['groundOnly'] = True
+                e['attack']['meleeScale'] = bb['empty.attack@chuang_atk_scale']['value']
+                pr = next((x for x in (ed.get('skills') or []) if x.get('prefabKey') == 'PollutedRangedAtk'), None)
+                if pr:
+                    pbb = {b_['key']: b_['value'] for b_ in (pr.get('blackboard') or [])}
+                    # 穢れの広がり（半径）はデータに無いので1マス（目標と上下左右）とする
+                    e['attack']['pollute'] = {'every': int(bb.get('empty.sp', {'value': 2})['value']) + 1, 'high': pbb['polluted_damage_high'], 'low': pbb['polluted_damage_low'],
+                                              'duration': pbb['projectile_life_time'], 'radius': 1.0}
+            # 「帝国の甲冑」：遠距離攻撃は攻撃力×atk_scale_range。出現時に複数回の物理ダメージ、周期的に3連撃のチャージ攻撃
+            if 'range.attack@atk_scale_range' in bb:
+                e['attack']['rangedScale'] = bb['range.attack@atk_scale_range']['value']
+                skl = {x['prefabKey']: x for x in (ed.get('skills') or [])}
+                if 'Appear' in skl:
+                    e['appearStrike'] = int(next(b_['value'] for b_ in skl['Appear']['blackboard'] if b_['key'] == 'times'))
+                if 'MultiCombat' in skl:
+                    mc = skl['MultiCombat']
+                    e['attack']['multi'] = {'init': mc['initCooldown'], 'cooldown': mc['cooldown'], 'times': int(next(b_['value'] for b_ in mc['blackboard'] if b_['key'] == 'times'))}
+        # 低空浮揚：ブロックされず、近距離攻撃の対象にならない
+        if any('近地悬浮' in a_ for a_ in abilities):
+            e['unblockable'] = True
+            e['float'] = True
+        # 墓守の石像：一度目に倒れると石像形態（防御力・術耐性が上がり、その場で動かない）になり、一定時間後に飛行形態で復活
+        if 'stone.duration' in bb:
+            e['stone'] = {'def': bb['stone.def']['value'], 'res': bb['stone.magic_resistance']['value'], 'duration': bb['stone.duration']['value']}
+        # 仮想敵：泥濘：狙われにくい。ブロックされると相手に寄生し、毎秒攻撃力×atk_scale の術ダメージ、受ける元素損傷×ep_damage_scale。
+        # 寄生した相手の元素損傷が爆発すると、周囲4マスの他の味方に同じ種類の元素損傷（量はデータに無いので500）
+        if '1.atk_scale' in bb and '1.ep_damage_scale' in bb and apply_way == 'NONE':
+            e['parasite'] = {'scale': bb['1.atk_scale']['value'], 'interval': enemy_value(at, 'baseAttackTime', 1.0) or 1.0, 'atk': atk,
+                             'epTaken': bb['1.ep_damage_scale']['value'], 'spread': 500}
+            e['taunt'] = -1
         # 火炎放射（祝祭のジャズ奏者）：通常攻撃はしない。初期SP（initCooldown）・必要SP（cooldown）が溜まっていて、ステルスが解けると即座に放射。
         # 対象1人に最大 [cd].duration 秒、hit_interval 秒ごとに攻撃力×atk_scale の術ダメージと攻撃力×ep_damage_ratio の灼熱損傷
         fire = next((x for x in (ed.get('skills') or []) if x.get('prefabKey') == 'fire'), None)

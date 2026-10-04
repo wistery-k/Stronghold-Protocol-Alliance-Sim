@@ -48,7 +48,36 @@ export interface EnemySpec {
    * 攻撃。近接はブロックしている相手を、遠距離は範囲内の相手を攻撃する。無ければ攻撃しない。
    * aura：通常攻撃をせず、範囲内の味方全員に攻撃し続ける（換気口の上の味方は対象外。ブロックされても続ける）
    */
-  attack?: { kind: 'melee' | 'ranged'; atk: number; interval: number; range: number; arts: boolean; aura?: boolean; randomTarget?: boolean };
+  attack?: {
+    kind: 'melee' | 'ranged';
+    atk: number;
+    interval: number;
+    range: number;
+    arts: boolean;
+    aura?: boolean;
+    randomTarget?: boolean;
+    /** 地面マス（近距離配置マス）の味方だけを攻撃する（枯朽サルカズ戦車） */
+    groundOnly?: boolean;
+    /** ブロックしている相手への攻撃の倍率（枯朽サルカズ戦車） */
+    meleeScale?: number;
+    /** ブロックしていない相手への（遠距離）攻撃の倍率（「帝国の甲冑」） */
+    rangedScale?: number;
+    /** every 回目の攻撃は目標の位置に汚染秽蝕を残す（ダメージなし。枯朽サルカズ戦車） */
+    pollute?: { every: number; high: number; low: number; duration: number; radius: number };
+    /** init 秒後から cooldown 秒ごとに、次の攻撃が times 連撃（「帝国の甲冑」） */
+    multi?: { init: number; cooldown: number; times: number };
+  };
+  /** 低空浮揚：ブロックされず、近距離攻撃の対象にならない（掠海のフローター） */
+  float?: boolean;
+  /** 一度目に倒れると duration 秒間、石像形態（防御力+def・術耐性 res、動かず攻撃しない）。その後、飛行形態で動き出す（墓守の石像） */
+  stone?: { def: number; res: number; duration: number };
+  /**
+   * ブロックされると相手に寄生：interval 秒ごとに攻撃力 atk×scale の術ダメージ、相手が受ける元素損傷×epTaken。
+   * 寄生した相手の元素損傷が爆発すると、周囲4マスの他の味方に同じ種類の元素損傷 spread（仮想敵：泥濘）
+   */
+  parasite?: { scale: number; interval: number; atk: number; epTaken: number; spread: number };
+  /** 出現時、HPが最も高い味方（とその周囲8マスでHPが最も高い味方）に攻撃力の物理ダメージを times 回（「帝国の甲冑」） */
+  appearStrike?: number;
   /** 大型のボス：移動せず、マップ右上の2列×3行（BOSS_CELLS）を占める。対象を中心とする効果は BOSS_CENTER が中心 */
   large?: boolean;
   /**

@@ -158,6 +158,12 @@ function enemyBadges(e: EnemySpec) {
     const el = en.element ? ELEM_FULL[['burning', 'neural', 'erosion', 'apoptosis'].indexOf(en.element)] : '';
     b('臨戦', `攻撃を受けると臨戦状態：移動速度×${en.speedMult}${el ? `、${en.interval}秒ごとに半径${en.radius}マスの味方へ攻撃力の${Math.round(en.ratio * 100)}%の${el}` : ''}`, 'sp');
   }
+  if (e.float) b('低空浮揚', '低空浮揚：ブロックできず、近距離オペレーターは攻撃できない', 'fly');
+  if (e.stone) b('石像', `一度目に倒れると${e.stone.duration}秒間、石像形態（HP全快・防御力+${e.stone.def}・術耐性+${e.stone.res}、動かず攻撃しない）になり、その後は飛行形態で進む`, 'sp');
+  if (e.parasite) b('寄生', `ブロックした相手に寄生し、${e.parasite.interval}秒ごとに攻撃力の${Math.round(e.parasite.scale * 100)}%の術ダメージ。相手が受ける元素損傷×${e.parasite.epTaken}、相手の元素損傷が爆発すると周囲4マスの味方に同じ元素損傷${e.parasite.spread}。狙われにくい`, 'sp');
+  if (e.appearStrike) b('出現時攻撃', `出現時、HPが最も高い味方とその周囲8マスでHPが最も高い味方に攻撃力の物理ダメージを${e.appearStrike}回`, 'sp');
+  if (e.attack?.groundOnly) b('地面のみ', `地面マスの味方だけを攻撃。ブロックしている相手には攻撃力×${e.attack.meleeScale ?? 1}${e.attack.pollute ? `、${e.attack.pollute.every}回目ごとの攻撃は目標に汚染秽蝕（${e.attack.pollute.duration}秒）を残す` : ''}`, 'sp');
+  if (e.attack?.multi) b('連撃', `${e.attack.multi.init}秒後から${e.attack.multi.cooldown}秒ごとに、次の攻撃が${e.attack.multi.times}連撃。遠距離攻撃は攻撃力×${e.attack.rangedScale ?? 1}`, 'sp');
   if (e.attack?.aura) b('周囲攻撃', `通常攻撃をせず、半径${e.attack.range}マスの味方全員に${e.attack.interval}秒ごとに${e.attack.arts ? '術' : '物理'}ダメージ${e.element ? 'と元素損傷' : ''}を与え続ける（換気口の上の味方は対象外）`, 'sp');
   if (e.statusResist) b('抵抗', `寒冷・凍結の時間が${Math.round(e.statusResist * 100)}%短くなる`, 'sp');
   if (e.liberty) {
@@ -216,7 +222,11 @@ export function roundInfo(spec: RoundSpec, timeLimit: number, group?: RoundGroup
             h(
               'td',
               { title: enemy.attack ? `攻撃間隔 ${enemy.attack.interval}秒${enemy.attack.kind === 'ranged' ? `・射程 ${enemy.attack.range}マス` : ''}` : '攻撃しない' },
-              enemy.attack ? `${fmt(enemy.attack.atk * ENEMY_ATK_SCALE)}${enemy.attack.kind === 'ranged' ? '遠' : '近'}${enemy.attack.arts ? '術' : ''}` : '-',
+              enemy.attack
+                ? `${fmt(enemy.attack.atk * ENEMY_ATK_SCALE)}${enemy.attack.kind === 'ranged' ? '遠' : '近'}${enemy.attack.arts ? '術' : ''}`
+                : enemy.parasite
+                  ? `${fmt(enemy.parasite.atk * ENEMY_ATK_SCALE)}寄生術`
+                  : '-',
             ),
           ),
         ),
@@ -766,6 +776,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       n.g.classList.toggle('feared', ((e[4] ?? 0) & 4) !== 0);
       n.g.classList.toggle('stealth', ((e[4] ?? 0) & 8) !== 0);
       n.g.classList.toggle('infected', ((e[4] ?? 0) & 16) !== 0);
+      n.g.classList.toggle('stone', ((e[4] ?? 0) & 32) !== 0);
+      if (((e[4] ?? 0) & 64) !== 0) n.g.classList.add('fly');
       seen.add(e[0]);
     }
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';

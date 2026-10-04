@@ -941,6 +941,63 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(firstFlame >= 7 - 0.01).toBe(true);
   });
 
+  describe('近距離と遠距離を使い分ける敵など', () => {
+    const one = (key: string, over: Partial<EnemySpec>, board: OwnedUnit[], time = 40, map = 'legacy') => {
+      ENEMIES[`t_${key}`] = { ...ENEMIES[key], ...over };
+      setActiveMap(map);
+      const { inputs, globals } = buildSimInputs(board, [], {});
+      const r = simulateBattle(inputs, { round: 1, levelId: 'test', timeLimit: time, moveMultiplier: 0.5, spawns: [{ enemy: `t_${key}`, count: 1, interval: 0, delay: 0, spawn: 1 }] }, { globals, record: true });
+      setActiveMap('legacy');
+      return r;
+    };
+    const def2 = byProf('defender').id;
+    const sn = byProf('sniper').id;
+
+    it('掠海のフローター：低空浮揚（ブロックされず近距離は攻撃できない）、射程内の味方に物理＋侵蝕損傷', () => {
+      const r = one('enemy_2025_syufo', { hp: 1e9 }, [{ uid: 1, defId: def2, star: 2, pos: 33, dir: 'right' }]);
+      expect(r.perUnit[0].hits).toBe(0);
+      expect(r.leaked).toBe(1);
+      expect(r.perUnit[0].taken).toBeGreaterThan(0);
+      expect(r.frames!.some((f) => (f.ue ?? []).some((x) => x[0] === 1 && x[1] === 2))).toBe(true);
+      const s = one('enemy_2025_syufo', { hp: 1e9 }, [{ uid: 1, defId: sn, star: 2, pos: 24, dir: 'down' }]);
+      expect(s.perUnit[0].hits).toBeGreaterThan(0);
+    });
+
+    it('枯朽サルカズ戦車：地面マスの味方だけを攻撃し、数回ごとに汚染秽蝕を残す', () => {
+      // 21 は旧マップの高台（地面マスではない）
+      const high = one('enemy_1272_nhtank', { hp: 1e9 }, [{ uid: 1, defId: sn, star: 2, pos: 21, dir: 'down' }]);
+      expect(high.perUnit[0].taken).toBe(0);
+      const r = one('enemy_1272_nhtank', { hp: 1e9 }, [{ uid: 1, defId: def2, star: 2, pos: 33, dir: 'right' }]);
+      expect(r.perUnit[0].taken).toBeGreaterThan(0);
+      expect((r.fx ?? []).some((x) => x[1] === 6)).toBe(true);
+    });
+
+    it('墓守の石像：一度目に倒れると石像形態になり、その後は飛行形態で進む', () => {
+      // 石像形態の間に倒されないよう、石像の防御力を極端に上げて確認
+      const r = one('enemy_1172_dugago', { hp: 3000, def: 0, refract: 0, stone: { def: 99999, res: 30, duration: 10 } }, [{ uid: 1, defId: sn, star: 2, pos: 24, dir: 'down' }], 80);
+      expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 32) !== 0))).toBe(true);
+      expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 64) !== 0))).toBe(true);
+    });
+
+    it('「帝国の甲冑」：出現時にHPが最も高い味方へ複数回の物理ダメージ', () => {
+      const r = one('enemy_10027_vtsk', { hp: 1e9, speed: 0.01 }, [
+        { uid: 1, defId: sn, star: 1, pos: 24, dir: 'down' },
+        { uid: 2, defId: def2, star: 2, pos: 2, dir: 'right' },
+      ], 3);
+      // 出現した瞬間（0秒）に、HPが高い重装へ8回
+      const atSpawn = (r.fx ?? []).filter((x) => x[0] === 0 && x[1] === 3);
+      expect(atSpawn.length).toBe(ENEMIES.enemy_10027_vtsk.appearStrike);
+      expect(atSpawn.every((x) => x[3] === 2)).toBe(true);
+    });
+
+    it('仮想敵：泥濘：ブロックした相手に寄生して術ダメージ。狙われにくい', () => {
+      expect(ENEMIES.enemy_9007_acelem.name).toBe('仮想敵：泥濘');
+      expect(ENEMIES.enemy_9007_acelem.taunt).toBe(-1);
+      const r = one('enemy_9007_acelem', { hp: 1e9 }, [{ uid: 1, defId: def2, star: 2, pos: 33, dir: 'right' }]);
+      expect(r.perUnit[0].taken).toBeGreaterThan(0);
+    });
+  });
+
   it('アンジェリーナS3：スキル発動中のみ攻撃する', () => {
     ENEMIES.test_ag = { name: 'a', hp: 1e6, def: 100, res: 0, speed: 0.4, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
     const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_ag', count: 10, interval: 4, delay: 0, spawn: 1 }] };
