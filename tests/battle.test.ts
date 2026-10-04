@@ -877,6 +877,46 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(f.elapsed > free.elapsed).toBe(true);
   });
 
+  it('傀儡師：致命傷で撤退せず身替りと入れ替わり、20秒後に本体へ戻る（身替りはブロックしない）', () => {
+    const ghost = UNITS.find((u) => u.name === '帰溟スペクター')!;
+    setActiveMap('legacy');
+    // 強い近接の敵が次々来る。スキルは使わせない（必要SPを大きく）ために通常の素の動きで確認
+    ENEMIES.test_dk = { name: 'd', hp: 1e9, def: 0, res: 0, speed: 0.4, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1, attack: { kind: 'melee', atk: 3000, interval: 1, range: 0, arts: false } };
+    const { inputs, globals } = buildSimInputs([{ uid: 1, defId: ghost.id, star: 1, pos: 33, dir: 'right' }], [], {});
+    const r = simulateBattle(inputs, { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_dk', count: 1, interval: 0, delay: 0, spawn: 1 }] }, { globals, record: true });
+    const dollFrames = r.frames!.filter((f) => (f.dl ?? []).includes(1));
+    expect(dollFrames.length).toBeGreaterThan(0);
+    // 身替りの間はブロックしないので、敵が通り抜ける
+    expect(r.leaked).toBe(1);
+    // 身替りの間も攻撃する（周囲8マス）
+    const [from, to] = [dollFrames[0].t, dollFrames[dollFrames.length - 1].t];
+    expect((r.fx ?? []).some((x) => x[1] === 0 && x[2] === 1 && x[0] / 100 > from && x[0] / 100 < to)).toBe(true);
+    // 20秒で本体に戻る
+    expect(to - from < 20.5).toBe(true);
+  });
+
+  it('カゼマルS2：HPが減り、周囲に紙人形（身替り）を召喚して出現時に周囲の敵へ術ダメージ。スキル終了で消える', () => {
+    const kz = UNITS.find((u) => u.name === 'カゼマル')!;
+    setActiveMap('legacy');
+    ENEMIES.test_kz = { name: 'k', hp: 1e9, def: 0, res: 0, speed: 0.4, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
+    const { inputs, globals } = buildSimInputs([{ uid: 1, defId: kz.id, star: 1, pos: 32, dir: 'right' }], [], {});
+    const r = simulateBattle(inputs, { round: 1, levelId: 'test', timeLimit: 80, moveMultiplier: 0.5, spawns: [{ enemy: 'test_kz', count: 6, interval: 3, delay: 0, spawn: 1 }] }, { globals, record: true });
+    expect(r.perUnit[0].skillCasts).toBeGreaterThan(0);
+    const tkFrames = r.frames!.filter((f) => (f.tk ?? []).length > 0);
+    expect(tkFrames.length).toBeGreaterThan(0);
+    // 紙人形は召喚主の周囲8マス
+    const pos = tkFrames[0].tk![0][1];
+    expect(Math.abs((pos % 9) - (32 % 9)) <= 1 && Math.abs(Math.floor(pos / 9) - Math.floor(32 / 9)) <= 1).toBe(true);
+    // 出現時の術ダメージ（爆発の範囲表示）
+    expect((r.fx ?? []).some((x) => x[1] === 7)).toBe(true);
+    // スキル（20秒）の後は消える
+    const first = tkFrames[0].tk![0][0];
+    const life = tkFrames.filter((f) => f.tk!.some((x) => x[0] === first)).map((f) => f.t);
+    expect(life[life.length - 1] - life[0] < 20.5).toBe(true);
+    // 結果は召喚主にまとまり、紙人形の行は出ない
+    expect(r.perUnit.length).toBe(1);
+  });
+
   it('アンジェリーナS3：スキル発動中のみ攻撃する', () => {
     ENEMIES.test_ag = { name: 'a', hp: 1e6, def: 100, res: 0, speed: 0.4, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1 };
     const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_ag', count: 10, interval: 4, delay: 0, spawn: 1 }] };

@@ -1,5 +1,5 @@
 import { bondKey, type BattleGlobals } from './alliance';
-import { BOSS_CELLS, BOSS_CENTER, ENEMY_PATHS, GOAL, canBlockAt, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
+import { BOSS_CELLS, BOSS_CENTER, DIR_DELTA, ENEMY_PATHS, GOAL, canBlockAt, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
 import { ENEMIES, rangeGrid, unitRangeIds, type ElementType, type EnemySpec, type RoundSpec } from './data/battle';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE, ENEMY_SPEED_SCALE } from './rules';
 import { unitState } from './data/units';
@@ -102,6 +102,10 @@ export interface ReplayFrame {
   st?: number[];
   /** 離陸中のオペレーターの uid（ティッピ） */
   lf?: number[];
+  /** 身替りと入れ替わっているオペレーターの uid（傀儡師） */
+  dl?: number[];
+  /** 召喚された身替り（カゼマルの紙人形）[uid, マス, HP%, 召喚主の uid] */
+  tk?: [number, number, number, number][];
   /** 荒蕪ラップランドS3のザーロ [uid, x×100, y×100, 取り付いていれば1] */
   zr?: [number, number, number, number][];
   /** オペレーターの元素損傷 [uid, 種類（0灼燃・1神経・2侵蝕・3壊死）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1以上溜まっているものだけ */
@@ -571,6 +575,14 @@ const SKILL_ONLY_ATTACK = new Set(['char_245_cello']);
 /** ティッピ：スキルは攻撃を受けると自動発動し、その攻撃を回避して離陸する（離陸中は地上の敵をブロックせず狙われず、空中の敵をブロック・攻撃できる。攻撃は3連撃） */
 const TIPPI = 'char_4191_tippi';
 const TIPPI_HITS = 3;
+/** 傀儡師：致命傷で身替りと入れ替わり、DOLL_DURATION 秒後に本体へ戻る（身替りはブロック数0・周囲8マスが攻撃範囲） */
+const DOLL_DURATION = 20;
+const KAZEMA = 'char_4016_kazema';
+const GHOST2 = 'char_1023_ghost2';
+/** カゼマルの紙人形（S2の身替り）の攻撃力はカゼマルの約1.117倍（HP・防御力は同じ。本家のトークンの能力値の比） */
+const KAZEMA_TOKEN_ATK = 611 / 547;
+/** 周囲8マス（x-4） */
+const AROUND: [number, number][] = [-1, 0, 1].flatMap((a) => [-1, 0, 1].map((b): [number, number] => [a, b]));
 /** スキル発動中のみ攻撃行動を行う（アンジェリーナS3） */
 const SKILL_ACTIVE_ONLY_ATTACK = new Set(['char_291_aglina']);
 /** スキル中は攻撃しなくなる（スズラン・クオーラ・キャサリン・バブル） */
@@ -912,6 +924,13 @@ interface Runtime {
   rangeNormal: Set<number> | null;
   rangeSkill: Set<number> | null;
   blocked: Enemy[];
+  /** 傀儡師：身替りと入れ替わっている間（終わる時刻）。-1 なら本体 */
+  dollUntil: number;
+  dollTick: number;
+  /** 身替りになる前のブロック数・攻撃範囲 */
+  saved: { block: number; blocker: boolean; rangeNormal: Set<number> | null; rangeSkill: Set<number> | null } | null;
+  /** カゼマルS2が召喚した身替り（紙人形）。結果は召喚主にまとめる */
+  owner: Runtime | null;
 }
 
 interface EngineResult {
@@ -951,7 +970,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     pos === undefined || !id ? null : new Set(rangeCells(pos, dir ?? DEFAULT_DIRECTION, rangeGrid(id)));
 
   const cid = (u: Runtime) => u.input.def.charId;
-  const rt: Runtime[] = units.map((input) => {
+  const makeRuntime = (input: SimUnitInput): Runtime => {
     const st = unitState(input.def, input.star);
     const skill0 = parseSkill(st.skill);
     // 秘技Lv2：SP消費の減少
@@ -1033,8 +1052,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       rangeNormal: field ? toSet(input.pos, input.dir, ids.range) : null,
       rangeSkill: field ? toSet(input.pos, input.dir, ids.skillRange ?? ids.range) : null,
       blocked: [],
+      dollUntil: -1,
+      dollTick: 0,
+      saved: null,
+      owner: null,
     };
-  });
+  };
+  const rt: Runtime[] = units.map(makeRuntime);
 
   // 戦闘開始時の配置順：絶対方角で左の列から、同じ列は上から
   [...rt]
@@ -1587,6 +1611,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const endSkill = (u: Runtime) => {
     setSkillHp(u, false);
     if (cid(u) === TIPPI) land(u);
+    // カゼマル：スキル終了で召喚した身替りは消える
+    if (cid(u) === KAZEMA && !u.owner) for (const o of rt) if (o.owner === u && o.alive) removeToken(o);
+    // 帰溟スペクター：スキル終了後、身替りと入れ替わる
+    if (cid(u) === GHOST2 && !u.owner && u.alive && !inDoll(u)) enterDoll(u);
     talentOnSkillEnd(u);
     // 戦術【回収利用】：地上オペレーターのスキル終了時、周囲4マスのランダムな味方1名のSP回復
     if (g.humus && u.melee && u.input.pos !== undefined) {
@@ -1644,6 +1672,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const skillAtk = () => baseAtk(def, star, mods, outerAtkPct + s.atkPct);
     u.castAt = t;
     talentOnCast(u);
+    // カゼマルS2：HPが現在値の一定割合減少し、身替りを召喚
+    if (cid(u) === KAZEMA && !u.owner && field) {
+      u.hp = Math.max(1, u.hp * (1 - (s.bb.hp_ratio ?? 0)));
+      summonToken(u);
+    }
     if (field && s.costOnCast) cost = Math.min(MAX_COST, cost + s.costOnCast);
     if (support === 'nextHeal') {
       const target = injuredNear(u)[0];
@@ -1784,7 +1817,93 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (field && u.input.pos !== undefined) u.redeployAt = t + u.respawn;
   };
 
+  // ---- 傀儡師（カゼマル・帰溟スペクター） ----
+  const isDollkeeper = (u: Runtime) => u.input.def.subProfession === 'dollkeeper' && !u.owner;
+  const inDoll = (u: Runtime) => u.dollUntil >= 0;
+  const around = (pos: number) => new Set(rangeCells(pos, 'right', AROUND));
+  /** カゼマルの素質：身替りが出現した時、周囲8マスの敵に攻撃力の一定割合の術ダメージ */
+  const dollBlast = (src: Runtime, pos: number) => {
+    const owner = src.owner ?? src;
+    const scale = owner.tb[0].damage_scale ?? 0;
+    if (cid(owner) !== KAZEMA || !scale) return;
+    const atk = baseAtk(src.input.def, src.input.star, src.input.mods);
+    const x = cellX(pos);
+    const y = cellY(pos);
+    emit([7, Math.round(x * 100), Math.round(y * 100), 4]);
+    for (const e of enemies) {
+      if (!e.alive || !e.spawned || Math.abs(e.x - x) > 1.5 || Math.abs(e.y - y) > 1.5) continue;
+      deal(src, e, hitDamage(atk * scale, 'arts', effDefense(e), src.input.mods));
+    }
+  };
+  /** 身替りと入れ替わる（HPは最大値、ブロック数0、攻撃範囲は周囲8マス） */
+  const enterDoll = (u: Runtime) => {
+    u.dollUntil = t + DOLL_DURATION;
+    if (u.skillLeft > 0 || u.ammoLeft > 0) {
+      u.skillLeft = 0;
+      u.ammoLeft = 0;
+      endSkill(u);
+    }
+    u.saved = { block: u.block, blocker: u.blocker, rangeNormal: u.rangeNormal, rangeSkill: u.rangeSkill };
+    for (const e of u.blocked) e.blockedBy = null;
+    u.blocked = [];
+    u.block = 0;
+    u.blocker = false;
+    if (u.input.pos !== undefined) {
+      u.rangeNormal = u.rangeSkill = around(u.input.pos);
+      dollBlast(u, u.input.pos);
+    }
+    u.hp = u.maxHp;
+    u.dollTick = 1;
+  };
+  const restoreDoll = (u: Runtime) => {
+    if (u.saved) Object.assign(u, u.saved);
+    u.saved = null;
+    u.dollUntil = -1;
+  };
+  /** 時間が来たら本体に戻る（HPは最大値） */
+  const exitDoll = (u: Runtime) => {
+    restoreDoll(u);
+    u.hp = u.maxHp;
+  };
+  /** 召喚した身替り（紙人形）を消す */
+  const removeToken = (tk: Runtime) => {
+    tk.alive = false;
+    tk.hp = 0;
+    for (const e of tk.blocked) e.blockedBy = null;
+    tk.blocked = [];
+  };
+  let tokenSeq = 0;
+  /** カゼマルS2：周囲の近距離配置マス（空いている地上マス。前方を優先）に身替り（紙人形）を1体召喚 */
+  const summonToken = (u: Runtime) => {
+    const pos = u.input.pos;
+    if (!field || pos === undefined) return;
+    const [fx, fy] = DIR_DELTA[u.input.dir ?? DEFAULT_DIRECTION];
+    const cands = rangeCells(pos, 'right', AROUND)
+      .filter((c) => c !== pos && canBlockAt(c) && !rt.some((o) => o.alive && o.input.pos === c))
+      .sort((a, b) => {
+        const score = (c: number) => -((cellX(c) - cellX(pos)) * fx + (cellY(c) - cellY(pos)) * fy) + (cellX(c) !== cellX(pos) && cellY(c) !== cellY(pos) ? 0.5 : 0);
+        return score(a) - score(b);
+      });
+    if (!cands.length) return;
+    const st = unitState(u.input.def, u.input.star).stats;
+    const tk = makeRuntime({ ...u.input, uid: 900000 + ++tokenSeq, pos: cands[0], mods: { ...u.input.mods, atkFlat: (u.input.mods.atkFlat ?? 0) + st.atk * (KAZEMA_TOKEN_ATK - 1) } });
+    tk.owner = u;
+    tk.skill = { ...tk.skill, spCost: 0 };
+    tk.sp = 0;
+    tk.block = 0;
+    tk.blocker = false;
+    tk.rangeNormal = tk.rangeSkill = around(cands[0]);
+    tk.result = u.result;
+    tk.events = [];
+    tk.order = ++orderCounter;
+    rt.push(tk);
+    byUid.set(tk.input.uid, tk);
+    dollBlast(tk, cands[0]);
+  };
+
   const unitDown = (u: Runtime) => {
+    // 召喚された身替り（紙人形）はそのまま消える
+    if (u.owner) return removeToken(u);
     const ground = u.melee;
     // 素質：致命傷を耐える（スルト・ホルン・聖聆プラマニクス）
     if (talentOnDown(u)) return;
@@ -1795,6 +1914,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       u.swireSaveCost *= 2;
       u.hp = u.maxHp * save.saveHp[u.input.star - 1];
       return;
+    }
+    // 傀儡師：致命傷で撤退せず身替りと入れ替わる。身替りが倒れたら撤退
+    if (isDollkeeper(u)) {
+      if (!inDoll(u)) {
+        enterDoll(u);
+        return;
+      }
+      restoreDoll(u);
     }
     // 不屈Lv2：地上オペレーターが倒れると全員のSP回復
     if (ground && g.indom?.sp) for (const o of rt) if (o.alive && o !== u) o.sp += g.indom.sp;
@@ -2057,6 +2184,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // 眠っている味方は攻撃の対象にならない（ダメージを受けない）
     if (t < u.sleepUntil) return;
     u.hp -= amount;
+    // 帰溟スペクターS2：スキル中はHPが1未満にならない
+    if (cid(u) === GHOST2 && u.skillLeft > 0 && !u.owner) u.hp = Math.max(1, u.hp);
     // ティティのスキル：範囲内の味方が致命傷を受けると、HPが全回復するかスキル終了まで睡眠
     if (u.hp <= 1e-6 && field && u.input.pos !== undefined) {
       const titi = rt.find((o) => titiOn(o) && (o.rangeSkill ?? o.rangeNormal)?.has(u.input.pos!));
@@ -2824,6 +2953,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     for (const w of rt) {
       if (!w.alive || !covers(w.rangeNormal, e)) continue;
       if (cid(w) === 'char_213_mostma' || cid(w) === 'char_4087_ines') slow = Math.max(slow, -(w.tb[1].move_speed ?? 0));
+      // 帰溟スペクター：身替りの間、周囲の敵の移動速度低下
+      if (cid(w) === GHOST2 && inDoll(w)) slow = Math.max(slow, -(w.tb[0].move_speed ?? 0));
     }
     return 1 - slow;
   };
@@ -3235,7 +3366,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   const unitFrame = (): [number, number, number, number, number, number?][] =>
     rt
-      .filter((u) => u.input.pos !== undefined)
+      .filter((u) => u.input.pos !== undefined && !u.owner)
       .map((u) => {
         const hp = u.alive ? Math.round((u.hp / u.maxHp) * 100) : -1;
         const s = u.skill;
@@ -3253,7 +3384,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const elemFrame = (): [number, number, number][] => {
     const out: [number, number, number][] = [];
     for (const u of rt) {
-      if (u.input.pos === undefined || !u.alive) continue;
+      if (u.input.pos === undefined || !u.alive || u.owner) continue;
       ELEM_ORDER.forEach((type, i) => {
         if (opBursting(u, type)) out.push([u.input.uid, i, 100 + Math.max(1, Math.round(((u.elem[type] ?? 0) / OP_ELEMENT_MAX) * 100))]);
         else if ((u.elem[type] ?? 0) >= 1) out.push([u.input.uid, i, Math.min(100, Math.max(1, Math.round(((u.elem[type] ?? 0) / OP_ELEMENT_MAX) * 100)))]);
@@ -3367,7 +3498,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
       // スキル発動判定（攻撃役は攻撃範囲に敵がいる時だけ発動する）
       const skillActive = () => u.skillLeft > 0 || u.ammoLeft > 0;
-      if (!s.passive && !skillActive() && t >= u.recastAt && u.sp >= s.spCost && s.spCost > 0 && !(field && def.charId === TIPPI) && !opBursting(u, 'apoptosis') && (heal
+      if (!s.passive && !skillActive() && t >= u.recastAt && u.sp >= s.spCost && s.spCost > 0 && !(field && def.charId === TIPPI) && !inDoll(u) && !opBursting(u, 'apoptosis') && (heal
           ? !field || injuredInRange(u, true).length > 0
           : field && (SUPPORT_SKILL[def.charId] === 'nextHeal' || SUPPORT_SKILL[def.charId] === 'areaHeal')
             ? injuredNear(u).length > 0
@@ -3575,11 +3706,20 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         }
       }
 
-      // SP回復・スキル時間
+      // 傀儡師：身替りの時間が終わったら本体に戻る。帰溟スペクターの身替りは周囲の敵に毎秒術ダメージ（減速は talentSlow）
+      if (inDoll(u)) {
+        if (cid(u) === GHOST2 && (u.dollTick -= dt) <= 0) {
+          u.dollTick += 1;
+          for (const e of enemies) if (e.alive && covers(u.rangeNormal, e)) deal(u, e, hitDamage(atk * (u.tb[0].atk_scale ?? 0), 'arts', effDefense(e), mods));
+        }
+        if (t >= u.dollUntil) exitDoll(u);
+      }
+
+      // SP回復・スキル時間（身替りの間はSPが溜まらない）
       if (u.skillLeft > 0) {
         u.skillLeft -= dt;
         if (u.skillLeft <= 0) endSkill(u);
-      } else if (u.ammoLeft <= 0 && s.charge === 'time') {
+      } else if (u.ammoLeft <= 0 && s.charge === 'time' && !inDoll(u)) {
         u.sp += (1 + (mods.spRegen ?? 0) + (mods.spRegenTalent ?? 0)) * dt;
       }
     }
@@ -3597,6 +3737,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         sc: siracusaFrame(),
         st: stealthFrame(),
         lf: rt.filter((u) => u.alive && lifted(u)).map((u) => u.input.uid),
+        dl: rt.filter((u) => u.alive && inDoll(u)).map((u) => u.input.uid),
+        tk: rt.filter((u) => u.alive && u.owner && u.input.pos !== undefined).map((u): [number, number, number, number] => [u.input.uid, u.input.pos!, Math.round((u.hp / u.maxHp) * 100), u.owner!.input.uid]),
         zr: zaroFrame(),
         c: Math.floor(cost),
       });
@@ -3619,13 +3761,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         sc: siracusaFrame(),
         st: stealthFrame(),
         lf: rt.filter((u) => u.alive && lifted(u)).map((u) => u.input.uid),
+        dl: rt.filter((u) => u.alive && inDoll(u)).map((u) => u.input.uid),
+        tk: rt.filter((u) => u.alive && u.owner && u.input.pos !== undefined).map((u): [number, number, number, number] => [u.input.uid, u.input.pos!, Math.round((u.hp / u.maxHp) * 100), u.owner!.input.uid]),
         zr: zaroFrame(),
       c: Math.floor(cost),
     });
   }
   const sargon = g.sargon ? { aspd: g.sargon.aspd, atkPct: g.sargon.atkPct, max: sargonMax, avg: Math.round((sargonSum / Math.max(dt, t)) * 10) / 10 } : undefined;
   const siracusa = g.siracusa && g.siracusa.aspd ? { aspd: g.siracusa.aspd, duration: g.siracusa.duration, members: rt.filter((u) => g.siracusa!.members.has(u.input.uid)).length } : undefined;
-  return { t, enemies, units: rt, timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, bossDefeated: bossDefeated(), colds, freezes, opBursts, enBursts, sargon, siracusa };
+  return { t, enemies, units: rt.filter((u) => !u.owner), timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, bossDefeated: bossDefeated(), colds, freezes, opBursts, enBursts, sargon, siracusa };
 }
 
 // ------------------------------------------------------------

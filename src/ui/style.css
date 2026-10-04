@@ -1303,6 +1303,32 @@ aside {
   stroke: #8a5a00;
   stroke-width: 1.5;
 }
+.rp-unit-doll {
+  display: none;
+  fill: #8a5cc2;
+  font-size: 11px;
+  font-weight: 700;
+}
+.rp-unit.doll .rp-unit-doll {
+  display: inline;
+}
+.rp-unit.doll .rp-unit-box {
+  stroke: #8a5cc2;
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+  fill: #f3ecfb;
+}
+.rp-token-box {
+  fill: #f8f3e6;
+  stroke: #8a5cc2;
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+.rp-token-name {
+  fill: #6b4a99;
+  font-size: 11px;
+  font-weight: 700;
+}
 /* 離陸中の味方（ティッピ）。味方の g は座標を属性でなく子要素に持つので transform を使える（敵の g には使わない） */
 .rp-unit.lifted {
   transform: translateY(-9px);

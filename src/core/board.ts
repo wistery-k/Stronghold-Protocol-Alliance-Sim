@@ -4,7 +4,7 @@ import type { Direction, OwnedUnit, Star } from './types';
 
 export const DIRECTIONS: Direction[] = ['up', 'right', 'down', 'left'];
 export const DEFAULT_DIRECTION: Direction = 'right';
-const DIR_DELTA: Record<Direction, [number, number]> = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
+export const DIR_DELTA: Record<Direction, [number, number]> = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
 export const DIRECTION_NAME: Record<Direction, string> = { up: '上', right: '右', down: '下', left: '左' };
 
 // 配置エリア（マップ）の位置関係。
