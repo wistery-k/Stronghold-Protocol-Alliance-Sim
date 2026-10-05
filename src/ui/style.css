@@ -1838,3 +1838,209 @@ body.dragging * {
   stroke-width: 2;
   pointer-events: none;
 }
+
+/* 寒冷・凍結 */
+.rp-cold-mark,
+.rp-ice,
+.rp-ice-shine {
+  display: none;
+  pointer-events: none;
+}
+.rp-enemy.cold .rp-cold-mark,
+.rp-enemy.frozen .rp-cold-mark {
+  display: inline;
+}
+.rp-cold-bg {
+  fill: #0d3a57;
+  stroke: #8fe3ff;
+  stroke-width: 1.5;
+}
+.rp-cold-flake {
+  fill: none;
+  stroke: #dff7ff;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.rp-enemy.cold .rp-enemy-body {
+  stroke: #7fdcff;
+  stroke-opacity: 1;
+  stroke-width: 4;
+  filter: drop-shadow(0 0 5px #6fd3ff);
+}
+.rp-enemy.frozen .rp-enemy-body {
+  fill: #6fb6d9;
+  stroke: #e8fbff;
+  stroke-opacity: 1;
+  stroke-width: 3;
+}
+.rp-enemy.frozen .rp-ice {
+  display: inline;
+  fill: rgba(190, 240, 255, 0.45);
+  stroke: #f2fdff;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 7px #7fdcff);
+}
+.rp-enemy.frozen .rp-ice-shine {
+  display: inline;
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+.rp-enemy.frozen .rp-cold-bg {
+  fill: #1f88c4;
+  stroke: #ffffff;
+}
+.rp-cold-count {
+  color: #7fdcff;
+  font-weight: 700;
+}
+.rp-cold-count.hot {
+  color: #c8f3ff;
+  text-shadow: 0 0 6px #4fc3ff;
+}
+.fx-freeze-ring {
+  fill: rgba(190, 240, 255, 0.25);
+  stroke: #e8fbff;
+  stroke-width: 3;
+}
+.fx-freeze-shard {
+  fill: #dff7ff;
+  stroke: #6fd3ff;
+  stroke-width: 1;
+}
+
+/* 専用のスキル演出（ノーシスS2・凛御シルバーアッシュS2・シルバーアッシュS3・聖聆プラマニクスS3） */
+.fx-skill-name {
+  font-size: 22px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke-width: 5;
+  stroke-linejoin: round;
+  letter-spacing: 2px;
+}
+.fx-skill-name.s1,
+.fx-skill-name.s4 {
+  fill: #e8fbff;
+  stroke: #1769a8;
+}
+.fx-skill-name.s2,
+.fx-skill-name.s3 {
+  fill: #ffffff;
+  stroke: #4b5a73;
+}
+.fx-ice-cell {
+  fill: rgba(150, 225, 255, 0.45);
+  stroke: #e8fbff;
+  stroke-width: 2;
+}
+.fx-silver-cell {
+  fill: rgba(230, 238, 255, 0.4);
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+.fx-ice-nova {
+  fill: rgba(150, 225, 255, 0.12);
+  stroke: #bff0ff;
+  stroke-width: 6;
+  filter: drop-shadow(0 0 8px #6fd3ff);
+}
+.fx-ice-nova.pull {
+  fill: none;
+  stroke-width: 4;
+  stroke-dasharray: 18 10;
+}
+.fx-ice-spike {
+  fill: #e8fbff;
+  stroke: #6fd3ff;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 4px #6fd3ff);
+}
+.fx-ice-flake {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px #4fc3ff);
+}
+.fx-ice-flake.small {
+  stroke-width: 2.5;
+}
+.fx-ice-hex {
+  fill: rgba(190, 240, 255, 0.25);
+  stroke: #bff0ff;
+  stroke-width: 3;
+}
+.fx-silver-arc {
+  fill: rgba(225, 235, 255, 0.45);
+  stroke: none;
+  filter: drop-shadow(0 0 10px #a9c8ff);
+}
+.fx-silver-edge {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 7;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px #8fe3ff);
+}
+.fx-snow {
+  fill: #ffffff;
+}
+.fx-silver-slash {
+  stroke: #ffffff;
+  stroke-width: 7;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px #8fb8ff);
+}
+.fx-silver-ring {
+  fill: none;
+  stroke: #e6eeff;
+  stroke-width: 8;
+  filter: drop-shadow(0 0 10px #9fbfff);
+}
+.fx-silver-core {
+  fill: rgba(255, 255, 255, 0.6);
+  filter: drop-shadow(0 0 14px #ffffff);
+}
+.fx-crescent {
+  fill: #f4f8ff;
+  stroke: #9fc4ff;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 8px #b8d4ff);
+}
+.fx-crescent.inner {
+  fill: #cfe2ff;
+}
+.fx-silver-trace {
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 2;
+  stroke-dasharray: 3 5;
+}
+.fx-mountain {
+  fill: rgba(200, 235, 255, 0.35);
+  stroke: #e8fbff;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 10px #6fd3ff);
+}
+.fx-ice-peak {
+  fill: #dff7ff;
+  stroke: #4fb3e8;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px #6fd3ff);
+}
+.fx-ice-peak.small {
+  stroke-width: 1;
+}
+.fx-ice-shadow {
+  fill: rgba(30, 90, 140, 0.4);
+}
+.fx-ice-trail {
+  stroke: rgba(220, 247, 255, 0.7);
+  stroke-width: 6;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px #6fd3ff);
+}

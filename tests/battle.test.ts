@@ -290,6 +290,23 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(src.every((x) => x.cause === '範囲内の凍結')).toBe(true);
   });
 
+  it('リプレイに寒冷・凍結の状態と、4つのスキルの専用演出が記録される', () => {
+    const names = ['シルバーアッシュ', '凛御シルバーアッシュ', 'ノーシス', '聖聆プラマニクス', 'イェラ', 'スノーハンター'];
+    const pos = [33, 34, 22, 23, 24, 25];
+    const board: OwnedUnit[] = names.map((n, i) => ({ uid: i + 1, defId: unit(n).id, star: 2, pos: pos[i], dir: i < 2 ? 'right' : 'down' }));
+    const { inputs, globals, statuses } = buildSimInputs(board, [], {});
+    const active = new Set(statuses.filter((s) => s.level > 0).map((s) => s.id));
+    const r = simulateBattle(inputs, roundSpec(9), { globals, activeAlliances: active, stacks: {}, record: true });
+    const flags = r.frames!.flatMap((f) => f.e.map((e) => e[4] ?? 0));
+    expect(flags.some((x) => (x & 128) !== 0)).toBe(true);
+    expect(flags.some((x) => (x & 256) !== 0)).toBe(true);
+    // fx 13：[時刻, 13, uid, 種類, 0発動/1攻撃, x, y, ...]
+    const sk = r.fx!.filter((e) => e[1] === 13);
+    expect([...new Set(sk.map((e) => e[3]))].sort()).toEqual([1, 2, 3, 4]);
+    expect(sk.some((e) => e[3] === 3 && e[4] === 1 && e.length >= 7)).toBe(true);
+    expect(sk.some((e) => e[3] === 4 && e[4] === 1 && e.length >= 7)).toBe(true);
+  });
+
   it('ウタゲのスキルは配置時に発動し、HPが減って効果時間が減っていく', () => {
     const spec = oneEnemy('test_dummy2', false, { speed: 0.01 });
     const r = run([{ uid: 1, defId: unit('ウタゲ').id, star: 1, pos: 34, dir: 'right' }], spec);
