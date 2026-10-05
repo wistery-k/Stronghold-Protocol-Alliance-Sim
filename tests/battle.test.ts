@@ -426,6 +426,35 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(u.damage).toBeGreaterThan(0);
   });
 
+  it('レミュアン：ロックオンと爆撃のリプレイ演出があり、爆撃は発射から0.8秒後に着弾する。敵が1体なら5発すべてを同じ敵にロックして5回当たる', () => {
+    const spec = oneEnemy('test_lemuen2', false, { speed: 0.01, def: 0 });
+    const r = run([{ uid: 1, defId: unit('レミュアン').id, star: 1, pos: 34, dir: 'right' }], spec);
+    const locks = r.fx!.filter((e) => e[1] === 10);
+    const bombs = r.fx!.filter((e) => e[1] === 11);
+    expect(locks.length).toBeGreaterThanOrEqual(5);
+    expect(bombs.length).toBeGreaterThanOrEqual(5);
+    expect(bombs[0][5]).toBe(80);
+    // 最初のスキルの5発：同じ敵に5回ロック＝5回の爆撃
+    expect(new Set(locks.slice(0, 5).map((l) => l[3])).size).toBe(1);
+    expect(bombs.slice(0, 5).every((b) => b[0] === bombs[0][0])).toBe(true);
+  });
+
+  it('サンクタ・ミキサーの素質：8秒間攻撃しないとバリアを得て、被ダメージのHPへの反映が遅れる。レミュアンの指名手配で【エリート】への与ダメージが+15%', () => {
+    // 敵が現れるのを遅らせると、バリアがある間はHPが減らない
+    const spec = oneEnemy('test_mixer_b', false, { speed: 0.01, def: 0, attack: ENEMIES.enemy_1005_yokai_2.attack });
+    spec.spawns[0].spawn = 1;
+    spec.spawns[0].delay = 9;
+    const r = run([{ uid: 1, defId: unit('サンクタ・ミキサー').id, star: 1, pos: 34, dir: 'right' }], spec);
+    const hpAt = (sec: number) => r.frames!.find((f) => f.t >= sec)!.u![0][1] as number;
+    const first = r.frames!.find((f) => (f.u![0][1] as number) < 100);
+    expect(first === undefined || first.t > 9 + 3).toBe(true);
+    expect(hpAt(9)).toBe(100);
+    // 通常の敵と【エリート】で、レミュアンの与ダメージを比べる
+    const dmg = (elite: boolean) => run([{ uid: 1, defId: unit('レミュアン').id, star: 1, pos: 34, dir: 'right' }], oneEnemy('test_lem_w', false, { speed: 0.01, def: 0, elite })).perUnit[0].damage;
+    const ratio = dmg(true) / dmg(false);
+    expect(ratio > 1.1 && ratio < 1.2).toBe(true);
+  });
+
   it('サンクタ・ミキサー：スキル中は攻撃せず、攻撃を受けると反撃して弾薬を消費する', () => {
     const spec = oneEnemy('test_mixer_s', false, { speed: 0.01, def: 0, attack: ENEMIES.enemy_1005_yokai_2.attack });
     const r = run([{ uid: 1, defId: unit('サンクタ・ミキサー').id, star: 1, pos: 34, dir: 'right' }], spec);
