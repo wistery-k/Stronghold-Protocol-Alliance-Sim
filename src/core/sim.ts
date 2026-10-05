@@ -29,6 +29,10 @@ export interface SimUnitInput {
   dir?: Direction;
 }
 
+/** 与ダメージの種別（元素ダメージは防御力・術耐性の影響を受けない別枠） */
+export type DmgKind = 'physical' | 'arts' | 'true' | 'element';
+const kindOf = (type: DamageType): DmgKind => (type === 'heal' ? 'physical' : type);
+
 export interface SimUnitResult {
   uid: number;
   defId: string;
@@ -42,8 +46,12 @@ export interface SimUnitResult {
   taken: number;
   /** 回復した量（医療） */
   healed: number;
+  /** 与ダメージの種別ごとの内訳（確定には【シラクーザ】の確定ダメージも含む） */
+  byKind: Record<DmgKind, number>;
   /** 与ダメージのうち【シラクーザ】Lv2の確定ダメージ */
   siracusaDamage?: number;
+  /** 付与したバリアが実際に防いだダメージ */
+  barrier: number;
   /** 最初に倒れた時刻（倒れなければ null） */
   downAt: number | null;
   /** 撤退（倒れた・コスト不足）回数と再配置回数 */
@@ -308,6 +316,15 @@ export interface DefenseState {
 }
 
 /** 1ヒットぶんのダメージ（倍率込みの攻撃力 raw で計算） */
+/** 結果に出す時に数値を丸める */
+const outResult = (r: SimUnitResult): SimUnitResult => ({
+  ...r,
+  damage: Math.round(r.damage),
+  barrier: Math.round(r.barrier),
+  byKind: { physical: Math.round(r.byKind.physical), arts: Math.round(r.byKind.arts), true: Math.round(r.byKind.true), element: Math.round(r.byKind.element) },
+  siracusaDamage: r.siracusaDamage === undefined ? undefined : Math.round(r.siracusaDamage),
+});
+
 export function hitDamage(raw: number, type: DamageType, enemy: DefenseState, mods: Modifier, artsVuln = 0): number {
   if (type === 'heal') return 0;
   let dmg: number;
@@ -960,6 +977,8 @@ interface Runtime {
   /** バリア（残量・減る速さ） */
   barrier: number;
   barrierDecay: number;
+  /** 今のバリアを付与した味方（防いだ量をその味方の実績にする） */
+  barrierBy: Runtime | null;
   /** 確率の寒冷付与の累積（期待値） */
   coldAcc: number;
   coldDotTimer: number;
@@ -1101,6 +1120,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       loopBackAt: -1,
       barrier: 0,
       barrierDecay: 0,
+      barrierBy: null,
       coldAcc: ACC_START,
       coldDotTimer: 1,
       redeployAt: null,
@@ -1113,7 +1133,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       bombTimer: 0,
       firstEndDone: false,
       events: garrisonEvents(input),
-      result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0, kills: 0, taken: 0, healed: 0, downAt: null, retreats: 0, redeploys: 0 },
+      result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0, kills: 0, taken: 0, healed: 0, barrier: 0, byKind: { physical: 0, arts: 0, true: 0, element: 0 }, downAt: null, retreats: 0, redeploys: 0 },
       melee: input.def.position === 'melee',
       blocker,
       block: blocker ? st.stats.block : 0,
@@ -1208,7 +1228,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const ratio = Math.min(1, Math.max(0, (t - e.sleepAt) / dur));
     const scale = (bb.min_atk_scale ?? 1) + ((bb.max_atk_scale ?? 1) - (bb.min_atk_scale ?? 1)) * ratio;
     const atk = baseAtk(src.input.def, src.input.star, src.input.mods, src.skill.atkPct);
-    if (e.alive) deal(src, e, hitDamage(atk * scale, 'arts', effDefense(e), src.input.mods));
+    if (e.alive) deal(src, e, hitDamage(atk * scale, 'arts', effDefense(e), src.input.mods), 'arts');
     const r = bb.range_radius ?? 1.5;
     const next = enemies.find((o) => o !== e && o.alive && o.spawned && !asleep(o) && Math.hypot(o.x - e.x, o.y - e.y) <= r);
     if (next) sleepEnemy(next, dur, src);
@@ -1224,7 +1244,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // ティティの素質：場にいる間、睡眠中の敵は毎秒攻撃力の30%の術ダメージ
       for (const u of rt) {
         if (cid(u) !== TITI || !u.alive || !u.tb[0].damage_atk_scale) continue;
-        deal(u, e, hitDamage(baseAtk(u.input.def, u.input.star, u.input.mods) * u.tb[0].damage_atk_scale * dt, 'arts', effDefense(e), u.input.mods));
+        deal(u, e, hitDamage(baseAtk(u.input.def, u.input.star, u.input.mods) * u.tb[0].damage_atk_scale * dt, 'arts', effDefense(e), u.input.mods), 'arts');
       }
     }
     for (const u of rt) {
@@ -1297,7 +1317,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const atk = baseAtk(u.input.def, u.input.star, u.input.mods);
       for (const e of enemies) {
         if (!e.alive || !isChilled(e) || !covers(u.rangeNormal, e)) continue;
-        deal(u, e, hitDamage(atk * dot, 'arts', effDefense(e), u.input.mods, artsVuln(e)));
+        deal(u, e, hitDamage(atk * dot, 'arts', effDefense(e), u.input.mods, artsVuln(e)), 'arts');
       }
     }
   };
@@ -1512,7 +1532,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   /** 攻撃回数で倒す状態か */
   const countsHits = (e: Enemy) => !!e.input.spec.hitsToKill || e.reviveAt !== null;
 
-  const deal = (u: Runtime, e: Enemy, amount: number) => {
+  const deal = (u: Runtime, e: Enemy, amount: number, kind: DmgKind) => {
     if (!e.alive || amount <= 0) return;
     // 元核のマレフィセント：攻撃を受けると臨戦状態
     if (e.input.spec.enrage && !e.enraged) e.enraged = true;
@@ -1526,7 +1546,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         // 撃ち落とされた後：受けるダメージ増加、受けたダメージの一部がボスにも入る
         amount *= e.input.spec.dive?.dmgScale ?? 1;
         const boss = enemies.find((b) => b.alive && b.input.key === e.input.spec.minionOf);
-        if (boss) deal(u, boss, amount * MINION_DAMAGE_SHARE);
+        if (boss) deal(u, boss, amount * MINION_DAMAGE_SHARE, kind);
       }
     }
     // 仮想敵：冑：HPが一定割合を下回ると受けるダメージ減少
@@ -1540,6 +1560,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const applied = Math.min(countsHits(e) ? 1 : amount, e.hp);
     e.hp -= applied;
     u.result.damage += applied;
+    u.result.byKind[kind] += applied;
     while (e.phaseIdx < e.phases.length && e.hp / e.input.spec.hp <= e.phases[e.phaseIdx].belowHpRatio) {
       const p = e.phases[e.phaseIdx];
       if (p.def !== undefined) e.defense.def = p.def;
@@ -1580,7 +1601,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       return;
     }
     if (countsHits(e)) {
-      if (def.damageType !== 'heal') deal(u, e, 1);
+      if (def.damageType !== 'heal') deal(u, e, 1, kindOf(def.damageType));
       return;
     }
     const skillOn = u.skillLeft > 0 || u.ammoLeft > 0;
@@ -1610,15 +1631,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // イェラグ：所属者の与ダメージ上昇（寒冷・凍結した敵にはさらに上昇）
     const kj = g.kjerag?.members.has(uid) ? (isChilled(e) ? g.kjerag.ex : g.kjerag.base) : 1;
     const dmg = hitDamage(raw, type, defense, hitMods, type === 'arts' ? artsVuln(e) : 0) * flagFactor(mods, t) * kj * talentDamageMult(u, e, type);
-    deal(u, e, dmg);
+    deal(u, e, dmg, kindOf(type));
     if (tremble > 0 && dmg > 0) trembleEnemy(e, tremble);
     if (dmg > 0 && type !== 'heal') talentOnDealt(u, e, atk);
     if (type !== 'heal' && mods.lifeOnHit) healUnit(u, u, u.maxHp * mods.lifeOnHit);
     if (type !== 'heal') {
-      if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken);
+      if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken, 'true');
       if (siraProc && g.siracusa) {
         const before = u.result.damage;
-        deal(u, e, g.siracusa.procDmg * e.defense.damageTaken);
+        deal(u, e, g.siracusa.procDmg * e.defense.damageTaken, 'true');
         u.result.siracusaDamage = (u.result.siracusaDamage ?? 0) + (u.result.damage - before);
       }
       if (type === 'arts' && g.arcane?.members.has(uid) && dmg > 0) e.arcaneUntil = t + g.arcane.duration;
@@ -1632,7 +1653,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         }
       }
       // 熾炎ブレイズのスキル中：灼燃の爆発中の敵に追加で元素ダメージ
-      if (skillOn && ELEMENT_TALENT[def.charId]?.onBurnBurst && enBursting(e, 'burning')) deal(u, e, atk * (u.skill.bb['attack@atk_scale'] ?? 0));
+      if (skillOn && ELEMENT_TALENT[def.charId]?.onBurnBurst && enBursting(e, 'burning')) deal(u, e, atk * (u.skill.bb['attack@atk_scale'] ?? 0), 'element');
       // ニンフの素質：壊死の爆発中の敵を攻撃すると、爆発が終わるまで毎秒元素ダメージ
       const nymphTal = ELEMENT_TALENT[def.charId]?.nymphDot;
       if (nymphTal && enBursting(e, 'apoptosis')) e.nymphDot = { src: u, dps: atk * nymphTal };
@@ -1983,7 +2004,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     emit([7, Math.round(x * 100), Math.round(y * 100), 4]);
     for (const e of enemies) {
       if (!e.alive || !e.spawned || Math.abs(e.x - x) > 1.5 || Math.abs(e.y - y) > 1.5) continue;
-      deal(src, e, hitDamage(atk * scale, 'arts', effDefense(e), src.input.mods));
+      deal(src, e, hitDamage(atk * scale, 'arts', effDefense(e), src.input.mods), 'arts');
     }
   };
   /** 身替りと入れ替わる（HPは最大値、ブロック数0、攻撃範囲は周囲8マス） */
@@ -2148,7 +2169,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     emit([2, u.input.uid, 1]);
     for (const e of enemies) {
       if (!e.alive || !e.spawned || !covers(u.rangeSkill, e)) continue;
-      for (let i = 0; i < 2; i++) deal(u, e, hitDamage(texasAtk(u) * (bb['appear.atk_scale'] ?? 1), 'arts', effDefense(e), u.input.mods));
+      for (let i = 0; i < 2; i++) deal(u, e, hitDamage(texasAtk(u) * (bb['appear.atk_scale'] ?? 1), 'arts', effDefense(e), u.input.mods), 'arts');
       stunEnemy(e, bb['appear.stun'] ?? 0);
       emit([8, u.input.uid, Math.round(e.x * 100), Math.round(e.y * 100)]);
     }
@@ -2166,7 +2187,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // 効果範囲を光らせる
       emit([2, u.input.uid, 1]);
       for (const e of targets) {
-        deal(u, e, hitDamage(texasAtk(u) * (bb.atk_scale ?? 1), 'arts', effDefense(e), u.input.mods));
+        deal(u, e, hitDamage(texasAtk(u) * (bb.atk_scale ?? 1), 'arts', effDefense(e), u.input.mods), 'arts');
         stunEnemy(e, bb.stun ?? 0);
         emit([8, u.input.uid, Math.round(e.x * 100), Math.round(e.y * 100)]);
       }
@@ -2248,7 +2269,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         for (const e of enemies) if (e.alive && e.spawned && Math.hypot(e.x - z.x, e.y - z.y) <= r) hit.add(e);
       }
       for (const e of hit) {
-        deal(u, e, hitDamage(u.curAtk * (bb['attack@magic_atk_scale'] ?? 1), 'arts', effDefense(e), u.input.mods));
+        deal(u, e, hitDamage(u.curAtk * (bb['attack@magic_atk_scale'] ?? 1), 'arts', effDefense(e), u.input.mods), 'arts');
         if (whitw2Stage(u) >= 2) neutralize(e, u.tb[0]['attack@silence_duration'] ?? 2);
       }
     }
@@ -2276,6 +2297,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (s.deployHpLoss) u.hp = Math.max(1, u.hp * (1 - s.deployHpLoss));
     if (s.barrier) {
       u.barrier = u.maxHp * s.barrier;
+      u.barrierBy = u;
       u.barrierDecay = u.barrier / Math.max(1, s.duration);
     }
     if (cid(u) === TEXAS2) texasAppear(u);
@@ -2331,6 +2353,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (u.barrier > 0) {
       const absorbed = Math.min(u.barrier, amount);
       u.barrier -= absorbed;
+      (u.barrierBy ?? u).result.barrier += absorbed;
       amount -= absorbed;
       if (amount <= 0) return;
     }
@@ -2364,7 +2387,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const sd = g.stead;
     if (!sd || !u.alive || !src.alive || t < u.reflectReadyAt) return;
     u.reflectReadyAt = t + sd.cooldown;
-    deal(u, src, hitDamage(sd.reflect, 'arts', effDefense(src), {}));
+    deal(u, src, hitDamage(sd.reflect, 'arts', effDefense(src), {}), 'arts');
     src.vulnUntil = t + sd.vulnDuration;
     src.defense.damageTaken = sd.vuln;
   };
@@ -2394,12 +2417,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       return;
     }
     // バブルのスキル：攻撃されるたび防御力の40%の物理ダメージで反撃
-    if (cid(u) === BUBBLE && u.skillLeft > 0 && src.alive) deal(u, src, hitDamage(u.def * (u.skill.bb.atk_scale ?? 0.4), 'physical', effDefense(src), u.input.mods));
+    if (cid(u) === BUBBLE && u.skillLeft > 0 && src.alive) deal(u, src, hitDamage(u.def * (u.skill.bb.atk_scale ?? 0.4), 'physical', effDefense(src), u.input.mods), 'physical');
     // 海溝の実験体（【エーギル】）：攻撃元へ術ダメージで反撃
     const rs = u.input.mods.retaliateScale ?? 0;
     if (rs > 0 && u.alive && src.alive && t >= u.retaliateReadyAt) {
       u.retaliateReadyAt = t + (u.input.mods.retaliateLock ?? 0.5);
-      deal(u, src, hitDamage(u.curAtk * rs, 'arts', effDefense(src), u.input.mods));
+      deal(u, src, hitDamage(u.curAtk * rs, 'arts', effDefense(src), u.input.mods), 'arts');
     }
     let dmg = flatCut(u, mitigate(u, raw, arts, defPen) * talentTakenMult(u, arts));
     const sd = g.stead;
@@ -2428,14 +2451,21 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // ヒューマス：最大値を超えた回復はバリアに
     if (cid(target) === 'char_491_humus') {
       const over = amount - (target.maxHp - target.hp);
-      if (over > 0) target.barrier = Math.min(target.maxHp * (target.tb[0].max_hp_ratio ?? 1), target.barrier + over);
+      if (over > 0) {
+        target.barrier = Math.min(target.maxHp * (target.tb[0].max_hp_ratio ?? 1), target.barrier + over);
+        target.barrierBy = target;
+      }
     }
     if (healer !== target) {
       // サリア：治療した味方のSP回復
       if (cid(healer) === 'char_202_demkni' && healer.tb[1].sp) target.sp += healer.tb[1].sp;
       // パピルス：治療した味方にバリア
       if (cid(healer) === 'char_4139_papyrs') {
-        target.barrier = Math.max(target.barrier, baseAtk(healer.input.def, healer.input.star, healer.input.mods) * (healer.tb[0]['attack@scale'] ?? 0));
+        const b = baseAtk(healer.input.def, healer.input.star, healer.input.mods) * (healer.tb[0]['attack@scale'] ?? 0);
+        if (b > target.barrier) {
+          target.barrier = b;
+          target.barrierBy = healer;
+        }
       }
     }
     const applied = Math.min(amount, target.maxHp - target.hp);
@@ -2577,7 +2607,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.elemBurst[type] = t + EN_BURST_DURATION[type];
     e.elemSrc[type] = src;
     enBursts++;
-    deal(src, e, EN_BURST_DAMAGE[type]);
+    deal(src, e, EN_BURST_DAMAGE[type], 'element');
     if (type === 'erosion') {
       e.erosionDef += 120;
       e.defense.def = Math.max(0, e.defense.def - 120);
@@ -2593,7 +2623,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (!tal) continue;
       if (type === 'burning' && tal.onBurnBurst) {
         // 熾炎ブレイズ：灼燃の爆発時に元素ダメージとHP回復、スキル中は弾薬+2
-        deal(u, e, baseAtk(u.input.def, u.input.star, u.input.mods) * tal.onBurnBurst.scale);
+        deal(u, e, baseAtk(u.input.def, u.input.star, u.input.mods) * tal.onBurnBurst.scale, 'element');
         healUnit(u, u, u.maxHp * tal.onBurnBurst.heal);
         if (u.ammoLeft > 0) u.ammoLeft += u.skill.bb.ammo_recover ?? 0;
       }
@@ -2728,7 +2758,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (tal?.blockedDot && o.blocked.length) {
         const atk = baseAtk(o.input.def, o.input.star, o.input.mods);
         for (const e of [...o.blocked]) {
-          deal(o, e, hitDamage(atk * tal.blockedDot.arts, 'arts', effDefense(e), o.input.mods) * dt);
+          deal(o, e, hitDamage(atk * tal.blockedDot.arts, 'arts', effDefense(e), o.input.mods) * dt, 'arts');
           addEnElement(e, 'burning', atk * tal.blockedDot.burn * dt, o);
         }
       }
@@ -2741,8 +2771,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     for (const e of enemies) {
       if (!e.alive) continue;
       // 壊死の爆発中は毎秒800の元素ダメージ
-      if (enBursting(e, 'apoptosis') && e.elemSrc.apoptosis) deal(e.elemSrc.apoptosis, e, 800 * dt);
-      if (e.nymphDot && enBursting(e, 'apoptosis')) deal(e.nymphDot.src, e, e.nymphDot.dps * dt);
+      if (enBursting(e, 'apoptosis') && e.elemSrc.apoptosis) deal(e.elemSrc.apoptosis, e, 800 * dt, 'element');
+      if (e.nymphDot && enBursting(e, 'apoptosis')) deal(e.nymphDot.src, e, e.nymphDot.dps * dt, 'element');
       else e.nymphDot = null;
       // 灼燃の爆発が終わったら術耐性が戻る
       if (e.elemBurst.burning !== undefined && e.elemBurst.burning >= 0 && t >= e.elemBurst.burning) {
@@ -2780,7 +2810,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (z.dot > 0) {
         for (const e of enemies) {
           if (!e.alive || (z.groundOnly && e.input.spec.flying) || Math.hypot(e.x - z.x, e.y - z.y) > z.r) continue;
-          deal(z.owner, e, hitDamage(z.atk * z.dot, 'arts', effDefense(e), z.owner.input.mods, artsVuln(e)) * dt);
+          deal(z.owner, e, hitDamage(z.atk * z.dot, 'arts', effDefense(e), z.owner.input.mods, artsVuln(e)) * dt, 'arts');
         }
       }
     }
@@ -2941,11 +2971,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           const steal = b0['attack@steal_hp'] ?? 0;
           u.maxHp += steal;
           u.hp += steal;
-          deal(u, e, steal);
+          deal(u, e, steal, 'true');
         }
         break;
       case 'char_4026_vulpis': // ウルピスフォリア：最初に当ててから10秒間、追加の術ダメージ
-        if (t - (ts.firstHit.get(e.id) ?? t) <= (b0.interval ?? 10)) deal(u, e, hitDamage(atk * (b0.atk_scale ?? 0), 'arts', res, u.input.mods));
+        if (t - (ts.firstHit.get(e.id) ?? t) <= (b0.interval ?? 10)) deal(u, e, hitDamage(atk * (b0.atk_scale ?? 0), 'arts', res, u.input.mods), 'arts');
         break;
       case 'char_1020_reed2': // 焔影リード：確率で灼痕（期待値）
         ts.reedAcc += b0.prob ?? 0;
@@ -3189,6 +3219,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           else if ((ts.barrierTimer += dt) >= (b1.interval ?? 8)) {
             ts.barrierTimer = 0;
             u.barrier = u.maxHp * (b1.shield ?? 0);
+            u.barrierBy = u;
           }
           break;
         }
@@ -3208,7 +3239,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           e.dots.delete(src);
           continue;
         }
-        deal(src, e, hitDamage(d.dps * dt, 'arts', effDefense(e), src.input.mods));
+        deal(src, e, hitDamage(d.dps * dt, 'arts', effDefense(e), src.input.mods), 'arts');
       }
     }
   };
@@ -4088,7 +4119,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           for (const [e] of targets) {
             // 素質：移動していない敵に攻撃力15%の術ダメージを追加
             if (e.alive && u.tb[0].extra_atk_scale && (asleep(e) || isFrozen(e) || e.blockedBy !== null || e.input.spec.speed <= 0))
-              deal(u, e, hitDamage(atk * u.tb[0].extra_atk_scale, 'arts', effDefense(e), mods));
+              deal(u, e, hitDamage(atk * u.tb[0].extra_atk_scale, 'arts', effDefense(e), mods), 'arts');
             // スキル：睡眠状態でない対象を睡眠
             if (titiOn(u)) sleepEnemy(e, s.bb['attack@sleep'] ?? s.bb.sleep ?? 5, u);
           }
@@ -4102,7 +4133,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         // ミヅキ：攻撃範囲内でHPが最も少ない敵に追加の術ダメージ
         if (cid(u) === 'char_437_mizuki') {
           const low = enemiesInRange(u).filter((e) => !isStealthed(e)).sort((a, b) => a.hp - b.hp)[0];
-          if (low) deal(u, low, hitDamage(atk * (u.tb[0]['attack@mizuki_t_1.atk_scale'] ?? 0), 'arts', effDefense(low), mods));
+          if (low) deal(u, low, hitDamage(atk * (u.tb[0]['attack@mizuki_t_1.atk_scale'] ?? 0), 'arts', effDefense(low), mods), 'arts');
         }
         // 武者・鎌の職分特性：攻撃で自身を回復
         const selfHeal = SELF_HEAL_SUB[def.subProfession];
@@ -4118,7 +4149,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u.ts.barrierTimer = 0;
         if (mods.extraShotProb) {
           const e = targets[0][0];
-          deal(u, e, mods.extraShotProb * hitDamage(atk * (mods.extraShotScale ?? 1), 'physical', effDefense(e), mods));
+          deal(u, e, mods.extraShotProb * hitDamage(atk * (mods.extraShotScale ?? 1), 'physical', effDefense(e), mods), 'physical');
         }
         u.atkTimer += interval;
         if (u.ammoLeft > 0) {
@@ -4138,12 +4169,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         if (u.pulseTimer <= 0) {
           u.pulseTimer += g.kazimierzPulse.interval;
           if (!field) {
-            for (const e of enemies) if (e.alive) deal(u, e, atk * g.kazimierzPulse.scale * e.defense.damageTaken);
+            for (const e of enemies) if (e.alive) deal(u, e, atk * g.kazimierzPulse.scale * e.defense.damageTaken, 'true');
           } else if (u.blocked.length && u.input.pos !== undefined) {
             const ux = cellX(u.input.pos);
             const uy = cellY(u.input.pos);
             for (const e of enemies) {
-              if (e.alive && Math.hypot(e.x - ux, e.y - uy) <= 1.3) deal(u, e, atk * g.kazimierzPulse.scale * e.defense.damageTaken);
+              if (e.alive && Math.hypot(e.x - ux, e.y - uy) <= 1.3) deal(u, e, atk * g.kazimierzPulse.scale * e.defense.damageTaken, 'true');
             }
           }
         }
@@ -4153,7 +4184,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (inDoll(u)) {
         if (cid(u) === GHOST2 && (u.dollTick -= dt) <= 0) {
           u.dollTick += 1;
-          for (const e of enemies) if (e.alive && covers(u.rangeNormal, e)) deal(u, e, hitDamage(atk * (u.tb[0].atk_scale ?? 0), 'arts', effDefense(e), mods));
+          for (const e of enemies) if (e.alive && covers(u.rangeNormal, e)) deal(u, e, hitDamage(atk * (u.tb[0].atk_scale ?? 0), 'arts', effDefense(e), mods), 'arts');
         }
         if (t >= u.dollUntil) exitDoll(u);
       }
@@ -4318,7 +4349,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
   const killed = counted.filter(isKilled).length;
   const bountyKilled = counted.filter((e) => e.input.bounty && isKilled(e));
   const totalHp = counted.reduce((s, e) => s + e.input.spec.hp, 0);
-  const perUnit = r.units.map((u) => ({ ...u.result, damage: Math.round(u.result.damage) }));
+  const perUnit = r.units.map((u) => outResult(u.result));
   return {
     round: spec.round,
     timeLimit: limit,
@@ -4382,7 +4413,7 @@ export function simulateDps(units: SimUnitInput[], enemy: EnemyDef, opts: SimOpt
     elapsed,
     totalDamage: Math.round(enemy.hp - remainingHp),
     remainingHp,
-    perUnit: r.units.map((u) => ({ ...u.result, damage: Math.round(u.result.damage) })),
+    perUnit: r.units.map((u) => outResult(u.result)),
     timeline: r.timeline.map(({ t, hp }) => ({ t, hp })),
     phaseLog: r.phaseLog,
     stackGains: r.stackGains,

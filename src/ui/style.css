@@ -11,6 +11,14 @@
   --ng: #ef6b6b;
   --core: #5aa9ff;
   --extra: #c08bff;
+  /* 戦闘リザルトのバー（物理・術・確定はリプレイの攻撃の色に合わせる） */
+  --dmg-phys: #ffb347;
+  --dmg-arts: #b583ff;
+  --dmg-true: #e6e9ef;
+  --dmg-elem: #3cc7c7;
+  --dmg-sira: #e05aa8;
+  --dmg-heal: #4cc38a;
+  --dmg-barrier: #6b9dff;
   --t1: #8c95a3;
   --t2: #59c48a;
   --t3: #4f9dff;
@@ -44,6 +52,13 @@
     --accent-ink: #ffffff;
     --ok: #1f9d63;
     --ng: #d64545;
+    --dmg-phys: #f0960a;
+    --dmg-arts: #9a5cf0;
+    --dmg-true: #4a525e;
+    --dmg-elem: #12a3a3;
+    --dmg-sira: #d6408f;
+    --dmg-heal: #1f9d63;
+    --dmg-barrier: #3f78e8;
     --tile-ground: #d9dde4;
     --tile-safe: #cfe3d8;
     --tile-high: #ead9b5;
@@ -580,12 +595,52 @@ aside {
   overflow: hidden;
   display: flex;
 }
-.bar-fill.siracusa {
-  background: #e05aa8;
-  border-radius: 0 5px 5px 0;
+.bar-stack {
+  flex: none;
+  display: flex;
+  height: 100%;
+  border-radius: 5px;
+  overflow: hidden;
 }
+.bar-fill.phys { background: var(--dmg-phys); }
+.bar-fill.arts { background: var(--dmg-arts); }
+.bar-fill.true { background: var(--dmg-true); }
+.bar-fill.elem { background: var(--dmg-elem); }
+.bar-fill.siracusa { background: var(--dmg-sira); }
+.bar-fill.heal { background: var(--dmg-heal); }
+.bar-fill.barrier { background: var(--dmg-barrier); }
+.bar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 8px;
+}
+.bar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.bar-sw {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.bar-sw.phys { background: var(--dmg-phys); }
+.bar-sw.arts { background: var(--dmg-arts); }
+.bar-sw.true { background: var(--dmg-true); }
+.bar-sw.elem { background: var(--dmg-elem); }
+.bar-sw.siracusa { background: var(--dmg-sira); }
+.bar-sw.heal { background: var(--dmg-heal); }
+.bar-sw.barrier { background: var(--dmg-barrier); }
 .siracusa-txt {
-  color: #e05aa8;
+  color: var(--dmg-sira);
+}
+.heal-txt {
+  color: var(--dmg-heal);
+}
+.barrier-txt {
+  color: var(--dmg-barrier);
 }
 .rp-enemy.feared .rp-enemy-body {
   stroke: #b06bff;
@@ -596,8 +651,6 @@ aside {
   flex: none;
   display: block;
   height: 100%;
-  background: var(--accent);
-  border-radius: 5px;
 }
 .bar-val {
   font-variant-numeric: tabular-nums;
