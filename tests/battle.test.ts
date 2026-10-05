@@ -414,6 +414,29 @@ describe('寒冷・凍結とスキルの細部', () => {
     setActiveMap('legacy');
   });
 
+  it('レミュアン：スキル中は攻撃せず、弾薬5発で敵をロックオンし、終了時にまとめて爆撃する', () => {
+    const spec = oneEnemy('test_lemuen', false, { speed: 0.01, def: 0 });
+    const r = run([{ uid: 1, defId: unit('レミュアン').id, star: 1, pos: 34, dir: 'right' }], spec);
+    const u = r.perUnit[0];
+    expect(u.skillCasts).toBeGreaterThan(0);
+    // 発動後の最初のフレームから弾薬を消費して0になるまで、ダメージは爆撃のみ
+    const frames = r.frames!.filter((f) => f.u![0][3] === 2);
+    expect(frames.length).toBeGreaterThan(0);
+    expect(frames[0].u![0][4]).toBeLessThanOrEqual(5);
+    expect(u.damage).toBeGreaterThan(0);
+  });
+
+  it('サンクタ・ミキサー：スキル中は攻撃せず、攻撃を受けると反撃して弾薬を消費する', () => {
+    const spec = oneEnemy('test_mixer_s', false, { speed: 0.01, def: 0, attack: ENEMIES.enemy_1005_yokai_2.attack });
+    const r = run([{ uid: 1, defId: unit('サンクタ・ミキサー').id, star: 1, pos: 34, dir: 'right' }], spec);
+    expect(r.perUnit[0].skillCasts).toBeGreaterThan(0);
+    expect(r.perUnit[0].taken).toBeGreaterThan(0);
+    // 攻撃を受けるたびに弾薬（30発）が減る（通常攻撃では減らない）
+    const ammo = r.frames!.filter((f) => f.u![0][3] === 2).map((f) => f.u![0][4] as number);
+    expect(Math.max(...ammo)).toBeGreaterThanOrEqual(30);
+    expect(Math.min(...ammo) < 30).toBe(true);
+  });
+
   it('旋輪射手は投擲物が戻るまで攻撃できない（1マス1.0秒・2マス約1.17秒・3マス1.5秒ごと）', () => {
     const caper = UNITS.find((u) => u.name === 'ケイパー')!;
     const at = (pos: number) => {

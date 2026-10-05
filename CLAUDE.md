@@ -77,7 +77,7 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 ## まだやっていないこと
 
 - 未再現の素質：`docs/talents.md` で ❌（約39件）・一部（約31件）。スズランの足止め、アンジェリーナの反重力、キャサリンの支援装置など
-- スキル：サンクタ・ミキサー（反撃）、レミュアン（ロックオン爆撃）は「攻撃しなくなり」を含めて未実装
+- スキル：サンクタ・ミキサー（反撃）、レミュアン（ロックオン爆撃）は実装済み（`sim.ts` の `mixerCounter`・`lemuenLock`・`lemuenBombard`）。仮の点は README の「弾薬スキル」の項を参照。未再現：二人の素質（バリア・指名手配）、手動停止
 - 戦術（バンド）の一部：`src/core/data/bands.ts` の `impl: 'partial' | 'none'`
 - ボスの HP の難易度をゲーム内で選べるようにする案（ユーザーと話しただけで未着手）
 - コキュートスはデータ上攻撃力があるが攻撃しない（ユーザー確認済み、このままで正しい）

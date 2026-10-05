@@ -589,6 +589,9 @@ const SKILL_ACTIVE_ONLY_ATTACK = new Set(['char_291_aglina']);
 const NO_ATTACK_IN_SKILL = new Set(['char_358_lisa', 'char_150_snakek', 'char_4162_cathy', 'char_381_bubble']);
 /** バブル：スキル中、攻撃されるたび自身の防御力の一定割合の物理ダメージで反撃 */
 const BUBBLE = 'char_381_bubble';
+/** サンクタ・ミキサー（反撃）・レミュアン（ロックオン爆撃）：弾薬スキル中は通常攻撃しない */
+const MIXER = 'char_4194_rmixer';
+const LEMUEN = 'char_4193_lemuen';
 /** フィラエ：スキル中は攻撃せず、攻撃を受けると周囲の地上の敵に反撃 */
 const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius: 1.5 } };
 
@@ -873,6 +876,9 @@ interface Runtime {
   talentStacks: number;
   philaeBoost: boolean;
   counterReadyAt: number;
+  /** レミュアン：ロックオンした敵の位置と、次のロックオンまでの時間 */
+  lockOns: { e: Enemy; x: number; y: number }[];
+  lockTimer: number;
   /** 狩人：弾数とリロード */
   huntAmmo: number;
   /** 回避の確率の累積（期待値） */
@@ -1021,6 +1027,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       talentStacks: 0,
       philaeBoost: false,
       counterReadyAt: 0,
+      lockOns: [],
+      lockTimer: 0,
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
       evadeAcc: ACC_START,
@@ -1645,6 +1653,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const endSkill = (u: Runtime) => {
     setSkillHp(u, false);
     if (cid(u) === TIPPI) land(u);
+    if (cid(u) === LEMUEN) lemuenBombard(u);
     // カゼマル：スキル終了で召喚した身替りは消える
     if (cid(u) === KAZEMA && !u.owner) for (const o of rt) if (o.owner === u && o.alive) removeToken(o);
     // 帰溟スペクター：スキル終了後、身替りと入れ替わる
@@ -1693,6 +1702,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const s = u.skill;
     u.sp = 0;
     u.result.skillCasts++;
+    u.lockOns = [];
+    u.lockTimer = 0;
+    // サンクタ・ミキサー：他の味方【ラテラーノ】のうち弾薬スキル中の者に給弾
+    if (cid(u) === MIXER && s.bb.ammo) {
+      for (const o of rt) if (o !== u && o.alive && o.ammoLeft > 0 && o.input.def.bonds.includes('laterano')) o.ammoLeft += Math.round(s.bb.ammo);
+    }
     if (s.ammo > 0) u.ammoLeft = Math.round(s.ammo * (1 + (mods.ammoPct ?? 0))) + (mods.ammoFlat ?? 0);
     else if (s.duration > 0) u.skillLeft = s.duration;
     if (u.skillLeft > 0 || u.ammoLeft > 0) setSkillHp(u, true);
@@ -2260,6 +2275,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       return;
     }
     philaeCounter(u);
+    mixerCounter(u);
     if (talentOnHurt(u, arts, src)) return;
     // 聖約イグゼキュター：スキル中は近接攻撃を確率で回避し、弾薬を補充（期待値）
     if (EVADE_REFILL.has(u.input.def.charId) && u.ammoLeft > 0 && src.input.spec.attack?.kind === 'melee') {
@@ -2482,6 +2498,53 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (type === 'apoptosis' && tal.atkPerApoptosisBurst && covers(u.rangeNormal, e)) {
         u.talentStacks = Math.min(tal.atkPerApoptosisBurst.max, u.talentStacks + 1);
       }
+    }
+  };
+  /** 弾薬を1発消費（【ラテラーノ】の攻撃力加算・堅守特性の加算を進め、使い切ったらスキル終了） */
+  const useAmmo = (u: Runtime) => {
+    u.ammoLeft--;
+    u.ammoUsed++;
+    if (g.laterano?.members.has(u.input.uid)) lateranoAmmo++;
+    for (const ev of u.events) if (ev.kind === 'ammo' && u.ammoUsed % ev.every === 0) gainStacks(ev);
+    if (u.ammoLeft === 0) endSkill(u);
+  };
+  /** サンクタ・ミキサー：スキル中に攻撃を受けると、攻撃範囲内の敵最大3体に反撃（弾薬1発消費。最小間隔は通常攻撃間隔の一定割合） */
+  const mixerCounter = (u: Runtime) => {
+    if (cid(u) !== MIXER || u.ammoLeft <= 0 || t < u.counterReadyAt) return;
+    const targets = targetsInRange(u, true).slice(0, u.skill.maxTarget);
+    if (!targets.length) return;
+    u.counterReadyAt = t + unitState(u.input.def, u.input.star).stats.interval * (u.skill.bb.base_attack_time ?? 0.6);
+    emit([2, u.input.uid, 1], `area${u.input.uid}`, 0.3);
+    for (const e of targets) strike(u, e, u.curAtk, 1);
+    useAmmo(u);
+  };
+  /** レミュアン：スキル中は0.5秒ごとに弾薬を1発消費して範囲内の敵を順次ロックオン */
+  const lemuenLock = (u: Runtime) => {
+    u.lockTimer -= dt;
+    while (u.ammoLeft > 0 && u.lockTimer <= 1e-9) {
+      u.lockTimer += u.skill.bb['attack@aim_interval'] ?? 0.5;
+      const e = targetsInRange(u, true).find((c) => !u.lockOns.some((l) => l.e === c));
+      if (e) u.lockOns.push({ e, x: e.x, y: e.y });
+      useAmmo(u);
+    }
+  };
+  /** レミュアン：スキル終了時、ロックオンした全ての敵の位置に範囲物理ダメージ（爆心地は倍率が高い。同時の爆撃は1体に1回だけ当たる） */
+  const lemuenBombard = (u: Runtime) => {
+    const bb = u.skill.bb;
+    const bombs = u.lockOns.map((l) => (l.e.alive ? { x: l.e.x, y: l.e.y } : l));
+    u.lockOns = [];
+    if (!bombs.length) return;
+    const atk = baseAtk(u.input.def, u.input.star, u.input.mods, u.skill.atkPct);
+    for (const b of bombs) emit([7, Math.round(b.x * 100), Math.round(b.y * 100), 6]);
+    for (const e of enemies) {
+      if (!e.alive || !e.spawned) continue;
+      let scale = 0;
+      for (const b of bombs) {
+        const d = Math.hypot(e.x - b.x, e.y - b.y);
+        const m = d <= (bb['attack@dist_1'] ?? 0.8) ? (bb['attack@proj_atk_scale_1'] ?? 0) : d <= (bb['attack@dist_2'] ?? 1.5) ? (bb['attack@proj_atk_scale_2'] ?? 0) : 0;
+        scale = Math.max(scale, m);
+      }
+      if (scale > 0) strike(u, e, atk, scale);
     }
   };
   /** フィラエ：スキル中に攻撃を受けると周囲の地上の敵に反撃（2秒に1回） */
@@ -3706,7 +3769,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // ヴィルトゥオーサはスキルでのみ攻撃、フィラエはスキル中は攻撃しない
       const canAttack =
         !heal && !((def.subProfession === 'phalanx' || SKILL_ACTIVE_ONLY_ATTACK.has(def.charId)) && !activeNow) && !(field && SKILL_ONLY_ATTACK.has(def.charId)) && !(PHILAE[def.charId] && u.skillLeft > 0) &&
-        !(NO_ATTACK_IN_SKILL.has(def.charId) && u.skillLeft > 0);
+        !(NO_ATTACK_IN_SKILL.has(def.charId) && u.skillLeft > 0) && !((def.charId === MIXER || def.charId === LEMUEN) && u.ammoLeft > 0);
 
       // 医療：治療行動（吟遊者は範囲内の全員を毎秒攻撃力の10%回復）
       if (heal && field) {
@@ -3744,6 +3807,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           }
         }
       }
+
+      if (cid(u) === LEMUEN && u.ammoLeft > 0) lemuenLock(u);
 
       // 狩人：攻撃しない間は弾を装填する
       const hunter = def.subProfession === 'hunter';
@@ -3848,11 +3913,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         }
         u.atkTimer += interval;
         if (u.ammoLeft > 0) {
-          u.ammoLeft--;
-          u.ammoUsed++;
-          if (g.laterano?.members.has(uid)) lateranoAmmo++;
-          for (const ev of u.events) if (ev.kind === 'ammo' && u.ammoUsed % ev.every === 0) gainStacks(ev);
-          if (u.ammoLeft === 0) endSkill(u);
+          useAmmo(u);
         } else if (s.charge === 'attack' && !activeNow) {
           u.sp += 1;
         }
