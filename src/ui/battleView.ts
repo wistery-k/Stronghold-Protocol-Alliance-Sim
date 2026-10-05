@@ -165,6 +165,8 @@ function enemyBadges(e: EnemySpec) {
   if (e.appearStrike) b('出現時攻撃', `出現時、HPが最も高い味方とその周囲8マスでHPが最も高い味方に攻撃力の物理ダメージを${e.appearStrike}回`, 'sp');
   if (e.attack?.groundOnly) b('地面のみ', `地面マスの味方だけを攻撃。ブロックしている相手には攻撃力×${e.attack.meleeScale ?? 1}${e.attack.pollute ? `、${e.attack.pollute.every}回目ごとの攻撃は目標に汚染秽蝕（${e.attack.pollute.duration}秒）を残す` : ''}`, 'sp');
   if (e.attack?.multi) b('連撃', `${e.attack.multi.init}秒後から${e.attack.multi.cooldown}秒ごとに、次の攻撃が${e.attack.multi.times}連撃。遠距離攻撃は攻撃力×${e.attack.rangedScale ?? 1}`, 'sp');
+  if (e.attack?.lockStrike)
+    b('砲撃誘導', `攻撃は射程${e.attack.range}マス（常に円で表示）内の味方をロックオンし、${e.attack.lockStrike.delay}秒後にそのマスを中心とする3×3マスへ攻撃力の${e.attack.arts ? '術' : '物理'}ダメージの砲撃が着弾する。撃墜しても発射済みの砲撃は止まらない`, 'sp');
   if (e.attack?.aura) b('周囲攻撃', `通常攻撃をせず、半径${e.attack.range}マスの味方全員に${e.attack.interval}秒ごとに${e.attack.arts ? '術' : '物理'}ダメージ${e.element ? 'と元素損傷' : ''}を与え続ける（換気口の上の味方は対象外）`, 'sp');
   if (e.statusResist) b('抵抗', `寒冷・凍結の時間が${Math.round(e.statusResist * 100)}%短くなる`, 'sp');
   if (e.liberty) {
@@ -417,7 +419,9 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
   // レミュアンの礼砲：ロックオン（[t,10,味方,敵]）と爆撃の発射（[t,11,味方,x,y,砲弾が落ちる時間]（tは着弾の時刻））
   const locks = fx.filter((e) => e[1] === 10);
   const bombs = fx.filter((e) => e[1] === 11);
-  const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6 && e[1] !== 7 && e[1] !== 10 && e[1] !== 11);
+  // 帝国砲撃誘導機のロックオン砲撃（[t,12,敵,x,y,着弾までの時間,半径]。x,y は目標のマスの中心。レミュアンのものより控えめに描く）
+  const shells = fx.filter((e) => e[1] === 12);
+  const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6 && e[1] !== 7 && e[1] !== 10 && e[1] !== 11 && e[1] !== 12);
   /** ロックオンのマークは、ロックした順に対応する爆撃（同じ味方のn番目のロック＝n番目の爆撃）が着弾するまで残る（敵が倒れてもその位置に残る） */
   const lockEnd = locks.map((l, i) => {
     const n = locks.slice(0, i).filter((o) => o[2] === l[2]).length;
@@ -490,6 +494,33 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
         nodes.push(s('line', { x1: ep.x + dx * (r0 - 8), y1: ep.y + dy * (r0 - 8), x2: ep.x + dx * (r0 + 10), y2: ep.y + dy * (r0 + 10), class: 'fx-lock' }));
       }
     });
+    // 敵の砲撃：ロックオンした範囲の薄い枠と小さな照準、着弾直前の小さな砲弾、着弾の小さな閃光
+    for (const sh of shells) {
+      const t0 = sh[0] / 100;
+      const land = t0 + sh[5] / 100;
+      if (t < t0 || t >= land + 0.35) continue;
+      const cx = (sh[3] / 100) * S + S / 2;
+      const cy = (sh[4] / 100) * S + S / 2;
+      const half = (sh[6] / 100 + 0.5) * S - 4;
+      if (t < land) {
+        const ep = lastPos.get(sh[2]);
+        if (ep) nodes.push(s('line', { x1: ep.x, y1: ep.y, x2: cx, y2: cy, class: 'fx-eshell-line' }));
+        nodes.push(s('rect', { x: cx - half, y: cy - half, width: half * 2, height: half * 2, rx: 6, class: 'fx-eshell-area' }));
+        const r0 = S * 0.22 * (1 + 0.06 * Math.sin((t - t0) * 10));
+        nodes.push(s('circle', { cx, cy, r: r0, class: 'fx-eshell-mark' }));
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          nodes.push(s('line', { x1: cx + dx * (r0 - 4), y1: cy + dy * (r0 - 4), x2: cx + dx * (r0 + 6), y2: cy + dy * (r0 + 6), class: 'fx-eshell-mark' }));
+        }
+        const fall = 0.25;
+        if (t >= land - fall) {
+          const sy = cy - (1 - (t - (land - fall)) / fall) ** 2 * S * 3;
+          nodes.push(s('line', { x1: cx, y1: sy - 24, x2: cx, y2: sy, class: 'fx-eshell-shot' }));
+        }
+      } else {
+        const p = (t - land) / 0.35;
+        nodes.push(s('rect', { x: cx - half, y: cy - half, width: half * 2, height: half * 2, rx: 6, class: 'fx-eshell-blast', opacity: String(1 - p) }));
+      }
+    }
     // 爆撃：着弾点の警告の輪と落ちてくる砲弾、着弾の爆発
     for (const b of bombs) {
       const land = b[0] / 100;
@@ -772,6 +803,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       { class: `rp-enemy${m.boss ? ' boss' : ''}${m.flying ? ' fly' : ''}` },
       // 周囲攻撃の範囲（深溟のミキサーなど）
       m.aura ? s('circle', { r: m.aura * S, class: 'rp-aura' }) : null,
+      // 攻撃範囲を常に表示する敵（帝国砲撃誘導機）
+      m.ring ? s('circle', { r: m.ring * S, class: 'rp-ring' }) : null,
       s('circle', { r: rad, class: 'rp-enemy-body' }),
       // 活性源石の上：右上に源石の結晶（攻撃力・攻撃速度アップと継続ダメージ中）
       s('polygon', { points: `${rad * 0.75},${-rad * 0.75 - 7} ${rad * 0.75 + 5},${-rad * 0.75} ${rad * 0.75},${-rad * 0.75 + 7} ${rad * 0.75 - 5},${-rad * 0.75}`, class: 'rp-infect' }),
@@ -962,6 +995,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）'),
   );
 }

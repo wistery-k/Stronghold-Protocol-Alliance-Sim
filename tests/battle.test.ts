@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENEMY_PATHS, GOAL, MAPS, RANDOM_MAPS, SPAWNS, canPlace, setActiveMap, tileAt } from '../src/core/board';
+import { ENEMY_PATHS, GOAL, MAPS, cellX, cellY, RANDOM_MAPS, SPAWNS, canPlace, setActiveMap, tileAt } from '../src/core/board';
 import { ENEMIES, ENEMY_GROUPS, ROUNDS, pickRoundGroup, roundSpec, type EnemySpec, type RoundSpec } from '../src/core/data/battle';
 import { UNITS } from '../src/core/data/units';
 import { buildSimInputs, createGame, roundGroupOf } from '../src/core/game';
@@ -895,6 +895,35 @@ describe('寒冷・凍結とスキルの細部', () => {
     // 投げた後は速い（同じ経路を投げずに進む場合より早く突破する）
     const calm = simulateBattle([], spec, { record: true });
     expect(r.elapsed < calm.elapsed).toBe(true);
+  });
+
+  it('帝国砲撃誘導機：射程内の味方をロックオンし、2秒後にそのマスを中心とする3×3へ砲撃が着弾する。射程の円は常に表示される', () => {
+    const drone = ENEMIES.enemy_1112_emppnt;
+    expect(drone.attack?.lockStrike).toEqual({ delay: 2, radius: 1 });
+    ENEMIES.test_drone = { ...drone, hp: 1e9 };
+    setActiveMap('legacy');
+    const sn = byProf('sniper').id;
+    // 下段の経路沿いに隣り合う2人と、離れた1人
+    const board: OwnedUnit[] = [
+      { uid: 1, defId: sn, star: 1, pos: 24, dir: 'down' },
+      { uid: 2, defId: sn, star: 1, pos: 25, dir: 'down' },
+      { uid: 3, defId: sn, star: 1, pos: 19, dir: 'down' },
+    ];
+    const { inputs, globals } = buildSimInputs(board, [], {});
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 40, moveMultiplier: 0.5, spawns: [{ enemy: 'test_drone', count: 1, interval: 0, delay: 0, spawn: 1 }] };
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    const locks = (r.fx ?? []).filter((x) => x[1] === 12);
+    expect(locks.length).toBeGreaterThan(1);
+    // ロックオンの間隔は攻撃間隔、着弾までの時間は2秒
+    expect(locks[1][0] - locks[0][0] >= 500 && locks[1][0] - locks[0][0] <= 520).toBe(true);
+    expect(locks[0][5]).toBe(200);
+    const taken = (uid: number) => r.perUnit.find((u) => u.uid === uid)!.taken;
+    expect(taken(1) > 0 || taken(2) > 0).toBe(true);
+    // 射程の円はリプレイの敵の情報に入る
+    expect(r.enemies[0].ring).toBe(2);
+    // ロックオンの位置は味方のいるマスの中心
+    const cells = new Set(board.map((u) => `${cellX(u.pos!) * 100},${cellY(u.pos!) * 100}`));
+    expect(locks.every((l) => cells.has(`${l[3]},${l[4]}`))).toBe(true);
   });
 
   it('活性源石の上の敵は毎秒HPを失い、リプレイに記録される', () => {

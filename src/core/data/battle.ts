@@ -64,6 +64,11 @@ export interface EnemySpec {
     rangedScale?: number;
     /** every 回目の攻撃は目標の位置に汚染秽蝕を残す（ダメージなし。枯朽サルカズ戦車） */
     pollute?: { every: number; high: number; low: number; duration: number; radius: number };
+    /**
+     * ロックオン砲撃（帝国砲撃誘導機）：攻撃は即座に当たらず、目標の位置をロックオンして delay 秒後に砲撃が着弾する。
+     * 目標のマスを中心に radius マス以内（3×3）の味方に攻撃力のダメージ。着弾までに敵が倒れても砲撃は止まらない。射程の円は常に表示する
+     */
+    lockStrike?: { delay: number; radius: number };
     /** init 秒後から cooldown 秒ごとに、次の攻撃が times 連撃（「帝国の甲冑」） */
     multi?: { init: number; cooldown: number; times: number };
   };

@@ -76,6 +76,8 @@ export interface EnemyMeta {
   bounty?: number;
   /** 周囲攻撃の半径（マス） */
   aura?: number;
+  /** 常に表示する攻撃範囲の半径（マス。帝国砲撃誘導機） */
+  ring?: number;
   /** 大型のボス（右の2列×上の3行を占める） */
   large?: boolean;
 }
@@ -1378,6 +1380,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const DMG_CODE: Record<string, number> = { physical: 0, arts: 1, true: 2 };
   let lateranoAmmo = 0;
   const bombs: { at: number; u: Runtime; e: Enemy; x: number; y: number; atk: number }[] = [];
+  /** 敵の砲撃（帝国砲撃誘導機）：ロックオンした位置に着弾する時刻 */
+  const shells: { at: number; e: Enemy; x: number; y: number; atk: number; arts: boolean; radius: number }[] = [];
   let killTime: number | null = null;
   const byUid = new Map(rt.map((u) => [u.input.uid, u]));
 
@@ -3254,6 +3258,20 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return true;
   };
 
+  /** 敵の砲撃の着弾：目標のマスを中心とする範囲の味方に攻撃力のダメージ（砲撃を撃った敵が倒れていても着弾する） */
+  const landShells = () => {
+    for (let i = 0; i < shells.length; i++) {
+      const sh = shells[i];
+      if (sh.at > t + 1e-9) continue;
+      shells.splice(i--, 1);
+      for (const u of rt) {
+        if (!u.alive || u.input.pos === undefined || unitStealthed(u)) continue;
+        if (Math.abs(cellX(u.input.pos) - sh.x) > sh.radius + 1e-9 || Math.abs(cellY(u.input.pos) - sh.y) > sh.radius + 1e-9) continue;
+        hurt(u, enemyAtk(sh.e, sh.atk) * weakFactor(sh.e), sh.arts, sh.e);
+      }
+    }
+  };
+
   const enemyAttacks = () => {
     for (const e of enemies) {
       const a = e.input.spec.attack;
@@ -3309,6 +3327,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         }
       }
       if (!target || !target.alive) continue;
+      const ls = a.lockStrike;
+      if (ls && target.input.pos !== undefined) {
+        // 帝国砲撃誘導機：目標の位置をロックオンし、ls.delay 秒後にそのマスを中心に砲撃が着弾する（目標が撤退しても位置は変わらない）
+        const sx = cellX(target.input.pos);
+        const sy = cellY(target.input.pos);
+        shells.push({ at: t + ls.delay, e, x: sx, y: sy, atk: a.atk, arts: a.arts, radius: ls.radius });
+        emit([12, e.id, Math.round(sx * 100), Math.round(sy * 100), Math.round(ls.delay * 100), Math.round(ls.radius * 100)]);
+        e.atkTimer = a.interval;
+        if (e.blockedBy === null) e.stallUntil = t + RANGED_ATTACK_STALL;
+        continue;
+      }
       if (a.kind === 'ranged') emit([3, e.id, target.input.uid, a.arts ? 1 : 0]);
       const th = e.input.spec.throwOnce;
       if (th && target.input.pos !== undefined) {
@@ -3720,6 +3749,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     t = step * dt;
     moveEnemies();
     landBombs();
+    landShells();
     if (enemies.every((e) => e.spawned && !e.alive)) break;
     if (field) {
       tickCost();
@@ -4207,7 +4237,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     enBursts: r.enBursts,
     sargon: r.sargon,
     siracusa: r.siracusa,
-    enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying && !e.stoned, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined, large: e.input.spec.large || undefined })),
+    enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying && !e.stoned, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined, ring: e.input.spec.attack?.lockStrike ? e.input.spec.attack.range : undefined, large: e.input.spec.large || undefined })),
     bountyGold: bountyKilled.reduce((sum, e) => sum + (e.input.bounty ?? 0), 0),
     bountyKills: bountyKilled.length,
     frames: opts.record ? r.frames : undefined,
