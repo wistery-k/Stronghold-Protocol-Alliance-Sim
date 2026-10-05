@@ -96,6 +96,23 @@ FIRST_HALF_ROUNDS = 7
 PHASE = {'PHASE_0': 0, 'PHASE_1': 1, 'PHASE_2': 2}
 
 
+def module_range(equip_table: dict, equip_id, status: dict):
+    """モジュールによる通常時の攻撃範囲の拡大（範囲拡大の隠し素質 prefabKey '10'。例：フィリオプシス y-2 → y-3）"""
+    level = status.get('equipLevel', 0)
+    if not level or equip_id not in equip_table:
+        return None
+    phase, char_level = PHASE[status['evolvePhase']], status['charLevel']
+    for part in equip_table[equip_id]['phases'][level - 1]['parts']:
+        if part['target'] != 'TALENT':
+            continue
+        for cand in part['addOrOverrideTalentDataBundle']['candidates'] or []:
+            cond = cand['unlockCondition']
+            if (cand.get('prefabKey') == '10' and cand.get('rangeId') and cand.get('requiredPotentialRank', 0) == 0
+                    and (PHASE[cond['phase']], cond['level']) <= (phase, char_level)):
+                return cand['rangeId']
+    return None
+
+
 def load(p: Path):
     return json.loads(p.read_text(encoding='utf-8'))
 
@@ -129,6 +146,7 @@ def main():
     chars = load(cn_root / 'excel/character_table.json')
     skills = load(cn_root / 'excel/skill_table.json')
     range_table = load(cn_root / 'excel/range_table.json')
+    equip_table = load(cn_root / 'excel/battle_equip_table.json')
     enemy_db = {e['Key']: e['Value'] for e in load(cn_root / 'levels/enemydata/enemy_database.json')['enemies']}
     ja_handbook = load(ja_root / 'excel/enemy_handbook_table.json')
     ja_handbook = ja_handbook.get('enemyData', ja_handbook)
@@ -144,7 +162,7 @@ def main():
         entry = {}
         for key, cid in (('normal', chess_id), ('golden', shop['goldenChessId'])):
             st = act['charChessDataDict'][cid]['status']
-            base = ch['phases'][PHASE[st['evolvePhase']]]['rangeId']
+            base = module_range(equip_table, shop['defaultUniEquipId'], st) or ch['phases'][PHASE[st['evolvePhase']]]['rangeId']
             lv = skills[skill_id]['levels'][st['skillLevel'] - 1]
             skill_range = lv.get('rangeId') or None
             entry[key] = {'range': base, 'skillRange': skill_range}
