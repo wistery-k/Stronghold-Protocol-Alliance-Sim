@@ -414,7 +414,15 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
   const zones = fx.filter((e) => e[1] === 5 || e[1] === 6);
   // <刺胄之弹>の着弾：3×3マスのスタン範囲
   const stuns = fx.filter((e) => e[1] === 7);
-  const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6 && e[1] !== 7);
+  // レミュアンの礼砲：ロックオン（[t,10,味方,敵]）と爆撃の発射（[t,11,味方,x,y,砲弾が落ちる時間]（tは着弾の時刻））
+  const locks = fx.filter((e) => e[1] === 10);
+  const bombs = fx.filter((e) => e[1] === 11);
+  const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6 && e[1] !== 7 && e[1] !== 10 && e[1] !== 11);
+  /** ロックオンのマークは、ロックした順に対応する爆撃（同じ味方のn番目のロック＝n番目の爆撃）が着弾するまで残る（敵が倒れてもその位置に残る） */
+  const lockEnd = locks.map((l, i) => {
+    const n = locks.slice(0, i).filter((o) => o[2] === l[2]).length;
+    return bombs.filter((bm) => bm[2] === l[2])[n]?.[0] ?? Infinity;
+  });
   const byUid = new Map(units.map((u) => [u.uid, u]));
   const center = (pos: number) => ({ x: cellX(pos) * S + S / 2, y: cellY(pos) * S + S / 2 });
   const rangeCache = new Map<string, number[]>();
@@ -461,6 +469,46 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
       const cx = z[2] / 100;
       const cy = z[3] / 100;
       nodes.push(s('rect', { x: (cx - 1) * S + 3, y: (cy - 1) * S + 3, width: 3 * S - 6, height: 3 * S - 6, rx: 12, class: 'fx-stun' }));
+    }
+    // ロックオン：敵に重なる照準（同じ敵に重ねてロックすると輪が増える）と、味方からの細い線
+    const lockCount = new Map<number, number>();
+    locks.forEach((l, i) => {
+      if (t < l[0] / 100 || t >= lockEnd[i] / 100) return;
+      const ep = lastPos.get(l[3]);
+      const u = byUid.get(l[2]);
+      if (!ep) return;
+      const k = lockCount.get(l[3]) ?? 0;
+      lockCount.set(l[3], k + 1);
+      const pulse = 1 + 0.08 * Math.sin((t - l[0] / 100) * 12);
+      const r0 = (S * 0.4 + S * 0.13 * k) * pulse;
+      if (u && u.pos !== undefined) {
+        const up = center(u.pos);
+        nodes.push(s('line', { x1: up.x, y1: up.y, x2: ep.x, y2: ep.y, class: 'fx-lock-line' }));
+      }
+      nodes.push(s('circle', { cx: ep.x, cy: ep.y, r: r0, class: 'fx-lock' }));
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        nodes.push(s('line', { x1: ep.x + dx * (r0 - 8), y1: ep.y + dy * (r0 - 8), x2: ep.x + dx * (r0 + 10), y2: ep.y + dy * (r0 + 10), class: 'fx-lock' }));
+      }
+    });
+    // 爆撃：着弾点の警告の輪と落ちてくる砲弾、着弾の爆発
+    for (const b of bombs) {
+      const land = b[0] / 100;
+      const fall = b[5] / 100;
+      const x = (b[3] / 100) * S + S / 2;
+      const y = (b[4] / 100) * S + S / 2;
+      if (t >= land - fall && t < land) {
+        const k = (t - (land - fall)) / fall;
+        const sy = y - (1 - k) * (1 - k) * S * 5;
+        nodes.push(s('circle', { cx: x, cy: y, r: S * 1.5, class: 'fx-bomb-warn' }));
+        nodes.push(s('circle', { cx: x, cy: y, r: S * 0.8, class: 'fx-bomb-warn core' }));
+        nodes.push(s('line', { x1: x, y1: sy - 46, x2: x, y2: sy, class: 'fx-bomb-shell' }));
+        nodes.push(s('circle', { cx: x, cy: sy, r: 7, class: 'fx-bomb-head' }));
+      } else if (t >= land && t < land + 0.6) {
+        const p = (t - land) / 0.6;
+        const op = String(1 - p);
+        nodes.push(s('circle', { cx: x, cy: y, r: S * 1.5 * (0.35 + 0.65 * Math.min(1, p * 2.5)), class: 'fx-bomb-blast', opacity: op }));
+        nodes.push(s('circle', { cx: x, cy: y, r: S * 0.8 * (0.35 + 0.65 * Math.min(1, p * 2.5)), class: 'fx-bomb-blast core', opacity: op }));
+      }
     }
     for (let i = firstAfter(t - maxLife); i < events.length && events[i][0] / 100 <= t; i++) {
       const ev = events[i];
@@ -914,6 +962,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃'),
   );
 }

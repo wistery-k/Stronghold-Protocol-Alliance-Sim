@@ -589,6 +589,14 @@ const SKILL_ACTIVE_ONLY_ATTACK = new Set(['char_291_aglina']);
 const NO_ATTACK_IN_SKILL = new Set(['char_358_lisa', 'char_150_snakek', 'char_4162_cathy', 'char_381_bubble']);
 /** バブル：スキル中、攻撃されるたび自身の防御力の一定割合の物理ダメージで反撃 */
 const BUBBLE = 'char_381_bubble';
+/** サンクタ・ミキサー（反撃）・レミュアン（ロックオン爆撃）：弾薬スキル中は通常攻撃しない */
+const MIXER = 'char_4194_rmixer';
+const LEMUEN = 'char_4193_lemuen';
+/** レミュアンの爆撃：スキル終了から最初の着弾までの時間（データの emit_offset）、以降の着弾間隔、着弾位置のばらつき（ロック位置を中心とした一辺 0.4 の正方形）、リプレイで砲弾が落ちる時間 */
+const LEMUEN_BOMB_FIRST = 0.2;
+const LEMUEN_BOMB_GAP = 0.3;
+const LEMUEN_BOMB_SPREAD = 0.4;
+const LEMUEN_BOMB_FALL = 0.25;
 /** フィラエ：スキル中は攻撃せず、攻撃を受けると周囲の地上の敵に反撃 */
 const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius: 1.5 } };
 
@@ -673,6 +681,8 @@ interface TalentState {
   stealAtk: number;
   /** サンクタ・ミキサーの層 */
   mixer: number;
+  /** サンクタ・ミキサー：バリアを失ってから（または最後に攻撃してから）の経過時間 */
+  barrierTimer: number;
   /** 一度だけの効果を使った */
   saveUsed: boolean;
   /** スルト：強制退場する時刻 */
@@ -710,6 +720,7 @@ const newTalentState = (): TalentState => ({
   killAtk: 0,
   stealAtk: 0,
   mixer: 0,
+  barrierTimer: 0,
   saveUsed: false,
   surtrUntil: null,
   shields: 0,
@@ -770,6 +781,9 @@ interface Enemy {
   nymphDot: { src: Runtime; dps: number } | null;
   /** 復活待ち（攻撃回数で倒せる状態）なら復活する時刻 */
   reviveAt: number | null;
+  /** レミュアンの素質：指名手配（【ラテラーノ】の攻撃範囲内に滞在した時間と、手配済みか） */
+  wantedTime: number;
+  wanted: boolean;
   revived: boolean;
   defense: DefenseState;
   phases: EnemyPhase[];
@@ -873,6 +887,9 @@ interface Runtime {
   talentStacks: number;
   philaeBoost: boolean;
   counterReadyAt: number;
+  /** レミュアン：ロックオンした敵の位置と、次のロックオンまでの時間 */
+  lockOns: { e: Enemy; x: number; y: number }[];
+  lockTimer: number;
   /** 狩人：弾数とリロード */
   huntAmmo: number;
   /** 回避の確率の累積（期待値） */
@@ -1021,6 +1038,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       talentStacks: 0,
       philaeBoost: false,
       counterReadyAt: 0,
+      lockOns: [],
+      lockTimer: 0,
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
       evadeAcc: ACC_START,
@@ -1255,6 +1274,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       shield: input.spec.hitShield ?? 0,
       reduceStacks: 0,
       reviveAt: null,
+      wantedTime: 0,
+      wanted: false,
       revived: false,
       neutralUntil: -1,
       atkTimer: 0,
@@ -1356,6 +1377,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
   const DMG_CODE: Record<string, number> = { physical: 0, arts: 1, true: 2 };
   let lateranoAmmo = 0;
+  const bombs: { at: number; u: Runtime; e: Enemy; x: number; y: number; atk: number }[] = [];
   let killTime: number | null = null;
   const byUid = new Map(rt.map((u) => [u.input.uid, u]));
 
@@ -1467,6 +1489,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // 仮想敵：冑：HPが一定割合を下回ると受けるダメージ減少
     const guard = e.input.spec.lowHpGuard;
     if (guard && e.hp / e.input.spec.hp < guard.ratio) amount *= guard.scale;
+    // レミュアンの素質：指名手配中の敵は味方【ラテラーノ】から受けるダメージが増える
+    if (e.wanted && u.input.def.bonds.includes('laterano')) {
+      const lem = rt.find((o) => o.alive && cid(o) === LEMUEN);
+      if (lem) amount *= lem.tb[0].damage_scale ?? 1;
+    }
     const applied = Math.min(countsHits(e) ? 1 : amount, e.hp);
     e.hp -= applied;
     u.result.damage += applied;
@@ -1583,6 +1610,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (asleep(e) && cid(u) !== TITI) return false;
       // 近距離は、範囲外でもブロックしている敵を攻撃できる
       if (u.melee && e.blockedBy === u.input.uid) return true;
+      // レミュアン：攻撃範囲外にいる指名手配中の敵も狙える
+      if (e.wanted && cid(u) === LEMUEN) return true;
       return covers(range, e);
     });
     // ブロック中の敵を最優先、次に挑発レベルの高い敵、次に防衛地点までの経路が短い敵
@@ -1645,6 +1674,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const endSkill = (u: Runtime) => {
     setSkillHp(u, false);
     if (cid(u) === TIPPI) land(u);
+    if (cid(u) === LEMUEN) lemuenBombard(u);
     // カゼマル：スキル終了で召喚した身替りは消える
     if (cid(u) === KAZEMA && !u.owner) for (const o of rt) if (o.owner === u && o.alive) removeToken(o);
     // 帰溟スペクター：スキル終了後、身替りと入れ替わる
@@ -1693,6 +1723,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const s = u.skill;
     u.sp = 0;
     u.result.skillCasts++;
+    u.lockOns = [];
+    u.lockTimer = 0;
+    // サンクタ・ミキサー：他の味方【ラテラーノ】のうち弾薬スキル中の者に給弾
+    if (cid(u) === MIXER && s.bb.ammo) {
+      for (const o of rt) if (o !== u && o.alive && o.ammoLeft > 0 && o.input.def.bonds.includes('laterano')) o.ammoLeft += Math.round(s.bb.ammo);
+    }
     if (s.ammo > 0) u.ammoLeft = Math.round(s.ammo * (1 + (mods.ammoPct ?? 0))) + (mods.ammoFlat ?? 0);
     else if (s.duration > 0) u.skillLeft = s.duration;
     if (u.skillLeft > 0 || u.ammoLeft > 0) setSkillHp(u, true);
@@ -2260,6 +2296,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       return;
     }
     philaeCounter(u);
+    mixerCounter(u);
     if (talentOnHurt(u, arts, src)) return;
     // 聖約イグゼキュター：スキル中は近接攻撃を確率で回避し、弾薬を補充（期待値）
     if (EVADE_REFILL.has(u.input.def.charId) && u.ammoLeft > 0 && src.input.spec.attack?.kind === 'melee') {
@@ -2484,6 +2521,91 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
     }
   };
+  /** 弾薬を1発消費（【ラテラーノ】の攻撃力加算・堅守特性の加算を進め、使い切ったらスキル終了） */
+  const useAmmo = (u: Runtime) => {
+    u.ammoLeft--;
+    u.ammoUsed++;
+    if (g.laterano?.members.has(u.input.uid)) lateranoAmmo++;
+    for (const ev of u.events) if (ev.kind === 'ammo' && u.ammoUsed % ev.every === 0) gainStacks(ev);
+    if (u.ammoLeft === 0) endSkill(u);
+  };
+  /** サンクタ・ミキサー：スキル中に攻撃を受けると、攻撃範囲内の敵最大3体に反撃（弾薬1発消費。最小間隔は通常攻撃間隔の一定割合） */
+  const mixerCounter = (u: Runtime) => {
+    if (cid(u) !== MIXER || u.ammoLeft <= 0 || t < u.counterReadyAt) return;
+    const targets = targetsInRange(u, true).slice(0, u.skill.maxTarget);
+    if (!targets.length) return;
+    u.counterReadyAt = t + unitState(u.input.def, u.input.star).stats.interval * (u.skill.bb.base_attack_time ?? 0.6);
+    emit([2, u.input.uid, 1], `area${u.input.uid}`, 0.3);
+    for (const e of targets) strike(u, e, u.curAtk, 1);
+    useAmmo(u);
+  };
+  /** レミュアン：スキル中は0.5秒ごとに弾薬を1発消費して範囲内の敵を順次ロックオン */
+  const lemuenLock = (u: Runtime) => {
+    u.lockTimer -= dt;
+    // ロックした敵が倒れた後も、最後にいた位置が残る
+    for (const l of u.lockOns) if (l.e.alive) [l.x, l.y] = [l.e.x, l.e.y];
+    while (u.ammoLeft > 0 && u.lockTimer <= 1e-9) {
+      // 未ロックの敵を優先し、いなければロック回数の少ない敵（同点なら優先順）を重ねてロックオン。範囲内に敵がいなければ弾薬を消費せず待つ
+      const locks = (c: Enemy) => u.lockOns.filter((l) => l.e === c).length;
+      const e = targetsInRange(u, true).reduce<Enemy | undefined>((best, c) => (!best || locks(c) < locks(best) ? c : best), undefined);
+      if (!e) {
+        u.lockTimer = 0;
+        break;
+      }
+      u.lockTimer += u.skill.bb['attack@aim_interval'] ?? 0.5;
+      u.lockOns.push({ e, x: e.x, y: e.y });
+      emit([10, u.input.uid, e.id]);
+      useAmmo(u);
+    }
+  };
+  /** レミュアン：スキル終了後、ロックオンした順に0.3秒間隔で爆撃する（最初はスキル終了の0.2秒後） */
+  const lemuenBombard = (u: Runtime) => {
+    const atk = u.curAtk;
+    u.lockOns.forEach((l, i) => bombs.push({ at: t + LEMUEN_BOMB_FIRST + LEMUEN_BOMB_GAP * i, u, e: l.e, x: l.x, y: l.y, atk }));
+    bombs.sort((a, b) => a.at - b.at);
+    u.lockOns = [];
+  };
+  /**
+   * 爆撃の着弾：ロックした敵がその時にいる位置（倒れていれば最後の位置）を中心とした一辺0.4の正方形のランダムな位置に落ちて、
+   * 半径内の敵に範囲物理ダメージ（爆心地は倍率が高い）。1発は同じ敵に1回だけ、n発ならn回当たる
+   */
+  const landBombs = () => {
+    for (const b of bombs) if (b.e.alive) [b.x, b.y] = [b.e.x, b.e.y];
+    while (bombs.length && bombs[0].at <= t + 1e-9) {
+      const b = bombs.shift()!;
+      const bb = b.u.skill.bb;
+      const x = b.x + (rand() - 0.5) * LEMUEN_BOMB_SPREAD;
+      const y = b.y + (rand() - 0.5) * LEMUEN_BOMB_SPREAD;
+      emit([11, b.u.input.uid, Math.round(x * 100), Math.round(y * 100), Math.round(LEMUEN_BOMB_FALL * 100)]);
+      if (!field) {
+        if (b.e.alive) strike(b.u, b.e, b.atk, bb['attack@proj_atk_scale_1'] ?? 0);
+        continue;
+      }
+      for (const e of enemies) {
+        if (!e.alive || !e.spawned) continue;
+        const d = Math.hypot(e.x - x, e.y - y);
+        const scale = d <= (bb['attack@dist_1'] ?? 0.8) ? (bb['attack@proj_atk_scale_1'] ?? 0) : d <= (bb['attack@dist_2'] ?? 1.5) ? (bb['attack@proj_atk_scale_2'] ?? 0) : 0;
+        if (scale > 0) strike(b.u, e, b.atk, scale);
+      }
+    }
+  };
+  /** レミュアンの素質：【エリート】・【ボス】が【ラテラーノ】の攻撃範囲内に8秒滞在すると指名手配 */
+  const tickWanted = () => {
+    const lem = rt.find((o) => o.alive && cid(o) === LEMUEN);
+    if (!lem) return;
+    const need = lem.tb[0].interval ?? 8;
+    const laterano = rt.filter((o) => o.alive && o.input.pos !== undefined && o.input.def.bonds.includes('laterano'));
+    for (const e of enemies) {
+      if (!e.alive || !e.spawned || e.wanted || !(e.input.spec.elite || e.input.spec.boss)) continue;
+      // 滞在は連続（範囲の外に出たら数え直す）
+      if (!laterano.some((o) => covers(o.skillLeft > 0 || o.ammoLeft > 0 ? o.rangeSkill : o.rangeNormal, e))) {
+        e.wantedTime = 0;
+        continue;
+      }
+      e.wantedTime += dt;
+      if (e.wantedTime >= need) e.wanted = true;
+    }
+  };
   /** フィラエ：スキル中に攻撃を受けると周囲の地上の敵に反撃（2秒に1回） */
   const philaeCounter = (u: Runtime) => {
     const ph = PHILAE[u.input.def.charId];
@@ -2627,6 +2749,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
   /** 攻撃力（固定値）の上昇 */
   const talentAtkFlat = (u: Runtime) => u.ts.killAtk + u.ts.stealAtk;
+  /** 防御力（固定値）の上昇（サンクタ・ミキサー：ダメージを与えるたびに10秒間） */
+  const talentDefFlat = (u: Runtime) => (cid(u) === MIXER && t - u.ts.lastDealtAt < (u.tb[0].duration ?? 10) ? u.ts.mixer * (u.tb[0].def ?? 0) : 0);
   /** 攻撃速度の上昇 */
   const talentAspd = (u: Runtime): number => {
     const [b0, b1] = u.tb;
@@ -2978,6 +3102,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
             ts.shields = Math.min(b0.max_times ?? 3, ts.shields + 1);
           }
           break;
+        case 'char_4194_rmixer': {
+          // サンクタ・ミキサー：バリアが無い間に8秒間通常攻撃しないと、最大HPの一定割合のバリアを得る（失った時点から数え直す）
+          if (u.barrier > 0) ts.barrierTimer = 0;
+          else if ((ts.barrierTimer += dt) >= (b1.interval ?? 8)) {
+            ts.barrierTimer = 0;
+            u.barrier = u.maxHp * (b1.shield ?? 0);
+          }
+          break;
+        }
         case 'char_202_demkni': // サリア：防御力も時間で上昇
           u.def = u.baseDef * (1 + (b0.def ?? 0) * Math.min(b0.max_stack_cnt ?? 0, Math.floor((t - ts.deployedAt) / Math.max(1, b0.interval ?? 20))));
           break;
@@ -3586,10 +3719,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   for (let step = 0; step < steps; step++) {
     t = step * dt;
     moveEnemies();
+    landBombs();
     if (enemies.every((e) => e.spawned && !e.alive)) break;
     if (field) {
       tickCost();
       tickCold();
+      tickWanted();
       tickElements();
       tickTalents();
       tickTiles();
@@ -3618,7 +3753,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       {
         // スキル中の防御力上昇と自己回復
         const on = u.skill.passive || u.skillLeft > 0 || u.ammoLeft > 0;
-        u.def = u.baseDef * (1 + (on ? u.skill.defPct : 0));
+        u.def = u.baseDef * (1 + (on ? u.skill.defPct : 0)) + talentDefFlat(u);
         if (on && u.skill.regenPct) healUnit(u, u, u.maxHp * u.skill.regenPct * dt);
         if (field && u.skillLeft > 0 && u.skill.costOverTime) cost = Math.min(MAX_COST, cost + (u.skill.costOverTime / Math.max(1, u.skill.duration)) * dt);
         const support = field ? SUPPORT_SKILL[def.charId] : undefined;
@@ -3706,7 +3841,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // ヴィルトゥオーサはスキルでのみ攻撃、フィラエはスキル中は攻撃しない
       const canAttack =
         !heal && !((def.subProfession === 'phalanx' || SKILL_ACTIVE_ONLY_ATTACK.has(def.charId)) && !activeNow) && !(field && SKILL_ONLY_ATTACK.has(def.charId)) && !(PHILAE[def.charId] && u.skillLeft > 0) &&
-        !(NO_ATTACK_IN_SKILL.has(def.charId) && u.skillLeft > 0);
+        !(NO_ATTACK_IN_SKILL.has(def.charId) && u.skillLeft > 0) && !((def.charId === MIXER || def.charId === LEMUEN) && u.ammoLeft > 0);
 
       // 医療：治療行動（吟遊者は範囲内の全員を毎秒攻撃力の10%回復）
       if (heal && field) {
@@ -3744,6 +3879,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           }
         }
       }
+
+      if (cid(u) === LEMUEN && u.ammoLeft > 0) lemuenLock(u);
 
       // 狩人：攻撃しない間は弾を装填する
       const hunter = def.subProfession === 'hunter';
@@ -3842,17 +3979,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u.result.hits += hits;
         if (field && activeNow && s.costPerAttack) cost = Math.min(MAX_COST, cost + s.costPerAttack);
         u.attacks++;
+        u.ts.barrierTimer = 0;
         if (mods.extraShotProb) {
           const e = targets[0][0];
           deal(u, e, mods.extraShotProb * hitDamage(atk * (mods.extraShotScale ?? 1), 'physical', effDefense(e), mods));
         }
         u.atkTimer += interval;
         if (u.ammoLeft > 0) {
-          u.ammoLeft--;
-          u.ammoUsed++;
-          if (g.laterano?.members.has(uid)) lateranoAmmo++;
-          for (const ev of u.events) if (ev.kind === 'ammo' && u.ammoUsed % ev.every === 0) gainStacks(ev);
-          if (u.ammoLeft === 0) endSkill(u);
+          useAmmo(u);
         } else if (s.charge === 'attack' && !activeNow) {
           u.sp += 1;
         }
