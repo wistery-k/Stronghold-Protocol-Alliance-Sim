@@ -68,6 +68,7 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 - 領主（`subProfession === 'lord'`）の特性：飛行の敵も攻撃、自身がブロックしていない敵へは攻撃力80%（`sim.ts` の `hitsAir`・`lordScale`、スキル中に100%になるのは `LORD_FULL_ATK_SKILL`）。凛御シルバーアッシュS2・デーゲンブレヒャーS3は対空（`SKILL_ANTI_AIR`）
 - デーゲンブレヒャー：剣豪の特性（通常攻撃2回）、素質（累積方式で攻撃力160%と戦慄、戦慄の敵に防御力25%無視）、S3を斬撃10回＋最後の一撃のモーション（`sim.ts` の `BLKKGT`・`motionLen`/`slashLeft`。モーション中はスキル中扱いでゲージが減り、通常攻撃・SP回復なし）。敵の状態「戦慄」（`trembleUntil`：ブロック中は通常攻撃しない）。リプレイはモーション中にスキル範囲を表示（`SKILL_RANGE_SHOWN`）、戦慄の敵に「慄」の印
 
+- 精鋭のモジュールによる通常時の攻撃範囲の拡大（`extract_battle.py` の `module_range`：範囲拡大の隠し素質 prefabKey "10"。フィリオプシス・レオンハルト・シー）
 - 戦闘結果のダメージグラフを種別で色分け（`SimUnitResult.byKind`：物理・術・確定・元素。`deal()` の第4引数で種別を渡す）。回復と、バリアが防いだ量（`barrier`、`Runtime.barrierBy` の味方の実績）も同じバーに積む
 
 ## 仮の値・未確認の点（ユーザーに伝え済み）

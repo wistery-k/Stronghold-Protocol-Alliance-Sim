@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMY_PATHS, GOAL, MAPS, cellX, cellY, RANDOM_MAPS, SPAWNS, canPlace, setActiveMap, tileAt } from '../src/core/board';
-import { ENEMIES, ENEMY_GROUPS, ROUNDS, pickRoundGroup, roundSpec, type EnemySpec, type RoundSpec } from '../src/core/data/battle';
+import { ENEMIES, ENEMY_GROUPS, ROUNDS, pickRoundGroup, roundSpec, unitRangeIds, type EnemySpec, type RoundSpec } from '../src/core/data/battle';
 import { UNITS } from '../src/core/data/units';
 import { buildSimInputs, createGame, roundGroupOf } from '../src/core/game';
 import { roundEnemies, routeCells, simulateBattle } from '../src/core/sim';
@@ -1300,5 +1300,19 @@ describe('デーゲンブレヒャー', () => {
     expect(resist.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 512) !== 0))).toBe(false);
     expect(normal.perUnit[0].taken < resist.perUnit[0].taken).toBe(true);
     expect(normal.perUnit[0].damage > resist.perUnit[0].damage * 1.1).toBe(true);
+  });
+});
+
+describe('モジュールの攻撃範囲', () => {
+  it('精鋭はモジュールで通常時の攻撃範囲が広がる（スキル専用の範囲はそのまま）', () => {
+    // フィリオプシス（モジュール：医療環境分析装置）
+    expect(unitRangeIds('4_21', 1)).toEqual({ range: 'y-2', skillRange: 'y-7' });
+    expect(unitRangeIds('4_21', 2)).toEqual({ range: 'y-3', skillRange: 'y-7' });
+    // レオンハルト・シー（拡散術師のモジュール）
+    expect(unitRangeIds('4_14', 1).range).toBe('3-6');
+    expect(unitRangeIds('4_14', 2).range).toBe('3-1');
+    expect(unitRangeIds('5_12', 2).range).toBe('3-1');
+    // 範囲を変えない（特性の倍率範囲などの）モジュールは通常時の範囲のまま
+    expect(unitRangeIds('2_01', 2).range).toBe(unitRangeIds('2_01', 1).range);
   });
 });
