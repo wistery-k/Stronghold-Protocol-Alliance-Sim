@@ -85,7 +85,7 @@ export interface EnemyMeta {
 /** リプレイ用のコマ：敵ごとに [id, x*100, y*100, HP%] と、スキル中のユニット */
 export interface ReplayFrame {
   t: number;
-  /** [id, x×100, y×100, HP%, 状態ビット（1 = 解放済みの囚人、2 = スタン中、4 = 恐怖中、8 = ステルス中、16 = 活性源石の上、32 = 石像形態、64 = 飛行形態の石像、128 = 寒冷、256 = 凍結）] */
+  /** [id, x×100, y×100, HP%, 状態ビット（1 = 解放済みの囚人、2 = スタン中、4 = 恐怖中、8 = ステルス中、16 = 活性源石の上、32 = 石像形態、64 = 飛行形態の石像、128 = 寒冷、256 = 凍結、512 = 戦慄）] */
   e: [number, number, number, number, number?][];
   s: number[];
   /** 所持コスト */
@@ -135,6 +135,9 @@ export type FxEvent = number[];
  * 1 ノーシスS2「ゼロバースト」、2 凛御シルバーアッシュS2「御敵の鋭鋒」、3 シルバーアッシュS3「真銀斬」、4 聖聆プラマニクスS3「群山俯首」
  */
 export const SKILL_FX: Record<string, number> = { char_206_gnosis: 1, char_1045_svash2: 2, char_172_svrash: 3, char_1046_sbell2: 4 };
+
+/** スキル中（攻撃モーション中）にスキルの攻撃範囲を表示するオペレーター（デーゲンブレヒャーS3） */
+export const SKILL_RANGE_SHOWN = new Set(['char_4116_blkkgt']);
 
 export interface BattleResult {
   round: number;
@@ -614,6 +617,12 @@ const LEMUEN_BOMB_SPREAD = 0.4;
 const LEMUEN_BOMB_FALL = 0.25;
 /** フィラエ：スキル中は攻撃せず、攻撃を受けると周囲の地上の敵に反撃 */
 const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius: 1.5 } };
+/**
+ * デーゲンブレヒャー。S3「静寂に帰す」は斬撃10回（d_hit_interval ごと）＋最後の一撃のモーションで、
+ * モーション中は通常攻撃せずSPも溜まらない。最初の斬撃は発動と同時、最後の一撃は10回目の d_hit_interval 後（仮）
+ */
+const BLKKGT = 'char_4116_blkkgt';
+const BLKKGT_SLASHES = 10;
 
 /** 狩人：最大弾数、攻撃時の攻撃力倍率、攻撃をやめてから装填が始まるまでと1発の装填時間（秒） */
 const HUNTER_AMMO = 8;
@@ -723,6 +732,8 @@ interface TalentState {
   /** 聖聆プラマニクス：自身の凍結の終わる時刻 */
   selfFrozenUntil: number;
   reedAcc: number;
+  /** デーゲンブレヒャーの素質の発動の累積（期待値） */
+  blkAcc: number;
 }
 
 const newTalentState = (): TalentState => ({
@@ -750,6 +761,7 @@ const newTalentState = (): TalentState => ({
   timer: 0,
   selfFrozenUntil: -1,
   reedAcc: ACC_START,
+  blkAcc: ACC_START,
 });
 
 /** 攻撃時に確率で攻撃力が上がる素質（期待値で扱う）：[1つ目/2つ目の素質, 確率のキー, 倍率のキー] */
@@ -761,7 +773,6 @@ const CRIT_TALENT: Record<string, [number, string, string]> = {
   char_1021_kroos2: [0, 'prob', 'atk_scale'],
   char_222_bpipe: [0, 'prob', 'atk_scale'],
   char_264_f12yin: [0, 'prob', 'atk_scale'],
-  char_4116_blkkgt: [0, 'prob', 'atk_scale'],
 };
 
 interface Enemy {
@@ -826,6 +837,8 @@ interface Enemy {
   stunUntil: number;
   /** 恐怖（ブロックされず、攻撃せず、来た道を逃げる） */
   fearUntil: number;
+  /** 戦慄（ブロックされている間は通常攻撃できない） */
+  trembleUntil: number;
   /** 山海衆精鋭：ステルスが解けた後の最初の攻撃がまだ残っている */
   ambushReady: boolean;
   /** 元核のマレフィセント：臨戦状態と、次に元素損傷を与えるまでの時間 */
@@ -977,6 +990,10 @@ interface Runtime {
   saved: { block: number; blocker: boolean; rangeNormal: Set<number> | null; rangeSkill: Set<number> | null } | null;
   /** カゼマルS2が召喚した身替り（紙人形）。結果は召喚主にまとめる */
   owner: Runtime | null;
+  /** 攻撃モーションのスキル（デーゲンブレヒャーS3）：モーション全体の秒数（0ならモーションのスキルではない）、残りの斬撃数、次の斬撃までの時間 */
+  motionLen: number;
+  slashLeft: number;
+  slashTimer: number;
 }
 
 interface EngineResult {
@@ -1055,6 +1072,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       counterReadyAt: 0,
       lockOns: [],
       lockTimer: 0,
+      motionLen: 0,
+      slashLeft: 0,
+      slashTimer: 0,
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
       evadeAcc: ACC_START,
@@ -1326,6 +1346,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       roamTo: null,
       stunUntil: -1,
       fearUntil: -1,
+      trembleUntil: -1,
       ambushReady: true,
       enraged: false,
       thrown: false,
@@ -1419,6 +1440,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (!e.alive || seconds <= 0 || e.input.spec.large || e.input.spec.boss) return;
     e.fearUntil = Math.max(e.fearUntil, t + seconds * (1 - (e.input.spec.statusResist ?? 0)));
     release(e);
+  };
+  /** 戦慄：ブロックされている間は通常攻撃できない */
+  const trembleEnemy = (e: Enemy, seconds: number) => {
+    if (!e.alive || seconds <= 0) return;
+    e.trembleUntil = Math.max(e.trembleUntil, t + seconds * (1 - (e.input.spec.statusResist ?? 0)));
   };
 
   const killEnemy = (e: Enemy, by: Runtime | null) => {
@@ -1557,14 +1583,35 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (def.damageType !== 'heal') deal(u, e, 1);
       return;
     }
-    const raw = atk * scale;
     const skillOn = u.skillLeft > 0 || u.ammoLeft > 0;
+    let hitMods = mods;
+    let tremble = 0;
+    if (cid(u) === BLKKGT && def.damageType !== 'heal') {
+      // デーゲンブレヒャーの素質：ダメージを与えた際に確率（S3のモーション中は100%）で攻撃力160%・5秒の戦慄。
+      // 戦慄状態の敵には防御力25%無視（この一撃で付く戦慄は、次のダメージから）
+      const [b0, b1] = u.tb;
+      if (t < e.trembleUntil && b1.def_penetrate) hitMods = { ...mods, defIgnorePct: (mods.defIgnorePct ?? 0) + b1.def_penetrate };
+      let proc = skillOn && u.motionLen > 0;
+      if (!proc) {
+        u.ts.blkAcc += b0.prob ?? 0;
+        if (u.ts.blkAcc >= 1) {
+          u.ts.blkAcc -= 1;
+          proc = true;
+        }
+      }
+      if (proc) {
+        scale *= b0.atk_scale ?? 1;
+        tremble = b0.not_combat ?? 0;
+      }
+    }
+    const raw = atk * scale;
     const defense = effDefense(e);
-    const type = u.skill.artsAttack && skillOn && def.damageType !== 'heal' ? 'arts' : bestType(def.damageType, raw, defense, mods);
+    const type = u.skill.artsAttack && skillOn && def.damageType !== 'heal' ? 'arts' : bestType(def.damageType, raw, defense, hitMods);
     // イェラグ：所属者の与ダメージ上昇（寒冷・凍結した敵にはさらに上昇）
     const kj = g.kjerag?.members.has(uid) ? (isChilled(e) ? g.kjerag.ex : g.kjerag.base) : 1;
-    const dmg = hitDamage(raw, type, defense, mods, type === 'arts' ? artsVuln(e) : 0) * flagFactor(mods, t) * kj * talentDamageMult(u, e, type);
+    const dmg = hitDamage(raw, type, defense, hitMods, type === 'arts' ? artsVuln(e) : 0) * flagFactor(mods, t) * kj * talentDamageMult(u, e, type);
     deal(u, e, dmg);
+    if (tremble > 0 && dmg > 0) trembleEnemy(e, tremble);
     if (dmg > 0 && type !== 'heal') talentOnDealt(u, e, atk);
     if (type !== 'heal' && mods.lifeOnHit) healUnit(u, u, u.maxHp * mods.lifeOnHit);
     if (type !== 'heal') {
@@ -1842,6 +1889,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         applyCold(target, SNOW_HUNTER[def.charId].talentCold);
       }
       endSkill(u);
+    } else if (cid(u) === BLKKGT && s.bb.d_atk_scale) {
+      // デーゲンブレヒャーS3：斬撃10回＋最後の一撃のモーション（毎コマの処理で斬る。最後の一撃でスキル終了）
+      const gap = s.bb.d_hit_interval ?? 0.3;
+      u.slashLeft = BLKKGT_SLASHES + 1;
+      u.slashTimer = 0;
+      u.motionLen = gap * BLKKGT_SLASHES;
+      u.skillLeft = u.motionLen;
     } else if (s.instant) {
       if (support === 'selfHeal') healUnit(u, u, u.maxHp * (s.bb.hp_ratio ?? 0));
       const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
@@ -3237,7 +3291,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       (e.stoneUntil >= 0 ? 32 : 0) |
       (e.stoned && e.stoneUntil < 0 ? 64 : 0) |
       (t < e.coldUntil ? 128 : 0) |
-      (isFrozen(e) ? 256 : 0);
+      (isFrozen(e) ? 256 : 0) |
+      (t < e.trembleUntil ? 512 : 0);
     if (flags) f.push(flags);
     return f;
   };
@@ -3317,6 +3372,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.atkTimer -= (t < e.coldUntil ? (dt * (100 - COLD_ATTACK_SPEED)) / 100 : dt) * tileEnemyAtkRate(e) * conf;
         continue;
       }
+      // 戦慄：ブロックされている間は通常攻撃できない（周囲攻撃は通常攻撃ではないので続く）
+      if (!a.aura && e.blockedBy !== null && t < e.trembleUntil) continue;
       if (a.aura) {
         // 周囲の味方全員に攻撃し続ける（換気口の上の味方は対象外）
         const free = lib && !e.confined;
@@ -3735,6 +3792,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           return [u.input.uid, -1, Math.round((1 - left / u.respawn) * 100), 4, Math.round(left * 10)];
         }
         if (u.ammoLeft > 0) return [u.input.uid, hp, 100, 2, u.ammoLeft];
+        if (u.skillLeft > 0 && u.motionLen > 0) {
+          // 攻撃モーションのスキル：残りのモーション時間
+          const left = Math.max(0, (u.slashLeft - 1) * (s.bb.d_hit_interval ?? 0.3) + u.slashTimer);
+          return [u.input.uid, hp, Math.round((left / u.motionLen) * 100), 1, Math.round(left * 10)];
+        }
         if (u.skillLeft > 0 && u.skillLeft < 9000) return [u.input.uid, hp, Math.round((u.skillLeft / Math.max(0.01, s.duration)) * 100), 1, Math.round(u.skillLeft * 10)];
         if (s.passive || s.spCost <= 0 || u.skillLeft > 0) return [u.input.uid, hp, 0, 3, 0];
         return [u.input.uid, hp, Math.min(100, Math.round((u.sp / s.spCost) * 100)), 0, 0, u.input.def.subProfession === 'hunter' ? Math.floor(u.huntAmmo) : undefined];
@@ -3888,15 +3950,33 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         talentAspd(u) +
         tileAspd(u);
       const interval = attackInterval(stats.interval, aspd, activeNow && !s.passive ? s.intervalAdd : 0);
+      // デーゲンブレヒャーS3：モーション中の斬撃（スキル範囲の最大 max_target 体）。最初の斬撃は発動したコマで出る
+      const inMotion = u.motionLen > 0 && u.skillLeft > 0;
+      if (inMotion && u.slashLeft > 0) {
+        if (t > u.castAt) u.slashTimer -= dt;
+        while (u.slashTimer <= 1e-9 && u.slashLeft > 0) {
+          const last = u.slashLeft === 1;
+          const targets = pickTargets(u, true);
+          if (targets.length) emit([2, uid, 1]);
+          for (const [e] of targets) strike(u, e, atk, (last ? s.bb.e_atk_scale_end : s.bb.d_atk_scale) ?? 1);
+          u.slashLeft--;
+          u.slashTimer += s.bb.d_hit_interval ?? 0.3;
+        }
+        if (u.slashLeft <= 0) {
+          u.skillLeft = 0;
+          endSkill(u);
+        }
+      }
       const scale = activeNow && !s.instant && !s.passive ? s.atkScale : 1;
       // 旋輪射手（ケイパー）：スキル中は攻撃時に投擲物を追加で放つ（cnt 個）
       const loop = def.subProfession === 'loopshooter';
-      const hits = activeNow && !s.instant ? (def.charId === TIPPI && u.skillLeft > 0 ? TIPPI_HITS : loop && !s.passive && s.bb.cnt ? s.bb.cnt : s.hits) : 1;
+      // 剣豪の特性：通常攻撃で2回ダメージを与える
+      const hits = activeNow && !s.instant ? (def.charId === TIPPI && u.skillLeft > 0 ? TIPPI_HITS : loop && !s.passive && s.bb.cnt ? s.bb.cnt : s.hits) : def.subProfession === 'sword' ? 2 : 1;
       // 陣法術師はスキル中しか攻撃しない
       // ヴィルトゥオーサはスキルでのみ攻撃、フィラエはスキル中は攻撃しない
       const canAttack =
         !heal && !((def.subProfession === 'phalanx' || SKILL_ACTIVE_ONLY_ATTACK.has(def.charId)) && !activeNow) && !(field && SKILL_ONLY_ATTACK.has(def.charId)) && !(PHILAE[def.charId] && u.skillLeft > 0) &&
-        !(NO_ATTACK_IN_SKILL.has(def.charId) && u.skillLeft > 0) && !((def.charId === MIXER || def.charId === LEMUEN) && u.ammoLeft > 0);
+        !(NO_ATTACK_IN_SKILL.has(def.charId) && u.skillLeft > 0) && !((def.charId === MIXER || def.charId === LEMUEN) && u.ammoLeft > 0) && !inMotion;
 
       // 医療：治療行動（吟遊者は範囲内の全員を毎秒攻撃力の10%回復）
       if (heal && field) {

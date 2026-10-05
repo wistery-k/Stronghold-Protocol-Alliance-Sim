@@ -1237,3 +1237,42 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(r.perUnit[0].healed).toBeGreaterThan(0);
   });
 });
+
+describe('デーゲンブレヒャー', () => {
+  const degen = () => UNITS.find((u) => u.name === 'デーゲンブレヒャー')!;
+  const board = (): OwnedUnit[] => [{ uid: 1, defId: degen().id, star: 1, pos: 31, dir: 'right' }];
+
+  it('S3は発動と同時に始まる0.3秒ごとの斬撃10回と最後の一撃のモーションで、その間はスキル中（ゲージが減っていく）表示になり通常攻撃しない', () => {
+    const r = run(board(), oneEnemy('test_degen_s3', false, { speed: 0.01, def: 0 }));
+    expect(r.perUnit[0].skillCasts).toBeGreaterThan(0);
+    const slashes = r.fx!.filter((e) => e[1] === 2 && e[2] === 1 && e[3] === 1);
+    const first = slashes.slice(0, 11);
+    expect(first.length).toBe(11);
+    for (let i = 1; i < 11; i++) expect(first[i][0] - first[i - 1][0]).toBe(30);
+    // 斬撃の前後0.3秒以上の間隔はなく、モーション中のコマはすべてスキル中（状態1）でゲージが減っていく
+    // 最初の斬撃は発動と同時
+    const t0 = first[0][0] / 100;
+    expect(r.frames!.filter((f) => f.t < t0 - 0.01).every((f) => f.u![0][3] === 0)).toBe(true);
+    const t1 = first[10][0] / 100;
+    const motion = r.frames!.filter((f) => f.t > t0 + 0.05 && f.t < t1 - 0.05);
+    expect(motion.length).toBeGreaterThan(5);
+    expect(motion.every((f) => f.u![0][3] === 1 && f.s.includes(1))).toBe(true);
+    for (let i = 1; i < motion.length; i++) expect(motion[i].u![0][2] <= motion[i - 1].u![0][2]).toBe(true);
+    // モーション中の命中はすべて斬撃（通常攻撃の命中がない）
+    const hits = r.fx!.filter((e) => e[1] === 0 && e[2] === 1 && e[0] / 100 > t0 + 0.01 && e[0] / 100 < t1 + 0.01);
+    expect(hits.every((h) => slashes.some((s) => s[0] === h[0]))).toBe(true);
+    // 終わるとSP溜めに戻る
+    expect(r.frames!.find((f) => f.t > t1 + 0.1)!.u![0][3]).toBe(0);
+  });
+
+  it('素質：戦慄にした敵はブロック中に攻撃できず、戦慄の敵には防御力25%無視', () => {
+    const attack = { kind: 'melee' as const, atk: 400, interval: 1, range: 0, arts: false };
+    const normal = run(board(), oneEnemy('test_degen_t1', false, { def: 600, attack }));
+    // 抵抗100%の敵は戦慄にならない
+    const resist = run(board(), oneEnemy('test_degen_t2', false, { def: 600, attack, statusResist: 1 }));
+    expect(normal.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 512) !== 0))).toBe(true);
+    expect(resist.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 512) !== 0))).toBe(false);
+    expect(normal.perUnit[0].taken < resist.perUnit[0].taken).toBe(true);
+    expect(normal.perUnit[0].damage > resist.perUnit[0].damage * 1.1).toBe(true);
+  });
+});

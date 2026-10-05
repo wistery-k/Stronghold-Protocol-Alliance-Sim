@@ -21,7 +21,7 @@ import {
 import { ENEMIES, groupLabel, roundEnemySummary, type EnemySpec, type RoundGroup, type RoundSpec } from '../core/data/battle';
 import { getUnit } from '../core/data/units';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE } from '../core/rules';
-import type { BattleResult } from '../core/sim';
+import { SKILL_RANGE_SHOWN, type BattleResult } from '../core/sim';
 import type { Direction, OwnedUnit, Star } from '../core/types';
 import { makeDropTarget, starBadge, unitCard, type CardOptions } from './components';
 import { fmt, h, pct, s } from './dom';
@@ -890,6 +890,20 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   for (const p of SPAWNS) svg.append(s('text', { x: cellX(p) * S + S / 2, y: cellY(p) * S + 58, class: 'rp-label', 'text-anchor': 'middle' }, '出現'));
   svg.append(s('text', { x: cellX(GOAL) * S + S / 2, y: cellY(GOAL) * S + 58, class: 'rp-label', 'text-anchor': 'middle' }, '防衛'));
 
+  // スキル（攻撃モーション）中だけ表示するスキルの攻撃範囲（デーゲンブレヒャーS3）
+  const skillRanges = new Map<number, SVGElement>();
+  for (const u of units) {
+    if (u.pos === undefined || !SKILL_RANGE_SHOWN.has(getUnit(u.defId).charId)) continue;
+    const cells = unitRangeCells({ uid: u.uid, defId: u.defId, star: u.star, pos: u.pos, dir: u.dir } as OwnedUnit, true);
+    const g = s(
+      'g',
+      { class: 'rp-skill-range', style: 'display:none' },
+      ...cells.map((c) => s('rect', { x: cellX(c) * S + 5, y: cellY(c) * S + 5, width: S - 10, height: S - 10, rx: 10, class: 'rp-skill-range-cell' })),
+    );
+    skillRanges.set(u.uid, g);
+    svg.append(g);
+  }
+
   // オペレーター
   const unitNodes = new Map<number, SVGElement>();
   const unitBars = new Map<number, SVGElement>();
@@ -1053,6 +1067,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       bar,
       // 寒冷・凍結：左上に雪の結晶
       s('g', { class: 'rp-cold-mark' }, s('circle', { cx: -rad - 2, cy: -rad + 2, r: 9, class: 'rp-cold-bg' }), s('path', { d: snowflakePath(-rad - 2, -rad + 2, 7), class: 'rp-cold-flake' })),
+      // 戦慄：右下に「慄」の印（ブロックされている間は通常攻撃できない）
+      s('g', { class: 'rp-tremble-mark' }, s('circle', { cx: rad + 2, cy: rad - 2, r: 9, class: 'rp-tremble-bg' }), s('text', { x: rad + 2, y: rad + 2, 'text-anchor': 'middle', class: 'rp-tremble-text' }, '慄')),
     );
     g.append(s('title', {}, m.name));
     n = { g, bar, barW: rad * 2 };
@@ -1109,6 +1125,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       if (((e[4] ?? 0) & 64) !== 0) n.g.classList.add('fly');
       n.g.classList.toggle('cold', ((e[4] ?? 0) & 128) !== 0);
       n.g.classList.toggle('frozen', ((e[4] ?? 0) & 256) !== 0);
+      n.g.classList.toggle('trembling', ((e[4] ?? 0) & 512) !== 0);
       if (((e[4] ?? 0) & 128) !== 0) colds++;
       if (((e[4] ?? 0) & 256) !== 0) frozens++;
       seen.add(e[0]);
@@ -1118,6 +1135,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     drawZaros(a, b, f);
     const skill = new Set(a.s);
     for (const [uid, g] of unitNodes) g.classList.toggle('skill', skill.has(uid));
+    for (const [uid, g] of skillRanges) g.style.display = skill.has(uid) ? '' : 'none';
     const states = new Map((a.u ?? []).map((x) => [x[0], x]));
     const stealth = new Set(a.st ?? []);
     for (const [uid, g] of unitNodes) g.classList.toggle('stealth', stealth.has(uid));
@@ -1248,6 +1266,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel, coldLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）。水色の縁と左上の雪の結晶は寒冷、氷塊に包まれた敵は凍結（凍った瞬間に氷が弾ける。下の「寒冷・凍結」が今の数）。ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3は専用の演出（冷気の波と氷の棘、三日月の斬撃、前方を薙ぐ銀の弧、落ちてくる氷の峰）'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）。水色の縁と左上の雪の結晶は寒冷、氷塊に包まれた敵は凍結（凍った瞬間に氷が弾ける。下の「寒冷・凍結」が今の数）。ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3は専用の演出（冷気の波と氷の棘、三日月の斬撃、前方を薙ぐ銀の弧、落ちてくる氷の峰）。デーゲンブレヒャーS3のモーション中はスキルの攻撃範囲を黄色の点線で示し、ゲージ（黄色）がモーションの残りに合わせて減っていく。右下に「慄」の印が付いた敵は戦慄（ブロックされている間は通常攻撃できない）'),
   );
 }
