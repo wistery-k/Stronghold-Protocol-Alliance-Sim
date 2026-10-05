@@ -414,12 +414,15 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
   const zones = fx.filter((e) => e[1] === 5 || e[1] === 6);
   // <刺胄之弹>の着弾：3×3マスのスタン範囲
   const stuns = fx.filter((e) => e[1] === 7);
-  // レミュアンの礼砲：ロックオン（[t,10,味方,敵]）と爆撃の発射（[t,11,味方,x,y,着弾までの時間]）
+  // レミュアンの礼砲：ロックオン（[t,10,味方,敵]）と爆撃の発射（[t,11,味方,x,y,砲弾が落ちる時間]（tは着弾の時刻））
   const locks = fx.filter((e) => e[1] === 10);
   const bombs = fx.filter((e) => e[1] === 11);
   const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6 && e[1] !== 7 && e[1] !== 10 && e[1] !== 11);
-  /** ロックオンは、同じ味方の次の爆撃が発射されるまで続く */
-  const lockEnd = locks.map((l) => bombs.find((b) => b[2] === l[2] && b[0] >= l[0])?.[0] ?? Infinity);
+  /** ロックオンのマークは、ロックした順に対応する爆撃（同じ味方のn番目のロック＝n番目の爆撃）が着弾するまで残る（敵が倒れてもその位置に残る） */
+  const lockEnd = locks.map((l, i) => {
+    const n = locks.slice(0, i).filter((o) => o[2] === l[2]).length;
+    return bombs.filter((bm) => bm[2] === l[2])[n]?.[0] ?? Infinity;
+  });
   const byUid = new Map(units.map((u) => [u.uid, u]));
   const center = (pos: number) => ({ x: cellX(pos) * S + S / 2, y: cellY(pos) * S + S / 2 });
   const rangeCache = new Map<string, number[]>();
@@ -489,19 +492,19 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
     });
     // 爆撃：着弾点の警告の輪と落ちてくる砲弾、着弾の爆発
     for (const b of bombs) {
-      const t0 = b[0] / 100;
+      const land = b[0] / 100;
       const fall = b[5] / 100;
       const x = (b[3] / 100) * S + S / 2;
       const y = (b[4] / 100) * S + S / 2;
-      if (t >= t0 && t < t0 + fall) {
-        const k = (t - t0) / fall;
+      if (t >= land - fall && t < land) {
+        const k = (t - (land - fall)) / fall;
         const sy = y - (1 - k) * (1 - k) * S * 5;
         nodes.push(s('circle', { cx: x, cy: y, r: S * 1.5, class: 'fx-bomb-warn' }));
         nodes.push(s('circle', { cx: x, cy: y, r: S * 0.8, class: 'fx-bomb-warn core' }));
         nodes.push(s('line', { x1: x, y1: sy - 46, x2: x, y2: sy, class: 'fx-bomb-shell' }));
         nodes.push(s('circle', { cx: x, cy: sy, r: 7, class: 'fx-bomb-head' }));
-      } else if (t >= t0 + fall && t < t0 + fall + 0.6) {
-        const p = (t - t0 - fall) / 0.6;
+      } else if (t >= land && t < land + 0.6) {
+        const p = (t - land) / 0.6;
         const op = String(1 - p);
         nodes.push(s('circle', { cx: x, cy: y, r: S * 1.5 * (0.35 + 0.65 * Math.min(1, p * 2.5)), class: 'fx-bomb-blast', opacity: op }));
         nodes.push(s('circle', { cx: x, cy: y, r: S * 0.8 * (0.35 + 0.65 * Math.min(1, p * 2.5)), class: 'fx-bomb-blast core', opacity: op }));

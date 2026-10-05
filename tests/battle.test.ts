@@ -426,17 +426,28 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(u.damage).toBeGreaterThan(0);
   });
 
-  it('レミュアン：ロックオンと爆撃のリプレイ演出があり、爆撃は発射から0.8秒後に着弾する。敵が1体なら5発すべてを同じ敵にロックして5回当たる', () => {
+  it('レミュアン：ロックオンと爆撃のリプレイ演出。爆撃はスキル終了の0.2秒後から0.3秒間隔で、敵が1体なら5発すべて同じ敵にロックして5回当たる', () => {
     const spec = oneEnemy('test_lemuen2', false, { speed: 0.01, def: 0 });
     const r = run([{ uid: 1, defId: unit('レミュアン').id, star: 1, pos: 34, dir: 'right' }], spec);
     const locks = r.fx!.filter((e) => e[1] === 10);
     const bombs = r.fx!.filter((e) => e[1] === 11);
     expect(locks.length).toBeGreaterThanOrEqual(5);
     expect(bombs.length).toBeGreaterThanOrEqual(5);
-    expect(bombs[0][5]).toBe(80);
-    // 最初のスキルの5発：同じ敵に5回ロック＝5回の爆撃
     expect(new Set(locks.slice(0, 5).map((l) => l[3])).size).toBe(1);
-    expect(bombs.slice(0, 5).every((b) => b[0] === bombs[0][0])).toBe(true);
+    // 着弾の間隔は0.3秒（30）
+    expect(bombs[1][0] - bombs[0][0]).toBe(30);
+    expect(bombs[4][0] - bombs[0][0]).toBe(120);
+    // 最初の着弾は最後のロックオンの後（スキル終了の0.2秒後）
+    expect(bombs[0][0] - locks[locks.length > 5 ? 4 : locks.length - 1][0]).toBeGreaterThanOrEqual(20);
+  });
+
+  it('レミュアン：範囲内に敵がいない間は弾薬を消費せずに待つ', () => {
+    // 敵が現れる前にスキルが発動しないので、ロックオンの数は敵が現れた後から数えて弾薬数以下
+    const spec = oneEnemy('test_lemuen3', false, { speed: 0.01, def: 0 });
+    spec.spawns[0].delay = 25;
+    const r = run([{ uid: 1, defId: unit('レミュアン').id, star: 1, pos: 34, dir: 'right' }], spec);
+    const locks = r.fx!.filter((e) => e[1] === 10);
+    expect(locks.every((l) => l[0] >= 2500)).toBe(true);
   });
 
   it('サンクタ・ミキサーの素質：8秒間攻撃しないとバリアを得て、被ダメージのHPへの反映が遅れる。レミュアンの指名手配で【エリート】への与ダメージが+15%', () => {

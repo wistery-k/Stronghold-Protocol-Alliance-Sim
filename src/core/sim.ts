@@ -592,8 +592,11 @@ const BUBBLE = 'char_381_bubble';
 /** サンクタ・ミキサー（反撃）・レミュアン（ロックオン爆撃）：弾薬スキル中は通常攻撃しない */
 const MIXER = 'char_4194_rmixer';
 const LEMUEN = 'char_4193_lemuen';
-/** レミュアンの爆撃：スキル終了から着弾までの時間（秒）。データの emit_offset 0.2 に、落下の時間 0.6 を足した仮の値 */
-const LEMUEN_BOMB_DELAY = 0.8;
+/** レミュアンの爆撃：スキル終了から最初の着弾までの時間（データの emit_offset）、以降の着弾間隔、着弾位置のばらつき（ロック位置を中心とした一辺 0.4 の正方形）、リプレイで砲弾が落ちる時間 */
+const LEMUEN_BOMB_FIRST = 0.2;
+const LEMUEN_BOMB_GAP = 0.3;
+const LEMUEN_BOMB_SPREAD = 0.4;
+const LEMUEN_BOMB_FALL = 0.25;
 /** フィラエ：スキル中は攻撃せず、攻撃を受けると周囲の地上の敵に反撃 */
 const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius: 1.5 } };
 
@@ -2539,42 +2542,48 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   /** レミュアン：スキル中は0.5秒ごとに弾薬を1発消費して範囲内の敵を順次ロックオン */
   const lemuenLock = (u: Runtime) => {
     u.lockTimer -= dt;
+    // ロックした敵が倒れた後も、最後にいた位置が残る
+    for (const l of u.lockOns) if (l.e.alive) [l.x, l.y] = [l.e.x, l.e.y];
     while (u.ammoLeft > 0 && u.lockTimer <= 1e-9) {
-      u.lockTimer += u.skill.bb['attack@aim_interval'] ?? 0.5;
-      // 未ロックの敵を優先し、いなければロック回数の少ない敵（同点なら優先順）を重ねてロックオン
+      // 未ロックの敵を優先し、いなければロック回数の少ない敵（同点なら優先順）を重ねてロックオン。範囲内に敵がいなければ弾薬を消費せず待つ
       const locks = (c: Enemy) => u.lockOns.filter((l) => l.e === c).length;
       const e = targetsInRange(u, true).reduce<Enemy | undefined>((best, c) => (!best || locks(c) < locks(best) ? c : best), undefined);
-      if (e) {
-        u.lockOns.push({ e, x: e.x, y: e.y });
-        emit([10, u.input.uid, e.id]);
+      if (!e) {
+        u.lockTimer = 0;
+        break;
       }
+      u.lockTimer += u.skill.bb['attack@aim_interval'] ?? 0.5;
+      u.lockOns.push({ e, x: e.x, y: e.y });
+      emit([10, u.input.uid, e.id]);
       useAmmo(u);
     }
   };
-  /** レミュアン：スキル終了時、ロックオンした位置への爆撃を発射する（着弾は少し遅れる）。倒れた敵はその位置 */
+  /** レミュアン：スキル終了後、ロックオンした順に0.3秒間隔で爆撃する（最初はスキル終了の0.2秒後） */
   const lemuenBombard = (u: Runtime) => {
     const atk = u.curAtk;
-    for (const l of u.lockOns) {
-      const at = l.e.alive ? { x: l.e.x, y: l.e.y } : l;
-      bombs.push({ at: t + LEMUEN_BOMB_DELAY, u, e: l.e, x: at.x, y: at.y, atk });
-      emit([11, u.input.uid, Math.round(at.x * 100), Math.round(at.y * 100), Math.round(LEMUEN_BOMB_DELAY * 100)]);
-    }
+    u.lockOns.forEach((l, i) => bombs.push({ at: t + LEMUEN_BOMB_FIRST + LEMUEN_BOMB_GAP * i, u, e: l.e, x: l.x, y: l.y, atk }));
+    bombs.sort((a, b) => a.at - b.at);
     u.lockOns = [];
   };
-  /** 着弾した爆撃：半径内の敵に範囲物理ダメージ（爆心地は倍率が高い）。1発は同じ敵に1回だけ、n発ならn回当たる */
+  /**
+   * 爆撃の着弾：ロックした敵がその時にいる位置（倒れていれば最後の位置）を中心とした一辺0.4の正方形のランダムな位置に落ちて、
+   * 半径内の敵に範囲物理ダメージ（爆心地は倍率が高い）。1発は同じ敵に1回だけ、n発ならn回当たる
+   */
   const landBombs = () => {
-    for (let i = bombs.length - 1; i >= 0; i--) {
-      const b = bombs[i];
-      if (b.at > t + 1e-9) continue;
-      bombs.splice(i, 1);
+    for (const b of bombs) if (b.e.alive) [b.x, b.y] = [b.e.x, b.e.y];
+    while (bombs.length && bombs[0].at <= t + 1e-9) {
+      const b = bombs.shift()!;
       const bb = b.u.skill.bb;
+      const x = b.x + (rand() - 0.5) * LEMUEN_BOMB_SPREAD;
+      const y = b.y + (rand() - 0.5) * LEMUEN_BOMB_SPREAD;
+      emit([11, b.u.input.uid, Math.round(x * 100), Math.round(y * 100), Math.round(LEMUEN_BOMB_FALL * 100)]);
       if (!field) {
         if (b.e.alive) strike(b.u, b.e, b.atk, bb['attack@proj_atk_scale_1'] ?? 0);
         continue;
       }
       for (const e of enemies) {
         if (!e.alive || !e.spawned) continue;
-        const d = Math.hypot(e.x - b.x, e.y - b.y);
+        const d = Math.hypot(e.x - x, e.y - y);
         const scale = d <= (bb['attack@dist_1'] ?? 0.8) ? (bb['attack@proj_atk_scale_1'] ?? 0) : d <= (bb['attack@dist_2'] ?? 1.5) ? (bb['attack@proj_atk_scale_2'] ?? 0) : 0;
         if (scale > 0) strike(b.u, e, b.atk, scale);
       }
@@ -2588,7 +2597,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const laterano = rt.filter((o) => o.alive && o.input.pos !== undefined && o.input.def.bonds.includes('laterano'));
     for (const e of enemies) {
       if (!e.alive || !e.spawned || e.wanted || !(e.input.spec.elite || e.input.spec.boss)) continue;
-      if (!laterano.some((o) => covers(o.skillLeft > 0 || o.ammoLeft > 0 ? o.rangeSkill : o.rangeNormal, e))) continue;
+      // 滞在は連続（範囲の外に出たら数え直す）
+      if (!laterano.some((o) => covers(o.skillLeft > 0 || o.ammoLeft > 0 ? o.rangeSkill : o.rangeNormal, e))) {
+        e.wantedTime = 0;
+        continue;
+      }
       e.wantedTime += dt;
       if (e.wantedTime >= need) e.wanted = true;
     }
