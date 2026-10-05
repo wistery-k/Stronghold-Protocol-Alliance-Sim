@@ -889,6 +889,8 @@ interface Enemy {
   diveAt: number;
   diveTo: number;
   diveHits: number;
+  /** 撃ち落とされた状態から復帰する時刻 */
+  downUntil: number;
   /** 囚人：拘束中か、拘束中に攻撃した回数 */
   confined: boolean;
   confAttacks: number;
@@ -1387,6 +1389,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       diveAt: input.spec.dive ? input.spawnAt + input.spec.dive.init : -1,
       diveTo: -1,
       diveHits: 0,
+      downUntil: 0,
     });
   /** シミュレーター内の決定的な乱数（ボスの攻撃対象・手下の移動先） */
   let seed = 0x2545f491;
@@ -1541,7 +1544,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (e.minion === 'roam' || e.minion === 'back') return;
       if (e.minion === 'dive') {
         // 突進中：一定回数攻撃されると撃ち落とされる
-        if (++e.diveHits >= (e.input.spec.dive?.hits ?? Infinity)) e.minion = 'down';
+        if (++e.diveHits >= (e.input.spec.dive?.hits ?? Infinity)) {
+          e.minion = 'down';
+          e.downUntil = t + (e.input.spec.dive?.downTime ?? Infinity);
+        }
       } else {
         // 撃ち落とされた後：受けるダメージ増加、受けたダメージの一部がボスにも入る
         amount *= e.input.spec.dive?.dmgScale ?? 1;
@@ -3642,7 +3648,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
   const roam = (e: Enemy) => {
     const dv = e.input.spec.dive;
-    if (e.minion === 'down') return;
+    if (e.minion === 'down') {
+      // 撃ち落とされてから一定時間で復帰し、ボスのそばへ戻る
+      if (t < e.downUntil) return;
+      e.minion = 'back';
+    }
     if (e.minion === 'roam' && dv && e.diveAt >= 0 && t >= e.diveAt) {
       // 攻撃力が最も低い味方へ突進
       const target = rt

@@ -97,9 +97,10 @@ export interface EnemySpec {
   summon?: { enemy: string; cooldown: number; init: number; hpRatio: number };
   /**
    * ボスの手下の突進：init 秒後から cooldown 秒ごとに攻撃力が最も低い味方へ突っ込み、着弾で周囲8マスに stun 秒スタンと dotDuration 秒間毎秒 dotDps の物理。
-   * 突進中は無敵が切れ、hits 回攻撃されると撃ち落とされる（地上に落ちて動かず、受けるダメージ dmgScale 倍、受けたダメージの一部がボスにも入る）
+   * 突進中は無敵が切れ、hits 回攻撃されると撃ち落とされる（地上に落ちて動かず、受けるダメージ dmgScale 倍、受けたダメージの一部がボスにも入る）。
+   * 撃ち落とされてから downTime 秒で復帰し、ボスのそばへ戻る（無敵に戻る）
    */
-  dive?: { cooldown: number; init: number; stun: number; dotDps: number; dotDuration: number; hits: number; dmgScale: number };
+  dive?: { cooldown: number; init: number; stun: number; dotDps: number; dotDuration: number; hits: number; dmgScale: number; downTime: number };
   /** ステルスが解けた後の最初の攻撃の攻撃力倍率（山海衆精鋭） */
   ambush?: number;
   /** 臨戦状態：攻撃を受けると移動速度×speedMult、interval 秒ごとに半径 radius の味方へ攻撃力×ratio の元素損傷（元核のマレフィセント） */

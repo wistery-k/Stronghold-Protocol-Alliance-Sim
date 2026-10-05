@@ -789,6 +789,45 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(minionDamage).toBeGreaterThan(0);
   });
 
+  it('撃ち落とされた手下は downTime 秒で復帰してボスのそばへ戻り、無敵に戻る', () => {
+    ENEMIES.test_boss4 = { ...ENEMIES.enemy_9013_acstmk_2, hp: 1e8, attack: undefined, summon: undefined, bomb: undefined };
+    // 撃ち落としやすくするため、必要な攻撃回数を減らす
+    const dive = { ...ENEMIES.enemy_9014_acstma.dive!, init: 2, hits: 3 };
+    expect(dive.downTime).toBe(20);
+    setActiveMap('legacy');
+    const spec: RoundSpec = {
+      round: 15,
+      levelId: 'test',
+      timeLimit: 60,
+      moveMultiplier: 0.5,
+      spawns: [
+        { enemy: 'test_boss4', count: 1, interval: 0, delay: 0, spawn: 0 },
+        { enemy: 'test_diver4', count: 1, interval: 0, delay: 0, spawn: 0 },
+      ],
+    };
+    const sn = byProf('sniper').id;
+    const b = buildSimInputs(
+      [
+        { uid: 1, defId: byProf('defender').id, star: 1, pos: 31, dir: 'right' },
+        ...[14, 15, 22, 23, 24].map((pos, i) => ({ uid: 2 + i, defId: sn, star: 2 as const, pos, dir: 'right' as const })),
+      ],
+      [],
+      {},
+    );
+    const damage = (downTime: number) => {
+      ENEMIES.test_diver4 = { ...ENEMIES.enemy_9014_acstma, minionOf: 'test_boss4', attack: undefined, dive: { ...dive, downTime } };
+      const r = simulateBattle(b.inputs, spec, { globals: b.globals, record: true });
+      return { total: r.perUnit.reduce((s2, u) => s2 + u.damage, 0), frames: r.frames! };
+    };
+    const forever = damage(Infinity);
+    const recover = damage(20);
+    // 復帰すると無敵に戻るので、撃ち落とされたままより与ダメージが少ない
+    expect(recover.total > 0 && recover.total < forever.total).toBe(true);
+    // 復帰後は再び動き回る（終盤のフレームで手下の位置が変わっている）
+    const late = new Set(recover.frames.filter((f) => f.t > 50).flatMap((f) => f.e.filter((e) => e[0] === 2).map((e) => `${e[1]},${e[2]}`)));
+    expect(late.size).toBeGreaterThan(1);
+  });
+
   it('シークレットコア版の手下は飛び回り、防衛地点に入らず、無敵で、ボスが倒れると消える', () => {
     ENEMIES.test_boss2 = { ...ENEMIES.enemy_9013_acstmk_2, hp: 3000, def: 0, attack: undefined, summon: undefined, bomb: undefined };
     ENEMIES.test_minion = { ...ENEMIES.enemy_9014_acstma, minionOf: 'test_boss2' };
