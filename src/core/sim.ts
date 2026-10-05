@@ -619,7 +619,7 @@ const LEMUEN_BOMB_FALL = 0.25;
 const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius: 1.5 } };
 /**
  * デーゲンブレヒャー。S3「静寂に帰す」は斬撃10回（d_hit_interval ごと）＋最後の一撃のモーションで、
- * モーション中は通常攻撃せずSPも溜まらない。最初の斬撃は発動の d_hit_interval 後、最後の一撃は10回目の d_hit_interval 後（仮）
+ * モーション中は通常攻撃せずSPも溜まらない。最初の斬撃は発動と同時、最後の一撃は10回目の d_hit_interval 後（仮）
  */
 const BLKKGT = 'char_4116_blkkgt';
 const BLKKGT_SLASHES = 10;
@@ -1893,8 +1893,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // デーゲンブレヒャーS3：斬撃10回＋最後の一撃のモーション（毎コマの処理で斬る。最後の一撃でスキル終了）
       const gap = s.bb.d_hit_interval ?? 0.3;
       u.slashLeft = BLKKGT_SLASHES + 1;
-      u.slashTimer = gap;
-      u.motionLen = gap * u.slashLeft;
+      u.slashTimer = 0;
+      u.motionLen = gap * BLKKGT_SLASHES;
       u.skillLeft = u.motionLen;
     } else if (s.instant) {
       if (support === 'selfHeal') healUnit(u, u, u.maxHp * (s.bb.hp_ratio ?? 0));
@@ -3950,10 +3950,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         talentAspd(u) +
         tileAspd(u);
       const interval = attackInterval(stats.interval, aspd, activeNow && !s.passive ? s.intervalAdd : 0);
-      // デーゲンブレヒャーS3：モーション中の斬撃（スキル範囲の最大 max_target 体）。発動したコマでは進めない
+      // デーゲンブレヒャーS3：モーション中の斬撃（スキル範囲の最大 max_target 体）。最初の斬撃は発動したコマで出る
       const inMotion = u.motionLen > 0 && u.skillLeft > 0;
-      if (inMotion && u.slashLeft > 0 && t > u.castAt) {
-        u.slashTimer -= dt;
+      if (inMotion && u.slashLeft > 0) {
+        if (t > u.castAt) u.slashTimer -= dt;
         while (u.slashTimer <= 1e-9 && u.slashLeft > 0) {
           const last = u.slashLeft === 1;
           const targets = pickTargets(u, true);

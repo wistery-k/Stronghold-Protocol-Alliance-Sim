@@ -1242,7 +1242,7 @@ describe('デーゲンブレヒャー', () => {
   const degen = () => UNITS.find((u) => u.name === 'デーゲンブレヒャー')!;
   const board = (): OwnedUnit[] => [{ uid: 1, defId: degen().id, star: 1, pos: 31, dir: 'right' }];
 
-  it('S3は0.3秒ごとの斬撃10回と最後の一撃のモーションで、その間はスキル中（ゲージが減っていく）表示になり通常攻撃しない', () => {
+  it('S3は発動と同時に始まる0.3秒ごとの斬撃10回と最後の一撃のモーションで、その間はスキル中（ゲージが減っていく）表示になり通常攻撃しない', () => {
     const r = run(board(), oneEnemy('test_degen_s3', false, { speed: 0.01, def: 0 }));
     expect(r.perUnit[0].skillCasts).toBeGreaterThan(0);
     const slashes = r.fx!.filter((e) => e[1] === 2 && e[2] === 1 && e[3] === 1);
@@ -1250,7 +1250,9 @@ describe('デーゲンブレヒャー', () => {
     expect(first.length).toBe(11);
     for (let i = 1; i < 11; i++) expect(first[i][0] - first[i - 1][0]).toBe(30);
     // 斬撃の前後0.3秒以上の間隔はなく、モーション中のコマはすべてスキル中（状態1）でゲージが減っていく
-    const t0 = first[0][0] / 100 - 0.3;
+    // 最初の斬撃は発動と同時
+    const t0 = first[0][0] / 100;
+    expect(r.frames!.filter((f) => f.t < t0 - 0.01).every((f) => f.u![0][3] === 0)).toBe(true);
     const t1 = first[10][0] / 100;
     const motion = r.frames!.filter((f) => f.t > t0 + 0.05 && f.t < t1 - 0.05);
     expect(motion.length).toBeGreaterThan(5);
