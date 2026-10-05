@@ -107,6 +107,51 @@ describe('マップ戦闘', () => {
     expect(r.leaked).toBe(1);
   });
 
+  it('領主（シルバーアッシュ）は飛行の敵も攻撃でき、遠距離攻撃は攻撃力80%', () => {
+    const sa = UNITS.find((u) => u.name === 'シルバーアッシュ')!;
+    const board: OwnedUnit[] = [{ uid: 1, defId: sa.id, star: 1, pos: 29, dir: 'right' }];
+    // 1撃ごとのダメージ（0.5秒ごとの残りHPの減り。攻撃間隔1.3秒なので1区間に1撃）をスキル発動前で比べる
+    const perHit = (fly: boolean) => {
+      const r = run(board, oneEnemy(fly ? 'test_lord_fly' : 'test_lord_gr', fly, { def: 0, res: 0, speed: fly ? 0.3 : 1 }));
+      const cast = r.fx!.find((e) => e[1] === 13 && e[4] === 0)?.[0] ?? Infinity;
+      const tl = r.timeline.filter((p) => p.t * 100 < cast - 50);
+      const drops = tl.slice(1).map((p, i) => Math.round(tl[i].hp - p.hp)).filter((d) => d > 0);
+      return { r, drops: [...new Set(drops)].sort((a, b) => a - b) };
+    };
+    const air = perHit(true);
+    expect(air.r.perUnit[0].damage > 0).toBe(true);
+    expect(air.drops.length).toBe(1);
+    // 地上の敵：ブロックする前は遠距離（80%）、ブロックしてからは近距離（100%）
+    const ground = perHit(false);
+    expect(ground.drops.length).toBe(2);
+    expect(ground.drops[0]).toBe(air.drops[0]);
+    expect(Math.abs(ground.drops[0] / ground.drops[1] - 0.8) < 0.01).toBe(true);
+    // スキル（真銀斬）も飛行の敵に当たる
+    expect(air.r.perUnit[0].skillCasts).toBe(1);
+    const sk = air.r.fx!.filter((e) => e[1] === 13 && e[4] === 1);
+    expect(sk.length > 0).toBe(true);
+  });
+
+  it('近距離の非領主は飛行の敵を攻撃できない', () => {
+    const guard = UNITS.find((u) => u.profession === 'guard' && u.position === 'melee' && u.subProfession !== 'lord')!;
+    const r = run([{ uid: 1, defId: guard.id, star: 1, pos: 29, dir: 'right' }], oneEnemy('test_fly_g', true, { speed: 0.3 }));
+    expect(r.perUnit[0].damage).toBe(0);
+  });
+
+  it('凛御シルバーアッシュは通常攻撃では飛行の敵を狙えないが、S2は飛行の敵に撃って当たる', () => {
+    const sv = UNITS.find((u) => u.name === '凛御シルバーアッシュ')!;
+    const r = run([{ uid: 1, defId: sv.id, star: 1, pos: 29, dir: 'right' }], oneEnemy('test_fly_sv', true, { def: 0, res: 0, speed: 0.3 }));
+    const p = r.perUnit[0];
+    expect(p.hits).toBe(0);
+    expect(p.skillCasts > 0).toBe(true);
+    expect(p.damage > 0).toBe(true);
+    // 専用の演出に命中した敵の位置が入る（[時刻, 13, uid, 種類, 0, x, y]）
+    const sk = r.fx!.filter((e) => e[1] === 13 && e[2] === 1);
+    expect(sk.length).toBe(p.skillCasts);
+    expect(sk.every((e) => e.length >= 7)).toBe(true);
+    expect(r.colds > 0).toBe(true);
+  });
+
   it('遠距離オペレーターで序盤の敵を倒せる', () => {
     const sniper = byProf('sniper');
     const caster = byProf('caster');

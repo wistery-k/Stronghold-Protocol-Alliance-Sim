@@ -351,6 +351,12 @@ function flagFactor(mods: Modifier, t: number): number {
 const SPLASH_SUB = new Set(['splashcaster', 'bombarder', 'blastcaster', 'fortress']);
 /** 攻撃範囲内の敵すべてを攻撃 */
 const ALL_IN_RANGE_SUB = new Set(['stalker']);
+/** 領主の特性：遠距離攻撃（自身がブロックしていない敵への攻撃）は攻撃力80%。飛行の敵も攻撃できる */
+const LORD_RANGED_SCALE = 0.8;
+/** スキル中、領主の遠距離攻撃の攻撃力低下が無くなる（ラップランドS2・チューバイS3は「無効化」、シルバーアッシュS3は「近接攻撃と見なす」） */
+const LORD_FULL_ATK_SKILL = new Set(['char_140_whitew', 'char_4082_qiubai', 'char_172_svrash']);
+/** 近距離だが、スキルは飛行の敵にも当たる（凛御シルバーアッシュS2） */
+const SKILL_ANTI_AIR = new Set(['char_1045_svash2']);
 /** スキル中、HP割合に応じて攻撃力が上がる「勇猛」（ヒューマス）：[必要HP割合, 攻撃力] を高い順に */
 function peakPerformance(bb: Record<string, number>): [number, number][] {
   const out: [number, number][] = [];
@@ -1606,13 +1612,20 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return e.input.path ? e.input.path.length - 1 - e.d : 0;
   };
 
+  /** 飛行（浮遊）の敵を攻撃できるか：遠距離・離陸中・領主（特性の遠距離攻撃）・対空のスキル中 */
+  const hitsAir = (u: Runtime, skillActive: boolean) =>
+    !u.melee || lifted(u) || u.input.def.subProfession === 'lord' || (skillActive && SKILL_ANTI_AIR.has(cid(u)));
+  /** 領主の遠距離攻撃（自身がブロックしていない敵）の攻撃力の倍率 */
+  const lordScale = (u: Runtime, e: Enemy, skillOn: boolean) =>
+    u.input.def.subProfession === 'lord' && field && e.blockedBy !== u.input.uid && !(skillOn && LORD_FULL_ATK_SKILL.has(cid(u))) ? LORD_RANGED_SCALE : 1;
+
   /** 攻撃範囲内で狙える敵（優先順） */
   const targetsInRange = (u: Runtime, skillActive: boolean): Enemy[] => {
     const range = skillActive ? u.rangeSkill : u.rangeNormal;
     const list = enemies.filter((e) => {
       if (!e.alive) return false;
       if (!field) return true;
-      if ((isFlying(e) || e.input.spec.float) && u.melee && !lifted(u)) return false;
+      if ((isFlying(e) || e.input.spec.float) && !hitsAir(u, skillActive)) return false;
       // ステルス：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
       if (isStealthed(e)) return false;
       // ボスの手下は無敵（攻撃の対象にならない。突進中・撃ち落とされた後は狙える）
@@ -3990,7 +4003,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           for (let k = 0; k < n; k++) strike(u, e0, atk, fs * m0 * talentScale(u, e0, activeNow));
           if (whitw2Stage(u) >= 2) neutralize(e0, u.tb[0]['attack@silence_duration'] ?? 2);
         } else
-        for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1) * talentScale(u, e, activeNow));
+        for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1) * talentScale(u, e, activeNow) * lordScale(u, e, activeNow));
         if (def.charId === TITI) {
           for (const [e] of targets) {
             // 素質：移動していない敵に攻撃力15%の術ダメージを追加
