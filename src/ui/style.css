@@ -2019,3 +2019,42 @@ body.dragging * {
   stroke-linecap: round;
   filter: drop-shadow(0 0 6px #6fd3ff);
 }
+
+/* デーゲンブレヒャーS3のモーション中のスキルの攻撃範囲 */
+.rp-skill-range {
+  pointer-events: none;
+}
+.rp-skill-range-cell {
+  fill: color-mix(in srgb, var(--accent) 16%, transparent);
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-dasharray: 10 6;
+  animation: rp-skill-range-pulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes rp-skill-range-pulse {
+  from {
+    fill-opacity: 0.6;
+  }
+  to {
+    fill-opacity: 1;
+  }
+}
+
+/* 戦慄 */
+.rp-tremble-mark {
+  display: none;
+  pointer-events: none;
+}
+.rp-enemy.trembling .rp-tremble-mark {
+  display: inline;
+}
+.rp-tremble-bg {
+  fill: #5a1420;
+  stroke: #ff7a7a;
+  stroke-width: 1.5;
+}
+.rp-tremble-text {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #ffd0d0;
+}
