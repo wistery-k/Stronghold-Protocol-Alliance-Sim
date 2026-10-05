@@ -5684,7 +5684,8 @@
     "dotDps": 200.0,
     "dotDuration": 10.0,
     "hits": 15,
-    "dmgScale": 1.3
+    "dmgScale": 1.3,
+    "downTime": 20.0
    },
    "taunt": 1
   },
@@ -5716,7 +5717,8 @@
     "dotDps": 200.0,
     "dotDuration": 10.0,
     "hits": 15,
-    "dmgScale": 1.3
+    "dmgScale": 1.3,
+    "downTime": 20.0
    },
    "taunt": 1
   },

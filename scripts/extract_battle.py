@@ -277,12 +277,13 @@ def main():
             e['roam'] = True
             e['minionOf'] = BOSS_MINIONS[key]
             # 周期的に攻撃力が最も低い味方へ突っ込んで自爆（スキル1）。突進中は無敵が切れ、hits 回攻撃されると撃ち落とされて地上に落ち、
-            # 受けるダメージが dmgScale 倍になる。撃ち落とされなければ着弾後ボスのそばへ戻る
+            # 受けるダメージが dmgScale 倍になる（downTime 秒で復帰してボスのそばへ戻る）。撃ち落とされなければ着弾後ボスのそばへ戻る
             sk = next((x for x in (ed.get('skills') or []) if x.get('prefabKey') == '1'), None)
             if sk:
                 sbb = {b['key']: b['value'] for b in (sk.get('blackboard') or [])}
                 e['dive'] = {'cooldown': sk['cooldown'], 'init': sk['initCooldown'], 'stun': sbb.get('stun', 10), 'dotDps': sbb.get('dot_damage', 200),
-                             'dotDuration': sbb.get('dot_duration', 10), 'hits': int(sbb.get('max_hit_cnt', 15)), 'dmgScale': sbb.get('damage_scale', 1)}
+                             'dotDuration': sbb.get('dot_duration', 10), 'hits': int(sbb.get('max_hit_cnt', 15)), 'dmgScale': sbb.get('damage_scale', 1),
+                             'downTime': sbb.get('special_stun_duration', 20)}
         # 近距離と遠距離を使い分ける敵（applyWay ALL）：ブロックされていればブロックしている相手、いなければ範囲内の相手を攻撃
         # （掠海のフローター・枯朽サルカズ戦車・墓守の石像・「帝国の甲冑」）
         ALL_ENEMIES = {'enemy_2025_syufo', 'enemy_1272_nhtank', 'enemy_1172_dugago', 'enemy_10027_vtsk'}
