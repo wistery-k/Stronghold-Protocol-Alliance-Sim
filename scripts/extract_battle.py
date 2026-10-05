@@ -22,6 +22,10 @@ MODE = 'mode_single_normal'  # 険境シミュレーション
 ROUNDS = 15
 
 # 日本版データにまだ無い敵の日本語名
+# ロックオン→砲撃の敵（enemy_1112_emppnt：帝国砲撃誘導機）。数値は仮
+LOCK_STRIKE_ENEMIES = {'enemy_1112_emppnt'}
+LOCK_STRIKE = {'delay': 2.0, 'radius': 1}
+
 ENEMY_NAME_OVERRIDES = {
     'enemy_9013_acstmk': '仮想敵：冑',
     'enemy_9013_acstmk_2': '仮想敵：冑',
@@ -224,6 +228,10 @@ def main():
         if boomb and e.get('attack'):
             mv = next((b_['value'] for b_ in (boomb.get('blackboard') or []) if b_['key'] == 'move_speed'), 0)
             e['throwOnce'] = {'radius': 1, 'speedMult': 1 + mv}
+        # 帝国砲撃誘導機：通常攻撃の代わりに、射程内の味方を「ロックオン」し、数秒後にその位置へ砲撃が着弾する。
+        # 本家データに数値が無いため仮の値（ロックオンから着弾まで2秒、目標と周囲8マスに攻撃力の物理）
+        if key in LOCK_STRIKE_ENEMIES and e.get('attack'):
+            e['attack']['lockStrike'] = dict(LOCK_STRIKE)
         # 大型のボス：移動せず、マップ右上の2列×3行を占める
         if re.sub(r'_\d$', '', key) in LARGE_BOSSES:
             e['large'] = True

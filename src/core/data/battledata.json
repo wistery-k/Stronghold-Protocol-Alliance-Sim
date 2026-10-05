@@ -3029,7 +3029,11 @@
     "atk": 1000,
     "interval": 5.0,
     "range": 2.0,
-    "arts": false
+    "arts": false,
+    "lockStrike": {
+     "delay": 2.0,
+     "radius": 1
+    }
    }
   },
   "enemy_1041_lazerd_2": {
