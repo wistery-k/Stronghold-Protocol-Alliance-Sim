@@ -429,8 +429,7 @@ function hexPoints(x: number, y: number, r: number, rot = 0): string {
   }).join(' ');
 }
 
-/** 専用の演出があるスキル（sim.ts の SKILL_FX）の名前と、演出の長さ（秒）[発動, スキル中の攻撃] */
-const SKILL_FX_NAME = ['', 'ゼロバースト', '御敵の鋭鋒', '真銀斬', '群山俯首'];
+/** 専用の演出があるスキル（sim.ts の SKILL_FX）の演出の長さ（秒）[発動, スキル中の攻撃] */
 const SKILL_FX_LIFE = [0, 1.0, 0.9, 1.0, 1.4];
 const SKILL_FX_HIT_LIFE = [0, 0, 0, 0.5, 0.75];
 /** 凍結した瞬間の氷の砕ける演出の長さ（秒） */
@@ -613,12 +612,6 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
       const u = byUid.get(ev[2]);
       if (!u || u.pos === undefined) continue;
       drawSkillFx(nodes, style, hit, (t - t0) / life, t - t0, center(u.pos), rangeOf(u, true), Array.from({ length: (ev.length - 5) >> 1 }, (_, k) => ({ x: (ev[5 + 2 * k] / 100) * S + S / 2, y: (ev[6 + 2 * k] / 100) * S + S / 2 })), ev[0]);
-      // 発動の瞬間はスキル名を浮かび上がらせる
-      if (!hit) {
-        const up = center(u.pos);
-        const p = (t - t0) / life;
-        nodes.push(s('text', { x: up.x, y: up.y - 46 - 18 * p, 'text-anchor': 'middle', class: `fx-skill-name s${style}`, opacity: String(Math.min(1, 3 * (1 - p))) }, SKILL_FX_NAME[style]));
-      }
     }
     for (let i = firstAfter(t - maxLife); i < events.length && events[i][0] / 100 <= t; i++) {
       const ev = events[i];
@@ -840,12 +833,8 @@ function drawSkillFx(
     }
     case 4: {
       if (!hit) {
-        // 聖聆プラマニクス「群山俯首」の発動：範囲全体に雪山の影がそびえ、吹雪の輪が内へ収束（引き寄せ）
+        // 聖聆プラマニクス「群山俯首」の発動：範囲全体に冷気が広がり、吹雪の輪が内へ収束（引き寄せ）
         wave('fx-ice-cell', reach / 0.5, S * 1.1);
-        const k = Math.min(1, p / 0.3);
-        const H = 120 * k;
-        const W = 150;
-        nodes.push(s('polygon', { points: `${origin.x - W},${origin.y + 30} ${origin.x - W * 0.35},${origin.y + 30 - H * 0.7} ${origin.x - W * 0.1},${origin.y + 30 - H * 0.45} ${origin.x + W * 0.2},${origin.y + 30 - H} ${origin.x + W},${origin.y + 30}`, class: 'fx-mountain', opacity: op(1.4 * (1 - p)) }));
         for (let ring = 0; ring < 3; ring++) {
           const q = Math.max(0, 1 - p * 1.4 - ring * 0.18);
           if (q <= 0) continue;
