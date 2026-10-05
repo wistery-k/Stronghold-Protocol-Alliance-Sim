@@ -294,37 +294,63 @@ function remainingChart(r: BattleResult) {
   );
 }
 
+/** 与ダメージ・回復・バリアのバーの区分（シラクーザの確定ダメージは確定と別枠） */
+const BAR_PARTS: { key: string; label: string; value: (u: BattleResult['perUnit'][number]) => number }[] = [
+  // 内訳が無い古い保存データは全部を物理として表示する
+  { key: 'phys', label: '物理', value: (u) => u.byKind?.physical ?? u.damage - (u.siracusaDamage ?? 0) },
+  { key: 'arts', label: '術', value: (u) => u.byKind?.arts ?? 0 },
+  { key: 'true', label: '確定', value: (u) => Math.max(0, (u.byKind?.true ?? 0) - (u.siracusaDamage ?? 0)) },
+  { key: 'elem', label: '元素', value: (u) => u.byKind?.element ?? 0 },
+  { key: 'siracusa', label: 'シラクーザ確定', value: (u) => u.siracusaDamage ?? 0 },
+  { key: 'heal', label: '回復', value: (u) => u.healed ?? 0 },
+  { key: 'barrier', label: 'バリア', value: (u) => u.barrier ?? 0 },
+];
+
 function damageBars(r: BattleResult) {
-  const sorted = [...r.perUnit].sort((a, b) => b.damage + (b.healed ?? 0) - (a.damage + (a.healed ?? 0)));
-  const max = Math.max(1, ...sorted.map((u) => u.damage));
+  const amount = (u: BattleResult['perUnit'][number]) => u.damage + (u.healed ?? 0) + (u.barrier ?? 0);
+  const sorted = [...r.perUnit].sort((a, b) => amount(b) - amount(a));
+  const max = Math.max(1, ...sorted.map(amount));
   const total = Math.max(1, r.totalDamage);
+  // 凡例は、この戦闘で値がある区分だけ
+  const shown = BAR_PARTS.filter((p) => sorted.some((u) => p.value(u) > 0));
   return h(
-    'ul',
-    { class: 'bars' },
-    sorted.map((u) =>
-      h(
-        'li',
-        null,
-        h('span', { class: 'bar-name' }, u.name, ' ', starBadge(u.star)),
-        h(
-          'span',
-          { class: 'bar-track' },
-          // 【シラクーザ】Lv2の確定ダメージは別の色で積み上げる
-          h('span', { class: 'bar-fill', style: `width:${((u.damage - (u.siracusaDamage ?? 0)) / max) * 100}%` }),
-          u.siracusaDamage ? h('span', { class: 'bar-fill siracusa', title: '【シラクーザ】の確定ダメージ', style: `width:${(u.siracusaDamage / max) * 100}%` }) : null,
-        ),
-        h('span', { class: 'bar-val' }, `${fmt(u.damage)}（${pct(u.damage / total)}）`),
-        h(
-          'span',
-          { class: 'bar-sub muted' },
-          `撃破 ${u.kills}・DPS ${fmt(u.damage / Math.max(1, r.elapsed))}・スキル${u.skillCasts}回・被ダメ ${fmt(u.taken ?? 0)}`,
-          u.healed ? `・回復 ${fmt(u.healed)}` : '',
-          u.siracusaDamage ? h('span', { class: 'siracusa-txt' }, `・シラクーザ確定 ${fmt(u.siracusaDamage)}`) : '',
-          u.downAt !== null && u.downAt !== undefined ? h('span', { class: 'ng' }, `・${u.downAt.toFixed(0)}秒で撤退`) : '',
-          u.retreats > 1 ? h('span', { class: 'ng' }, `（計${u.retreats}回）`) : '',
-          u.redeploys ? `・再配置${u.redeploys}回` : '',
-        ),
-      ),
+    'div',
+    null,
+    shown.length ? h('div', { class: 'bar-legend small muted' }, shown.map((p) => h('span', null, h('i', { class: `bar-sw ${p.key}` }), p.label))) : null,
+    h(
+      'ul',
+      { class: 'bars' },
+      sorted.map((u) => {
+        const parts = BAR_PARTS.map((p) => ({ ...p, v: p.value(u) })).filter((p) => p.v > 0);
+        const sum = parts.reduce((a, p) => a + p.v, 0);
+        const breakdown = parts.map((p) => `${p.label} ${fmt(p.v)}`).join('・');
+        return h(
+          'li',
+          null,
+          h('span', { class: 'bar-name' }, u.name, ' ', starBadge(u.star)),
+          h(
+            'span',
+            { class: 'bar-track', title: breakdown },
+            h(
+              'span',
+              { class: 'bar-stack', style: `width:${(sum / max) * 100}%` },
+              parts.map((p) => h('span', { class: `bar-fill ${p.key}`, title: `${p.label} ${fmt(p.v)}`, style: `width:${(p.v / sum) * 100}%` })),
+            ),
+          ),
+          h('span', { class: 'bar-val', title: breakdown }, `${fmt(u.damage)}（${pct(u.damage / total)}）`),
+          h(
+            'span',
+            { class: 'bar-sub muted' },
+            `撃破 ${u.kills}・DPS ${fmt(u.damage / Math.max(1, r.elapsed))}・スキル${u.skillCasts}回・被ダメ ${fmt(u.taken ?? 0)}`,
+            u.healed ? h('span', { class: 'heal-txt' }, `・回復 ${fmt(u.healed)}`) : '',
+            u.barrier ? h('span', { class: 'barrier-txt' }, `・バリア ${fmt(u.barrier)}`) : '',
+            u.siracusaDamage ? h('span', { class: 'siracusa-txt' }, `・シラクーザ確定 ${fmt(u.siracusaDamage)}`) : '',
+            u.downAt !== null && u.downAt !== undefined ? h('span', { class: 'ng' }, `・${u.downAt.toFixed(0)}秒で撤退`) : '',
+            u.retreats > 1 ? h('span', { class: 'ng' }, `（計${u.retreats}回）`) : '',
+            u.redeploys ? `・再配置${u.redeploys}回` : '',
+          ),
+        );
+      }),
     ),
   );
 }

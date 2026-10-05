@@ -522,10 +522,27 @@ describe('寒冷・凍結とスキルの細部', () => {
     const first = r.frames!.find((f) => (f.u![0][1] as number) < 100);
     expect(first === undefined || first.t > 9 + 3).toBe(true);
     expect(hpAt(9)).toBe(100);
+    // バリアが防いだダメージはミキサーの実績になる
+    expect(r.perUnit[0].barrier).toBeGreaterThan(0);
     // 通常の敵と【エリート】で、レミュアンの与ダメージを比べる
     const dmg = (elite: boolean) => run([{ uid: 1, defId: unit('レミュアン').id, star: 1, pos: 34, dir: 'right' }], oneEnemy('test_lem_w', false, { speed: 0.01, def: 0, elite })).perUnit[0].damage;
     const ratio = dmg(true) / dmg(false);
     expect(ratio > 1.1 && ratio < 1.2).toBe(true);
+  });
+
+  it('与ダメージを種別（物理・術・確定・元素）ごとに記録する', () => {
+    const spec = oneEnemy('test_kind', false, { speed: 0.01, def: 0, res: 0 });
+    const kinds = (name: string) => run([{ uid: 1, defId: unit(name).id, star: 1, pos: 34, dir: 'right' }], spec).perUnit[0];
+    const phys = kinds('インサイダー');
+    expect(phys.byKind.physical).toBeGreaterThan(0);
+    expect(phys.byKind.arts).toBe(0);
+    const arts = kinds('グレイ');
+    expect(arts.byKind.arts).toBeGreaterThan(0);
+    expect(arts.byKind.physical).toBe(0);
+    for (const u of [phys, arts]) {
+      const sum = u.byKind.physical + u.byKind.arts + u.byKind.true + u.byKind.element;
+      expect(Math.abs(sum - u.damage) <= 2).toBe(true);
+    }
   });
 
   it('サンクタ・ミキサー：スキル中は攻撃せず、攻撃を受けると反撃して弾薬を消費する', () => {
@@ -850,6 +867,8 @@ describe('寒冷・凍結とスキルの細部', () => {
     const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_fear', count: 3, interval: 3, delay: 0, spawn: 1 }] };
     const r = simulateBattle(inputs, spec, { globals, activeAlliances: new Set(['siracusa']), record: true });
     expect(r.perUnit.reduce((a, u) => a + (u.siracusaDamage ?? 0), 0)).toBeGreaterThan(0);
+    // シラクーザの確定ダメージは種別の内訳では確定に入る
+    for (const u of r.perUnit) expect(u.byKind.true).toBeGreaterThanOrEqual(u.siracusaDamage ?? 0);
     expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 4) !== 0))).toBe(true);
     // Lv2 は配置後の一定時間ステルス（リプレイに記録）
     expect(r.frames![0].st!.length).toBe(6);
