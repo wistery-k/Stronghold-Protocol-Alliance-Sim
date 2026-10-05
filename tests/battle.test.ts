@@ -1265,6 +1265,13 @@ describe('デーゲンブレヒャー', () => {
     expect(r.frames!.find((f) => f.t > t1 + 0.1)!.u![0][3]).toBe(0);
   });
 
+  it('S3は飛行の敵にも当たる（通常攻撃は当たらない）', () => {
+    const r = run(board(), oneEnemy('test_degen_air', true, { speed: 0.3, def: 0 }));
+    expect(r.perUnit[0].skillCasts).toBeGreaterThan(0);
+    expect(r.perUnit[0].damage).toBeGreaterThan(0);
+    expect(r.fx!.some((e) => e[1] === 2 && e[2] === 1)).toBe(true);
+  });
+
   it('素質：戦慄にした敵はブロック中に攻撃できず、戦慄の敵には防御力25%無視', () => {
     const attack = { kind: 'melee' as const, atk: 400, interval: 1, range: 0, arts: false };
     const normal = run(board(), oneEnemy('test_degen_t1', false, { def: 600, attack }));

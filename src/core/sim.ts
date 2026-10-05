@@ -358,8 +358,8 @@ const ALL_IN_RANGE_SUB = new Set(['stalker']);
 const LORD_RANGED_SCALE = 0.8;
 /** スキル中、領主の遠距離攻撃の攻撃力低下が無くなる（ラップランドS2・チューバイS3は「無効化」、シルバーアッシュS3は「近接攻撃と見なす」） */
 const LORD_FULL_ATK_SKILL = new Set(['char_140_whitew', 'char_4082_qiubai', 'char_172_svrash']);
-/** 近距離だが、スキルは飛行の敵にも当たる（凛御シルバーアッシュS2） */
-const SKILL_ANTI_AIR = new Set(['char_1045_svash2']);
+/** 近距離だが、スキルは飛行の敵にも当たる（凛御シルバーアッシュS2・デーゲンブレヒャーS3） */
+const SKILL_ANTI_AIR = new Set(['char_1045_svash2', 'char_4116_blkkgt']);
 /** スキル中、HP割合に応じて攻撃力が上がる「勇猛」（ヒューマス）：[必要HP割合, 攻撃力] を高い順に */
 function peakPerformance(bb: Record<string, number>): [number, number][] {
   const out: [number, number][] = [];
