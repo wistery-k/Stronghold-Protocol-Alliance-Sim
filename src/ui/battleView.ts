@@ -402,6 +402,39 @@ function enemyRadius(m: { boss: boolean; maxHp: number }): number {
   return Math.max(9, Math.min(26, 9 + 3.2 * Math.log(Math.max(1, m.maxHp) / 400)));
 }
 
+/** 雪の結晶の形（6本の腕と枝）のパス。中心 (x, y)・半径 r */
+function snowflakePath(x: number, y: number, r: number): string {
+  let d = '';
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i - Math.PI / 2;
+    const c = Math.cos(a);
+    const sn = Math.sin(a);
+    d += `M${x},${y}L${x + c * r},${y + sn * r}`;
+    // 枝（腕の6割の位置から斜め外へ）
+    const bx = x + c * r * 0.6;
+    const by = y + sn * r * 0.6;
+    for (const sg of [-1, 1]) {
+      const b = a + (sg * Math.PI) / 4;
+      d += `M${bx},${by}L${bx + Math.cos(b) * r * 0.35},${by + Math.sin(b) * r * 0.35}`;
+    }
+  }
+  return d;
+}
+
+/** 正六角形の頂点（氷の結晶・凍結の氷塊） */
+function hexPoints(x: number, y: number, r: number, rot = 0): string {
+  return Array.from({ length: 6 }, (_, i) => {
+    const a = (Math.PI / 3) * i + rot;
+    return `${x + r * Math.cos(a)},${y + r * Math.sin(a)}`;
+  }).join(' ');
+}
+
+/** 専用の演出があるスキル（sim.ts の SKILL_FX）の演出の長さ（秒）[発動, スキル中の攻撃] */
+const SKILL_FX_LIFE = [0, 1.0, 0.9, 1.0, 1.4];
+const SKILL_FX_HIT_LIFE = [0, 0, 0, 0.5, 0.75];
+/** 凍結した瞬間の氷の砕ける演出の長さ（秒） */
+const FREEZE_BURST_LIFE = 0.6;
+
 /** 演出の表示時間（秒） */
 const FX_LIFE = [0.18, 0.4, 0.4, 0.3, 0.45, 0, 0, 0, 0.7, 0.55];
 const DMG_CLASS = ['phys', 'arts', 'true'];
@@ -421,7 +454,20 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
   const bombs = fx.filter((e) => e[1] === 11);
   // 帝国砲撃誘導機のロックオン砲撃（[t,12,敵,x,y,着弾までの時間,半径]。x,y は目標のマスの中心。レミュアンのものより控えめに描く）
   const shells = fx.filter((e) => e[1] === 12);
-  const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6 && e[1] !== 7 && e[1] !== 10 && e[1] !== 11 && e[1] !== 12);
+  // 派手なスキルの演出（[t,13,味方,種類,0発動/1攻撃,命中した敵の x,y...]）
+  const skillFx = fx.filter((e) => e[1] === 13);
+  const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6 && e[1] !== 7 && e[1] !== 10 && e[1] !== 11 && e[1] !== 12 && e[1] !== 13);
+  // 敵が凍結した瞬間（コマの状態ビット 256 が付いた時刻）
+  const freezeOnsets: [number, number][] = [];
+  {
+    let prev = new Set<number>();
+    for (const fr of r.frames ?? []) {
+      const now = new Set<number>();
+      for (const e of fr.e) if (((e[4] ?? 0) & 256) !== 0) now.add(e[0]);
+      for (const id of now) if (!prev.has(id)) freezeOnsets.push([fr.t, id]);
+      prev = now;
+    }
+  }
   /** ロックオンのマークは、ロックした順に対応する爆撃（同じ味方のn番目のロック＝n番目の爆撃）が着弾するまで残る（敵が倒れてもその位置に残る） */
   const lockEnd = locks.map((l, i) => {
     const n = locks.slice(0, i).filter((o) => o[2] === l[2]).length;
@@ -541,6 +587,32 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
         nodes.push(s('circle', { cx: x, cy: y, r: S * 0.8 * (0.35 + 0.65 * Math.min(1, p * 2.5)), class: 'fx-bomb-blast core', opacity: op }));
       }
     }
+    // 凍結した瞬間：氷の破片が弾ける
+    for (const [t0, id] of freezeOnsets) {
+      if (t < t0 || t > t0 + FREEZE_BURST_LIFE) continue;
+      const ep = lastPos.get(id);
+      if (!ep) continue;
+      const p = (t - t0) / FREEZE_BURST_LIFE;
+      const op = String(1 - p);
+      nodes.push(s('polygon', { points: hexPoints(ep.x, ep.y, 18 + 26 * p, p), class: 'fx-freeze-ring', opacity: op }));
+      for (let k = 0; k < 6; k++) {
+        const a = (Math.PI / 3) * k + Math.PI / 6;
+        const d0 = 14 + 30 * p;
+        const x = ep.x + Math.cos(a) * d0;
+        const y = ep.y + Math.sin(a) * d0;
+        nodes.push(s('polygon', { points: `${x},${y - 5} ${x + 3},${y} ${x},${y + 5} ${x - 3},${y}`, class: 'fx-freeze-shard', opacity: op, transform: `rotate(${(a * 180) / Math.PI + 90} ${x} ${y})` }));
+      }
+    }
+    for (const ev of skillFx) {
+      const t0 = ev[0] / 100;
+      const style = ev[3];
+      const hit = ev[4] === 1;
+      const life = hit ? SKILL_FX_HIT_LIFE[style] : SKILL_FX_LIFE[style];
+      if (!life || t < t0 || t > t0 + life) continue;
+      const u = byUid.get(ev[2]);
+      if (!u || u.pos === undefined) continue;
+      drawSkillFx(nodes, style, hit, (t - t0) / life, t - t0, center(u.pos), rangeOf(u, true), Array.from({ length: (ev.length - 5) >> 1 }, (_, k) => ({ x: (ev[5 + 2 * k] / 100) * S + S / 2, y: (ev[6 + 2 * k] / 100) * S + S / 2 })), ev[0]);
+    }
     for (let i = firstAfter(t - maxLife); i < events.length && events[i][0] / 100 <= t; i++) {
       const ev = events[i];
       const age = t - ev[0] / 100;
@@ -629,6 +701,172 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
     }
     layer.replaceChildren(...nodes);
   };
+}
+
+/**
+ * 専用のスキル演出を描く。p は経過の割合（0〜1）、age は経過秒、origin は使用者の中心、cells はスキル中の攻撃範囲、
+ * targets は命中した敵の位置、seed は向きなどを揺らすための値
+ */
+function drawSkillFx(
+  nodes: SVGElement[],
+  style: number,
+  hit: boolean,
+  p: number,
+  age: number,
+  origin: { x: number; y: number },
+  cells: number[],
+  targets: { x: number; y: number }[],
+  seed: number,
+) {
+  const S = 100;
+  const op = (k: number) => String(Math.max(0, Math.min(1, k)));
+  const cellCenter = (c: number) => ({ x: cellX(c) * S + S / 2, y: cellY(c) * S + S / 2 });
+  const dists = cells.map((c) => {
+    const q = cellCenter(c);
+    return Math.hypot(q.x - origin.x, q.y - origin.y);
+  });
+  const reach = Math.max(S, ...dists) + S / 2;
+  /** 攻撃範囲のマスを、使用者から外へ波が広がるように光らせる */
+  const wave = (cls: string, speed: number, width: number) => {
+    const front = age * speed;
+    cells.forEach((c, i) => {
+      const k = 1 - Math.abs(dists[i] - front) / width;
+      if (k <= 0 && front < dists[i]) return;
+      const a = Math.max(k, front > dists[i] ? 0.35 * (1 - p) : 0);
+      nodes.push(s('rect', { x: cellX(c) * S + 3, y: cellY(c) * S + 3, width: S - 6, height: S - 6, rx: 10, class: cls, opacity: op(a) }));
+    });
+  };
+  /** 三日月形の斬撃。中心 (x, y)・長さ len・角度 ang（度） */
+  const crescent = (x: number, y: number, len: number, ang: number, cls: string, o: string) => {
+    const h = len / 2;
+    nodes.push(
+      s('path', {
+        d: `M${-h},0 Q0,${-len * 0.55} ${h},0 Q0,${-len * 0.22} ${-h},0Z`,
+        transform: `translate(${x},${y}) rotate(${ang})`,
+        class: cls,
+        opacity: o,
+      }),
+    );
+  };
+  // 使用者から攻撃範囲の重心への向き（前方）
+  const avg = cells.reduce((a, c) => {
+    const q = cellCenter(c);
+    return { x: a.x + q.x / cells.length, y: a.y + q.y / cells.length };
+  }, { x: 0, y: 0 });
+  const aim = targets.length ? targets.reduce((a, q) => ({ x: a.x + q.x / targets.length, y: a.y + q.y / targets.length }), { x: 0, y: 0 }) : avg;
+  const fwd = cells.length || targets.length ? Math.atan2(aim.y - origin.y, aim.x - origin.x) : 0;
+  const targetReach = Math.max(S, ...targets.map((q) => Math.hypot(q.x - origin.x, q.y - origin.y))) + S * 0.4;
+
+  switch (style) {
+    case 1: {
+      // ノーシス「ゼロバースト」：範囲を凍てつかせる冷気の波、外へ走る氷の棘、命中した敵に大きな雪の結晶
+      wave('fx-ice-cell', reach / 0.45, S * 0.9);
+      nodes.push(s('circle', { cx: origin.x, cy: origin.y, r: reach * Math.min(1, p / 0.45), class: 'fx-ice-nova', opacity: op(1.2 * (1 - p)) }));
+      for (let k = 0; k < 12; k++) {
+        const a = (Math.PI / 6) * k + seed * 0.37;
+        const len = reach * Math.min(1, p / 0.4) * (k % 2 ? 0.7 : 1);
+        const w = 7;
+        const bx = origin.x + Math.cos(a) * 20;
+        const by = origin.y + Math.sin(a) * 20;
+        const tx = origin.x + Math.cos(a) * len;
+        const ty = origin.y + Math.sin(a) * len;
+        const nx = -Math.sin(a) * w;
+        const ny = Math.cos(a) * w;
+        nodes.push(s('polygon', { points: `${bx + nx},${by + ny} ${tx},${ty} ${bx - nx},${by - ny}`, class: 'fx-ice-spike', opacity: op(1.4 * (1 - p)) }));
+      }
+      for (const q of targets) {
+        const k = Math.min(1, p / 0.3);
+        nodes.push(s('path', { d: snowflakePath(q.x, q.y, 14 + 24 * k), class: 'fx-ice-flake', opacity: op(1.3 * (1 - p)), transform: `rotate(${p * 60} ${q.x} ${q.y})` }));
+        nodes.push(s('polygon', { points: hexPoints(q.x, q.y, 22 + 18 * k), class: 'fx-ice-hex', opacity: op(1 - p) }));
+      }
+      break;
+    }
+    case 2: {
+      // 凛御シルバーアッシュ「御敵の鋭鋒」：前方を薙ぐ巨大な銀の弧と吹雪、命中した敵に十字の斬撃
+      wave('fx-silver-cell', reach / 0.35, S * 0.8);
+      const sweep = Math.min(1, p / 0.35);
+      const R = Math.min(reach, targetReach) * (0.45 + 0.55 * sweep);
+      const half = (Math.PI / 180) * 70;
+      const a0 = fwd - half;
+      const a1 = fwd - half + 2 * half * sweep;
+      const pt = (a: number, rr: number) => `${origin.x + Math.cos(a) * rr},${origin.y + Math.sin(a) * rr}`;
+      if (sweep > 0.02) {
+        nodes.push(s('path', { d: `M${pt(a0, R)} A${R},${R} 0 0 1 ${pt(a1, R)} L${pt(a1, R * 0.62)} A${R * 0.62},${R * 0.62} 0 0 0 ${pt(a0, R * 0.62)}Z`, class: 'fx-silver-arc', opacity: op(1.5 * (1 - p)) }));
+        nodes.push(s('path', { d: `M${pt(a0, R)} A${R},${R} 0 0 1 ${pt(a1, R)}`, class: 'fx-silver-edge', opacity: op(1.5 * (1 - p)) }));
+      }
+      for (let k = 0; k < 14; k++) {
+        // 吹雪の粒：前方へ流れる
+        const a = fwd + (((k * 37 + seed) % 100) / 100 - 0.5) * 2 * half;
+        const d = reach * ((((k * 53 + seed) % 100) / 100) * 0.6 + p * 0.6);
+        nodes.push(s('circle', { cx: origin.x + Math.cos(a) * d, cy: origin.y + Math.sin(a) * d, r: 2.5 + (k % 3), class: 'fx-snow', opacity: op(1.2 * (1 - p)) }));
+      }
+      targets.forEach((q, i) => {
+        const k = Math.min(1, Math.max(0, (p - 0.15 - i * 0.03) / 0.25));
+        if (k <= 0) return;
+        const L = 34 * k;
+        const o = op(1.6 * (1 - p));
+        nodes.push(s('line', { x1: q.x - L, y1: q.y - L, x2: q.x + L, y2: q.y + L, class: 'fx-silver-slash', opacity: o }));
+        nodes.push(s('line', { x1: q.x + L, y1: q.y - L, x2: q.x - L, y2: q.y + L, class: 'fx-silver-slash', opacity: o }));
+        nodes.push(s('path', { d: snowflakePath(q.x, q.y, 12 * k), class: 'fx-ice-flake small', opacity: o }));
+      });
+      break;
+    }
+    case 3: {
+      if (!hit) {
+        // シルバーアッシュ「真銀斬」の発動：銀の衝撃波と範囲の閃光
+        wave('fx-silver-cell', reach / 0.4, S * 0.9);
+        nodes.push(s('circle', { cx: origin.x, cy: origin.y, r: 30 + reach * Math.min(1, p / 0.5), class: 'fx-silver-ring', opacity: op(1.3 * (1 - p)) }));
+        nodes.push(s('circle', { cx: origin.x, cy: origin.y, r: 46 * (1 - p) + 10, class: 'fx-silver-core', opacity: op(1 - p) }));
+        break;
+      }
+      // 攻撃のたび：範囲を走る銀の閃光と、命中した敵それぞれに大きな三日月の斬撃
+      wave('fx-silver-cell', reach / 0.18, S * 0.7);
+      targets.forEach((q, i) => {
+        const ang = ((seed * 47 + i * 71) % 180) - 90;
+        const k = Math.min(1, p / 0.25);
+        crescent(q.x, q.y, 70 + 60 * k, ang, 'fx-crescent', op(1.6 * (1 - p)));
+        crescent(q.x, q.y, 50 + 40 * k, ang + 90, 'fx-crescent inner', op(1.3 * (1 - p)));
+        nodes.push(s('circle', { cx: q.x, cy: q.y, r: 10 + 26 * k, class: 'fx-silver-core', opacity: op(1 - p * 1.6) }));
+        nodes.push(s('line', { x1: origin.x, y1: origin.y, x2: q.x, y2: q.y, class: 'fx-silver-trace', opacity: op(1 - p * 2) }));
+      });
+      break;
+    }
+    case 4: {
+      if (!hit) {
+        // 聖聆プラマニクス「群山俯首」の発動：範囲全体に冷気が広がり、吹雪の輪が内へ収束（引き寄せ）
+        wave('fx-ice-cell', reach / 0.5, S * 1.1);
+        for (let ring = 0; ring < 3; ring++) {
+          const q = Math.max(0, 1 - p * 1.4 - ring * 0.18);
+          if (q <= 0) continue;
+          nodes.push(s('circle', { cx: origin.x, cy: origin.y, r: 30 + reach * q, class: 'fx-ice-nova pull', opacity: op(1.2 * (1 - p)) }));
+        }
+        break;
+      }
+      // 攻撃のたび：命中した敵に頭上から氷の峰が落ち、着地で雪煙が広がる
+      const fall = 0.3;
+      for (const q of targets) {
+        if (p < fall) {
+          const k = p / fall;
+          const y = q.y - (1 - k * k) * 140;
+          nodes.push(s('line', { x1: q.x, y1: y - 120, x2: q.x, y2: y - 50, class: 'fx-ice-trail' }));
+          nodes.push(s('polygon', { points: `${q.x - 28},${y - 64} ${q.x - 10},${y - 46} ${q.x},${y + 8} ${q.x + 10},${y - 46} ${q.x + 28},${y - 64} ${q.x},${y - 44}`, class: 'fx-ice-peak' }));
+          nodes.push(s('ellipse', { cx: q.x, cy: q.y + 10, rx: 30 * k, ry: 10 * k, class: 'fx-ice-shadow' }));
+        } else {
+          const k = (p - fall) / (1 - fall);
+          const o = op(1.2 * (1 - k));
+          nodes.push(s('polygon', { points: hexPoints(q.x, q.y, 20 + 40 * k, Math.PI / 6), class: 'fx-ice-hex', opacity: o }));
+          nodes.push(s('path', { d: snowflakePath(q.x, q.y, 18 + 14 * k), class: 'fx-ice-flake', opacity: o }));
+          for (let j = 0; j < 4; j++) {
+            const a = (Math.PI / 2) * j + Math.PI / 4;
+            const x = q.x + Math.cos(a) * (14 + 30 * k);
+            const y = q.y + Math.sin(a) * (14 + 30 * k) - 10 * k;
+            nodes.push(s('polygon', { points: `${x},${y - 10} ${x + 6},${y + 4} ${x - 6},${y + 4}`, class: 'fx-ice-peak small', opacity: o }));
+          }
+        }
+      }
+      break;
+    }
+  }
 }
 
 export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
@@ -808,8 +1046,13 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       s('circle', { r: rad, class: 'rp-enemy-body' }),
       // 活性源石の上：右上に源石の結晶（攻撃力・攻撃速度アップと継続ダメージ中）
       s('polygon', { points: `${rad * 0.75},${-rad * 0.75 - 7} ${rad * 0.75 + 5},${-rad * 0.75} ${rad * 0.75},${-rad * 0.75 + 7} ${rad * 0.75 - 5},${-rad * 0.75}`, class: 'rp-infect' }),
+      // 凍結：敵を包む氷塊（六角形）
+      s('polygon', { points: hexPoints(0, 0, rad + 7, Math.PI / 6), class: 'rp-ice' }),
+      s('path', { d: `M${-rad * 0.55},${-rad * 0.2} L${-rad * 0.15},${-rad * 0.6} M${rad * 0.1},${rad * 0.55} L${rad * 0.5},${rad * 0.15}`, class: 'rp-ice-shine' }),
       s('rect', { x: -rad, y: -rad - 12, width: rad * 2, height: 6, class: 'rp-hp-bg' }),
       bar,
+      // 寒冷・凍結：左上に雪の結晶
+      s('g', { class: 'rp-cold-mark' }, s('circle', { cx: -rad - 2, cy: -rad + 2, r: 9, class: 'rp-cold-bg' }), s('path', { d: snowflakePath(-rad - 2, -rad + 2, 7), class: 'rp-cold-flake' })),
     );
     g.append(s('title', {}, m.name));
     n = { g, bar, barW: rad * 2 };
@@ -820,6 +1063,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
 
   const timeLabel = h('span', { class: 'rp-time' }, '0.0秒');
   const costLabel = h('span', { class: 'rp-cost' }, '');
+  // 寒冷・凍結している敵の数（いる時だけ）
+  const coldLabel = h('span', { class: 'rp-cold-count' }, '');
   const slider = h('input', { type: 'range', min: 0, max: Math.round(r.elapsed * 10), value: 0, class: 'rp-slider', 'aria-label': '再生位置' }) as HTMLInputElement;
   let t = 0;
   let speed = 2;
@@ -845,6 +1090,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     const f = b.t > a.t ? Math.min(1, (t - a.t) / (b.t - a.t)) : 0;
     const next = new Map(b.e.map((e) => [e[0], e]));
     const seen = new Set<number>();
+    let colds = 0;
+    let frozens = 0;
     for (const e of a.e) {
       const n = enemyNode(e[0]);
       const nb = next.get(e[0]);
@@ -860,6 +1107,10 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       n.g.classList.toggle('infected', ((e[4] ?? 0) & 16) !== 0);
       n.g.classList.toggle('stone', ((e[4] ?? 0) & 32) !== 0);
       if (((e[4] ?? 0) & 64) !== 0) n.g.classList.add('fly');
+      n.g.classList.toggle('cold', ((e[4] ?? 0) & 128) !== 0);
+      n.g.classList.toggle('frozen', ((e[4] ?? 0) & 256) !== 0);
+      if (((e[4] ?? 0) & 128) !== 0) colds++;
+      if (((e[4] ?? 0) & 256) !== 0) frozens++;
       seen.add(e[0]);
     }
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';
@@ -946,6 +1197,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     }
     timeLabel.textContent = `${t.toFixed(1)}秒`;
     costLabel.textContent = a.c !== undefined ? `コスト ${a.c}` : '';
+    coldLabel.textContent = colds || frozens ? `寒冷 ${colds}・凍結 ${frozens}` : '';
+    coldLabel.classList.toggle('hot', frozens > 0);
     slider.value = String(Math.round(t * 10));
   };
 
@@ -994,7 +1247,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     'div',
     { class: 'replay-wrap' },
     svg,
-    h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）'),
+    h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel, coldLabel),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）。水色の縁と左上の雪の結晶は寒冷、氷塊に包まれた敵は凍結（凍った瞬間に氷が弾ける。下の「寒冷・凍結」が今の数）。ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3は専用の演出（冷気の波と氷の棘、三日月の斬撃、前方を薙ぐ銀の弧、落ちてくる氷の峰）'),
   );
 }

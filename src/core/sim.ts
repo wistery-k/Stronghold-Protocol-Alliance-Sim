@@ -85,7 +85,7 @@ export interface EnemyMeta {
 /** リプレイ用のコマ：敵ごとに [id, x*100, y*100, HP%] と、スキル中のユニット */
 export interface ReplayFrame {
   t: number;
-  /** [id, x×100, y×100, HP%, 状態ビット（1 = 解放済みの囚人、2 = スタン中、4 = 恐怖中、8 = ステルス中）] */
+  /** [id, x×100, y×100, HP%, 状態ビット（1 = 解放済みの囚人、2 = スタン中、4 = 恐怖中、8 = ステルス中、16 = 活性源石の上、32 = 石像形態、64 = 飛行形態の石像、128 = 寒冷、256 = 凍結）] */
   e: [number, number, number, number, number?][];
   s: number[];
   /** 所持コスト */
@@ -126,8 +126,15 @@ export interface ReplayFrame {
  * - 7 ボスの弾の着弾（周囲8マスをスタン）：[x×100, y×100, スタン秒数×10]
  * - 8 剣雨の命中（術ダメージとスタン）：[uid, x×100, y×100]
  * - 9 ザーロの1秒ごとの術ダメージ：[uid, x×100, y×100]
+ * - 13 派手なスキルの演出（SKILL_FX）：[uid, 演出の種類, 0 = 発動・1 = スキル中の攻撃, 命中した敵の位置 x×100, y×100 の並び]
  */
 export type FxEvent = number[];
+
+/**
+ * fx 13 で専用の演出を出すスキル（オペレーターごとにスキルは1つ）。
+ * 1 ノーシスS2「ゼロバースト」、2 凛御シルバーアッシュS2「御敵の鋭鋒」、3 シルバーアッシュS3「真銀斬」、4 聖聆プラマニクスS3「群山俯首」
+ */
+export const SKILL_FX: Record<string, number> = { char_206_gnosis: 1, char_1045_svash2: 2, char_172_svrash: 3, char_1046_sbell2: 4 };
 
 export interface BattleResult {
   round: number;
@@ -1745,6 +1752,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const support = field ? SUPPORT_SKILL[def.charId] : undefined;
     const skillAtk = () => baseAtk(def, star, mods, outerAtkPct + s.atkPct);
     u.castAt = t;
+    if (SKILL_FX[def.charId] && !s.instant) emit([13, uid, SKILL_FX[def.charId], 0]);
     talentOnCast(u);
     // カゼマルS2：HPが現在値の一定割合減少し、身替りを召喚
     if (cid(u) === KAZEMA && !u.owner && field) {
@@ -1825,7 +1833,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (support === 'selfHeal') healUnit(u, u, u.maxHp * (s.bb.hp_ratio ?? 0));
       const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
       const hitList = pickTargets(u, true);
-      if (hitList.length >= 2) emit([2, uid, 1]);
+      const style = SKILL_FX[def.charId];
+      if (style) emit([13, uid, style, 0, ...hitList.flatMap(([e]) => [Math.round(e.x * 100), Math.round(e.y * 100)])]);
+      else if (hitList.length >= 2) emit([2, uid, 1]);
       for (const [e, m] of hitList) {
         for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m);
         if (s.cold > 0) applyCold(e, s.cold);
@@ -3212,7 +3222,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const flags =
       (e.input.spec.liberty && !e.confined ? 1 : 0) | (t < e.stunUntil ? 2 : 0) | (t < e.fearUntil ? 4 : 0) | (isStealthed(e) ? 8 : 0) | (enemyGroundTile(e) === 'infection' ? 16 : 0) |
       (e.stoneUntil >= 0 ? 32 : 0) |
-      (e.stoned && e.stoneUntil < 0 ? 64 : 0);
+      (e.stoned && e.stoneUntil < 0 ? 64 : 0) |
+      (t < e.coldUntil ? 128 : 0) |
+      (isFrozen(e) ? 256 : 0);
     if (flags) f.push(flags);
     return f;
   };
@@ -3960,7 +3972,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           emit([1, uid, Math.round(p0.x * 100), Math.round(p0.y * 100), 100]);
         } else {
           const inSkill = !s.passive && activeNow;
-          if (targets.length >= 3 || (inSkill && targets.length >= 2)) emit([2, uid, inSkill ? 1 : 0], `area${uid}`, 0.3);
+          if (inSkill && SKILL_FX[def.charId]) emit([13, uid, SKILL_FX[def.charId], 1, ...targets.flatMap(([e]) => [Math.round(e.x * 100), Math.round(e.y * 100)])]);
+          else if (targets.length >= 3 || (inSkill && targets.length >= 2)) emit([2, uid, inSkill ? 1 : 0], `area${uid}`, 0.3);
         }
         const dealtBefore = u.result.damage;
         if (def.subProfession === 'funnel') {
