@@ -124,6 +124,11 @@ export interface ReplayFrame {
   tk?: [number, number, number, number][];
   /** 荒蕪ラップランドS3のザーロ [uid, x×100, y×100, 取り付いていれば1] */
   zr?: [number, number, number, number][];
+  /**
+   * オペレーターのステータス（その時点のバフ込み）[uid, 最大HP, 現在HP, 攻撃力, 防御力, 攻撃速度, 攻撃間隔×100, 術耐性]。
+   * 配置中で倒れていないものだけ。攻撃力・攻撃速度・攻撃間隔はスタン中は直前の値
+   */
+  us?: [number, number, number, number, number, number, number, number][];
   /** オペレーターの元素損傷 [uid, 種類（0灼燃・1神経・2侵蝕・3壊死）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1以上溜まっているものだけ */
   ue?: [number, number, number][];
 }
@@ -1021,6 +1026,9 @@ interface Runtime {
   funnelStack: number;
   /** 戦闘中の攻撃力（スキル・補正込み。ザーロのダメージに使う） */
   curAtk: number;
+  /** 戦闘中の攻撃速度と攻撃間隔（秒。スキル・補正込み。リプレイのステータス表示用） */
+  curAspd: number;
+  curInterval: number;
   /** 荒蕪ラップランドS3のザーロ（位置・追っている敵・取り付いたか）と、次のダメージまでの時間 */
   zaros: { x: number; y: number; target: Enemy | null; attached: boolean }[];
   zaroTimer: number;
@@ -1188,6 +1196,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       funnelTarget: null,
       funnelStack: 0,
       curAtk: 0,
+      curAspd: 0,
+      curInterval: 0,
       zaros: [],
       zaroTimer: 0,
       stunUntil: -1,
@@ -4156,6 +4166,21 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         return [u.input.uid, hp, Math.min(100, Math.round((u.sp / s.spCost) * 100)), 0, 0, u.input.def.subProfession === 'hunter' ? Math.floor(u.huntAmmo) : undefined];
       });
 
+  /** リプレイのステータス表示：その時点の最大HP・HP・攻撃力・防御力・攻撃速度・攻撃間隔・術耐性 */
+  const statFrame = (): [number, number, number, number, number, number, number, number][] =>
+    rt
+      .filter((u) => u.input.pos !== undefined && !u.owner && u.alive)
+      .map((u) => [
+        u.input.uid,
+        Math.round(u.maxHp),
+        Math.max(0, Math.round(u.hp)),
+        Math.round(u.curAtk),
+        Math.round(Math.max(0, u.def - u.erosionDef)),
+        Math.round(Math.max(20, Math.min(600, u.curAspd))),
+        Math.round(u.curInterval * 100),
+        Math.round(Math.max(0, u.res - (t < (u.elemBurst.burning ?? -1) ? 20 : 0))),
+      ]);
+
   const ELEM_ORDER: ElementType[] = ['burning', 'neural', 'erosion', 'apoptosis'];
   const elemFrame = (): [number, number, number][] => {
     const out: [number, number, number][] = [];
@@ -4319,6 +4344,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         talentAspd(u) +
         tileAspd(u);
       const interval = attackInterval(stats.interval, aspd, activeNow && !s.passive ? s.intervalAdd : 0);
+      u.curAspd = aspd;
+      u.curInterval = interval;
       // デーゲンブレヒャーS3：モーション中の斬撃（スキル範囲の最大 max_target 体）。最初の斬撃は発動したコマで出る
       const inMotion = u.motionLen > 0 && u.skillLeft > 0;
       if (inMotion && u.slashLeft > 0) {
@@ -4573,6 +4600,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e: enemies.filter((e) => e.alive).map(enemyFrame),
         s: rt.filter((u) => u.alive && (u.skillLeft > 0 || u.ammoLeft > 0)).map((u) => u.input.uid),
         u: unitFrame(),
+        us: statFrame(),
         ue: elemFrame(),
         sg: sargonFrame(),
         sc: siracusaFrame(),
@@ -4599,6 +4627,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       e: enemies.filter((e) => e.alive).map(enemyFrame),
       s: [],
       u: unitFrame(),
+      us: statFrame(),
       ue: elemFrame(),
       sg: sargonFrame(),
         sc: siracusaFrame(),

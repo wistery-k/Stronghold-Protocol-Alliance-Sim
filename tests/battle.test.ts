@@ -373,6 +373,20 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(first[3]).toBe(1); // スキル中
   });
 
+  it('リプレイのフレームにオペレーターのその時点のステータスが入る', () => {
+    const spec = oneEnemy('test_dummy_stat', false, { speed: 0.01 });
+    const def = unit('ウタゲ');
+    const r = run([{ uid: 1, defId: def.id, star: 1, pos: 34, dir: 'right' }], spec);
+    const [uid, maxHp, hp, atk, df, aspd, interval] = r.frames![1].us![0];
+    expect(uid).toBe(1);
+    expect(maxHp).toBe(Math.round(def.normal.stats.hp));
+    // ウタゲのスキル：配置時にHP半分
+    expect(Math.abs(hp / maxHp - r.frames![1].u![0][1] / 100) < 0.02).toBe(true);
+    expect(atk >= def.normal.stats.atk).toBe(true);
+    expect(df).toBe(Math.round(def.normal.stats.def));
+    expect(aspd > 0 && interval > 0).toBe(true);
+  });
+
   it('近距離はブロックしている敵を、攻撃範囲外でも攻撃する', () => {
     const spec = oneEnemy('test_behind', false, { hp: 1e9, def: 0, res: 0 });
     // 左（防衛マス側）を向いて置くと、右から来てブロックした敵は範囲外

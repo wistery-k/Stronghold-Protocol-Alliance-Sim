@@ -1509,6 +1509,65 @@ aside {
   align-items: center;
   flex-wrap: wrap;
 }
+/* 選択したオペレーターのステータス */
+.rp-unit {
+  cursor: pointer;
+}
+.rp-unit-select {
+  fill: none;
+  stroke: var(--core);
+  stroke-width: 4;
+  display: none;
+}
+.rp-unit.selected .rp-unit-select {
+  display: inline;
+}
+.rp-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  min-height: 28px;
+}
+.rp-stats-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.rp-stats-close {
+  margin-left: auto;
+}
+.rp-stat-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+.rp-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+.rp-stat-label {
+  color: var(--muted);
+}
+.rp-stat-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.rp-stat-value.up,
+.rp-stat-value .up {
+  color: var(--ok);
+}
+.rp-stat-value.down,
+.rp-stat-value .down {
+  color: var(--ng);
+}
 .rp-slider {
   flex: 1;
   min-width: 120px;
