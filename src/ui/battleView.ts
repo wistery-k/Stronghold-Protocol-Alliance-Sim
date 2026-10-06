@@ -493,7 +493,16 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
   const shells = fx.filter((e) => e[1] === 12);
   // 派手なスキルの演出（[t,13,味方,種類,0発動/1攻撃,命中した敵の x,y...]）
   const skillFx = fx.filter((e) => e[1] === 13);
-  const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6 && e[1] !== 7 && e[1] !== 10 && e[1] !== 11 && e[1] !== 12 && e[1] !== 13);
+  // グレイディーアS3の渦（[t,14,味方,0生成/1ダメージ/2消滅,x,y,半径,...]）。生成から同じ味方の消滅までを1つの渦として描く
+  const vortexFx = fx.filter((e) => e[1] === 14);
+  const vortices = vortexFx
+    .filter((e) => e[3] === 0)
+    .map((o) => {
+      const end = vortexFx.find((e) => e[2] === o[2] && e[3] === 2 && e[0] >= o[0]);
+      return { uid: o[2], t0: o[0] / 100, t1: end ? end[0] / 100 : o[0] / 100 + o[7] / 10, x: (o[4] / 100) * S + S / 2, y: (o[5] / 100) * S + S / 2, r: (o[6] / 100) * S, seed: o[0] };
+    });
+  const vortexEvents = vortexFx.filter((e) => e[3] !== 0);
+  const events = fx.filter((e) => e[1] !== 5 && e[1] !== 6 && e[1] !== 7 && e[1] !== 10 && e[1] !== 11 && e[1] !== 12 && e[1] !== 13 && e[1] !== 14);
   // 敵が凍結した瞬間（コマの状態ビット 256 が付いた時刻）
   const freezeOnsets: [number, number][] = [];
   {
@@ -536,7 +545,14 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
     return lo;
   };
 
-  return (layer: SVGElement, t: number, a: NonNullable<BattleResult['frames']>[number], b: NonNullable<BattleResult['frames']>[number], f: number) => {
+  return (
+    layer: SVGElement,
+    t: number,
+    a: NonNullable<BattleResult['frames']>[number],
+    b: NonNullable<BattleResult['frames']>[number],
+    f: number,
+    under?: SVGElement,
+  ) => {
     // 【強襲】で再配置されたオペレーターは今の位置から演出を出す
     byUid = a.mv?.length
       ? new Map([...homeByUid].map(([uid, u]) => {
@@ -648,6 +664,21 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
         nodes.push(s('polygon', { points: `${x},${y - 5} ${x + 3},${y} ${x},${y + 5} ${x - 3},${y}`, class: 'fx-freeze-shard', opacity: op, transform: `rotate(${(a * 180) / Math.PI + 90} ${x} ${y})` }));
       }
     }
+    // グレイディーアS3の渦：渦の本体は敵の下に、ダメージ・消滅の演出は敵の上に描く
+    const below: SVGElement[] = [];
+    for (const v of vortices) {
+      if (t < v.t0 || t > v.t1 + VORTEX_END_LIFE) continue;
+      const u = byUid.get(v.uid);
+      drawVortex(below, nodes, v, t, u && u.pos !== undefined ? center(u.pos) : null);
+    }
+    for (const ev of vortexEvents) {
+      const t0 = ev[0] / 100;
+      const life = ev[3] === 1 ? VORTEX_TICK_LIFE : VORTEX_END_LIFE;
+      if (t < t0 || t > t0 + life) continue;
+      const hits = Array.from({ length: (ev.length - 7) >> 1 }, (_, k) => ({ x: (ev[7 + 2 * k] / 100) * S + S / 2, y: (ev[8 + 2 * k] / 100) * S + S / 2 }));
+      drawVortexPulse(nodes, ev[3] === 2, (t - t0) / life, { x: (ev[4] / 100) * S + S / 2, y: (ev[5] / 100) * S + S / 2 }, (ev[6] / 100) * S, hits, ev[0]);
+    }
+    under?.replaceChildren(...below);
     for (const ev of skillFx) {
       const t0 = ev[0] / 100;
       const style = ev[3];
@@ -746,6 +777,156 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
     }
     layer.replaceChildren(...nodes);
   };
+}
+
+/** グレイディーアS3の渦：1回のダメージ・引き寄せの演出と、消滅（水柱）の演出の長さ（秒） */
+const VORTEX_TICK_LIFE = 0.6;
+const VORTEX_END_LIFE = 0.9;
+/** 渦が開く時間と、銛が飛んでいく時間（秒） */
+const VORTEX_OPEN = 0.45;
+const VORTEX_HOOK = 0.22;
+
+/** 中心 (cx, cy) から外側 R へ伸びる渦の腕（螺旋）。rot は回転（ラジアン）、turn は内側までの巻き数 */
+function spiralPath(cx: number, cy: number, R: number, rot: number, turn: number, inner = 0.12): string {
+  const pts: string[] = [];
+  const N = 22;
+  for (let i = 0; i <= N; i++) {
+    const k = i / N;
+    const rr = R * (1 - k * (1 - inner));
+    const a = rot + k * turn * Math.PI * 2;
+    pts.push(`${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`);
+  }
+  return `M${pts.join(' L')}`;
+}
+
+/**
+ * グレイディーアS3「渇水の乱渦狂舞」の渦。
+ * 敵の下（below）に深海色の渦の本体（回転する螺旋の腕・逆回転の泡の輪・吸い込まれる水滴・中心の渦の目）、
+ * 敵の上（above）に開く瞬間の銛と水しぶき。消えた後は drawVortexPulse の水柱が引き継ぐ
+ */
+function drawVortex(
+  below: SVGElement[],
+  above: SVGElement[],
+  v: { t0: number; t1: number; x: number; y: number; r: number; seed: number },
+  t: number,
+  from: { x: number; y: number } | null,
+) {
+  const op = (k: number) => String(Math.max(0, Math.min(1, k)));
+  const age = t - v.t0;
+  const { x: cx, y: cy } = v;
+  // 銛：グレイディーアから渦の中心へ飛ぶ（紅い穂先と鎖）
+  if (from && age < VORTEX_HOOK + 0.15) {
+    const k = Math.min(1, age / VORTEX_HOOK);
+    const hx = from.x + (cx - from.x) * k;
+    const hy = from.y + (cy - from.y) * k;
+    const ang = (Math.atan2(cy - from.y, cx - from.x) * 180) / Math.PI;
+    const fade = op(1 - Math.max(0, age - VORTEX_HOOK) / 0.15);
+    above.push(s('line', { x1: from.x, y1: from.y, x2: hx, y2: hy, class: 'fx-vortex-chain', opacity: fade }));
+    above.push(s('polygon', { points: '-20,-7 12,0 -20,7 -12,0', transform: `translate(${hx},${hy}) rotate(${ang})`, class: 'fx-vortex-hook', opacity: fade }));
+  }
+  if (age < VORTEX_HOOK) return;
+  const live = t <= v.t1;
+  // 開く：中心から広がる（少し行き過ぎて戻る）。消える：中心へ吸い込まれて縮む
+  const o = Math.min(1, (age - VORTEX_HOOK) / VORTEX_OPEN);
+  const open = o < 1 ? 1 - (1 - o) ** 3 + Math.sin(o * Math.PI) * 0.12 : 1;
+  const close = live ? 1 : Math.max(0, 1 - (t - v.t1) / 0.3);
+  if (close <= 0) return;
+  const R = v.r * open * (live ? 1 : 0.15 + 0.85 * close * close);
+  const spin = age * (live ? 2.6 : 2.6 + (t - v.t1) * 30);
+  const fadeIn = op(o * 1.5);
+  // 開いた瞬間の水しぶきの輪
+  if (o < 1) above.push(s('circle', { cx, cy, r: v.r * (0.3 + 0.9 * o), class: 'fx-vortex-splash', opacity: op(1 - o) }));
+  // 本体
+  below.push(s('circle', { cx, cy, r: R, class: 'fx-vortex-base', opacity: fadeIn }));
+  below.push(s('circle', { cx, cy, r: R * 0.72, class: 'fx-vortex-depth', opacity: fadeIn }));
+  below.push(s('circle', { cx, cy, r: R * 0.97, class: 'fx-vortex-foam', opacity: fadeIn, transform: `rotate(${(-spin * 40) % 360} ${cx} ${cy})` }));
+  // 螺旋の腕（太い深海色と、細い光の筋）
+  for (let k = 0; k < 4; k++) {
+    const rot = spin + (Math.PI / 2) * k;
+    below.push(s('path', { d: spiralPath(cx, cy, R, rot, 0.85), class: 'fx-vortex-arm', opacity: fadeIn }));
+    below.push(s('path', { d: spiralPath(cx, cy, R * 0.94, rot + 0.22, 0.8, 0.2), class: 'fx-vortex-arm hi', opacity: fadeIn }));
+  }
+  // 逆回転する内側の泡の輪
+  below.push(s('circle', { cx, cy, r: R * 0.45, class: 'fx-vortex-foam inner', opacity: fadeIn, transform: `rotate(${(spin * 70) % 360} ${cx} ${cy})` }));
+  // 吸い込まれていく水滴
+  for (let k = 0; k < 16; k++) {
+    const u = (age * 0.7 + k / 16 + ((v.seed * 13 + k * 7) % 10) / 40) % 1;
+    const a = spin * 1.3 + k * 2.39996 + u * Math.PI * 2.5;
+    const rr = R * (1 - u) * 0.95;
+    below.push(s('circle', { cx: cx + Math.cos(a) * rr, cy: cy + Math.sin(a) * rr, r: 1.5 + 2.5 * (1 - u), class: 'fx-vortex-drop', opacity: op(o * (0.4 + u)) }));
+  }
+  // 渦の目：暗い中心と、脈打つ光の縁
+  const pulse = 1 + 0.12 * Math.sin(age * 9);
+  below.push(s('circle', { cx, cy, r: R * 0.17 * pulse, class: 'fx-vortex-eye', opacity: fadeIn }));
+  below.push(s('circle', { cx, cy, r: R * 0.09 * pulse, class: 'fx-vortex-core', opacity: fadeIn }));
+}
+
+/**
+ * 渦のダメージ（end = false）：外から中心へ縮む波、巻き込んだ敵に水しぶきと中心へ向かう引き寄せの筋。
+ * 渦の消滅（end = true）：中心から立ち上る水柱、外へ広がる大波、飛び散る水滴
+ */
+function drawVortexPulse(
+  nodes: SVGElement[],
+  end: boolean,
+  p: number,
+  c: { x: number; y: number },
+  R: number,
+  hits: { x: number; y: number }[],
+  seed: number,
+) {
+  const op = (k: number) => String(Math.max(0, Math.min(1, k)));
+  if (!end) {
+    const w = 1 - (1 - p) ** 2;
+    nodes.push(s('circle', { cx: c.x, cy: c.y, r: R * (1 - 0.85 * w), class: 'fx-vortex-wave', opacity: op(1.4 * (1 - p)) }));
+    nodes.push(s('circle', { cx: c.x, cy: c.y, r: R * (1.1 - 0.85 * w), class: 'fx-vortex-wave thin', opacity: op(1 - p) }));
+    for (const q of hits) {
+      const dx = q.x - c.x;
+      const dy = q.y - c.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const ux = dx / d;
+      const uy = dy / d;
+      // 引き寄せの筋：敵の外側から敵へ
+      if (d > 8) nodes.push(s('line', { x1: q.x + ux * 46, y1: q.y + uy * 46, x2: q.x + ux * 6, y2: q.y + uy * 6, class: 'fx-vortex-streak', opacity: op(1.5 * (1 - p)) }));
+      // 術ダメージの光と、王冠形の水しぶき
+      nodes.push(s('circle', { cx: q.x, cy: q.y, r: 10 + 22 * p, class: 'fx-vortex-hit', opacity: op(1.2 * (1 - p)) }));
+      for (let k = 0; k < 6; k++) {
+        const a = -Math.PI / 2 + (k - 2.5) * 0.45;
+        const rr = 10 + 30 * p;
+        const x = q.x + Math.cos(a) * rr;
+        const y = q.y + Math.sin(a) * rr + 40 * p * p;
+        nodes.push(s('circle', { cx: x, cy: y, r: 3.2 * (1 - p) + 1, class: 'fx-vortex-drop bright', opacity: op(1.3 * (1 - p)) }));
+      }
+    }
+    return;
+  }
+  // 水柱：立ち上がって崩れる
+  const rise = Math.min(1, p / 0.35);
+  const H = 190 * (1 - (1 - rise) ** 2);
+  const W = 46 * (1 - p * 0.6);
+  nodes.push(
+    s('path', {
+      d: `M${c.x - W / 2},${c.y} Q${c.x - W * 0.25},${c.y - H * 0.6} ${c.x - W * 0.12},${c.y - H} Q${c.x},${c.y - H - 18} ${c.x + W * 0.12},${c.y - H} Q${c.x + W * 0.25},${c.y - H * 0.6} ${c.x + W / 2},${c.y} Z`,
+      class: 'fx-vortex-pillar',
+      opacity: op(1.6 * (1 - p)),
+    }),
+  );
+  nodes.push(s('ellipse', { cx: c.x, cy: c.y, rx: R * (0.3 + 1.2 * p), ry: R * (0.3 + 1.2 * p) * 0.85, class: 'fx-vortex-splash big', opacity: op(1.3 * (1 - p)) }));
+  nodes.push(s('circle', { cx: c.x, cy: c.y, r: R * (0.2 + 0.8 * p), class: 'fx-vortex-wave', opacity: op(1 - p) }));
+  for (let k = 0; k < 14; k++) {
+    const a = (Math.PI * 2 * k) / 14 + (seed % 7) * 0.3;
+    const sp = 0.7 + ((k * 37 + seed) % 10) / 20;
+    const rr = R * 1.2 * p * sp;
+    const x = c.x + Math.cos(a) * rr;
+    const y = c.y + Math.sin(a) * rr * 0.85 - 70 * p * (1 - p) * sp;
+    nodes.push(s('circle', { cx: x, cy: y, r: 2 + 3.5 * (1 - p), class: 'fx-vortex-drop bright', opacity: op(1.4 * (1 - p)) }));
+  }
+  // 渦に巻き込まれていた敵：最後の引き寄せの筋
+  for (const q of hits) {
+    const dx = q.x - c.x;
+    const dy = q.y - c.y;
+    const d = Math.hypot(dx, dy) || 1;
+    if (d > 8) nodes.push(s('line', { x1: q.x + (dx / d) * 50, y1: q.y + (dy / d) * 50, x2: q.x, y2: q.y, class: 'fx-vortex-streak', opacity: op(1.5 * (1 - p)) }));
+  }
 }
 
 /**
@@ -1118,6 +1299,9 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     );
   };
 
+  // 敵の下に描く演出（グレイディーアS3の渦）
+  const fxUnder = s('g', { class: 'rp-fx-under' });
+  svg.append(fxUnder);
   // 敵
   const enemyLayer = s('g', {});
   svg.append(enemyLayer);
@@ -1261,7 +1445,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       seen.add(e[0]);
     }
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';
-    fxDraw(fxLayer, t, a, b, f);
+    fxDraw(fxLayer, t, a, b, f, fxUnder);
     drawZaros(a, b, f);
     const skill = new Set(a.s);
     for (const [uid, g] of unitNodes) g.classList.toggle('skill', skill.has(uid));
@@ -1424,6 +1608,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel, coldLabel),
     statPanel,
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】・堅守特性（耀騎士ニアールなど）による攻撃速度、その上の「ATK+」は【カジミエーシュ】の攻撃力上昇（戦闘中の配置回数に応じる）。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）。水色の縁と左上の雪の結晶は寒冷、氷塊に包まれた敵は凍結（凍った瞬間に氷が弾ける。下の「寒冷・凍結」が今の数）。ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3は専用の演出（冷気の波と氷の棘、三日月の斬撃、前方を薙ぐ銀の弧、落ちてくる氷の峰）。デーゲンブレヒャーS3のモーション中はスキルの攻撃範囲を黄色の点線で示し、ゲージ（黄色）がモーションの残りに合わせて減っていく。右下に「慄」の印が付いた敵は戦慄（ブロックされている間は通常攻撃できない）、左下に「縛」の印が付いた敵はバインド（その場から動けない。攻撃はする）。赤い枠で右下に「襲」と出ている味方は【強襲】で敵の周囲へ再配置されたもの（撤退・再配置もその位置で行う）。オペレーターをクリックすると、その時点のステータス（スキル・盟約・素質・マスなどの効果込み）を下に表示（素の値より良ければ緑、悪ければ赤）'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】・堅守特性（耀騎士ニアールなど）による攻撃速度、その上の「ATK+」は【カジミエーシュ】の攻撃力上昇（戦闘中の配置回数に応じる）。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）。水色の縁と左上の雪の結晶は寒冷、氷塊に包まれた敵は凍結（凍った瞬間に氷が弾ける。下の「寒冷・凍結」が今の数）。ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3は専用の演出（冷気の波と氷の棘、三日月の斬撃、前方を薙ぐ銀の弧、落ちてくる氷の峰）。深海色の螺旋の渦はグレイディーアS3の渦（紅い銛でバインドした敵の位置にでき、中の敵は減速。縮む波と水しぶきが1.5秒ごとの術ダメージと中心への引き寄せ、スキル終了時の水柱が最後の引き寄せ）。デーゲンブレヒャーS3のモーション中はスキルの攻撃範囲を黄色の点線で示し、ゲージ（黄色）がモーションの残りに合わせて減っていく。右下に「慄」の印が付いた敵は戦慄（ブロックされている間は通常攻撃できない）、左下に「縛」の印が付いた敵はバインド（その場から動けない。攻撃はする）。赤い枠で右下に「襲」と出ている味方は【強襲】で敵の周囲へ再配置されたもの（撤退・再配置もその位置で行う）。オペレーターをクリックすると、その時点のステータス（スキル・盟約・素質・マスなどの効果込み）を下に表示（素の値より良ければ緑、悪ければ赤）'),
   );
 }
