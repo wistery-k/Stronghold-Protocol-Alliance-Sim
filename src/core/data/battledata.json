@@ -3151,6 +3151,21 @@
     "interval": 3.0,
     "range": 2.5,
     "arts": false
+   },
+   "devour": {
+    "init": 5.0,
+    "cooldown": 10.0,
+    "radius": 1.5,
+    "max": 3,
+    "channel": 4.0,
+    "ammo": 1,
+    "maxAmmo": 3
+   },
+   "salvo": {
+    "init": 5.0,
+    "cooldown": 10.0,
+    "scale": 1.3,
+    "range": 2.5
    }
   },
   "enemy_1196_msfyin_2": {

@@ -573,7 +573,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt' | 'ambush' | 'enrage' | 'throwOnce' | 'selfFear' | 'flame' | 'float' | 'stone' | 'parasite' | 'appearStrike'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt' | 'ambush' | 'enrage' | 'throwOnce' | 'selfFear' | 'flame' | 'float' | 'stone' | 'parasite' | 'appearStrike' | 'devour' | 'salvo'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -971,6 +971,15 @@ interface Enemy {
   /** 囚人：拘束中か、拘束中に攻撃した回数 */
   confined: boolean;
   confAttacks: number;
+  /** 仮想敵：黒雲：弾薬・次に吞み込み／全弾発射を使える時刻・吞み込みの終わる時刻（-1 なら吞み込み中でない）と対象 */
+  ammo: number;
+  devourAt: number;
+  salvoAt: number;
+  devourUntil: number;
+  devourTargets: Enemy[];
+  /** 黒雲にバインドされている（動かず攻撃しない）。吞み込まれた（撃破に数えるが撃破者・懸賞は無し） */
+  boundBy: Enemy | null;
+  devoured: boolean;
 }
 
 interface Runtime {
@@ -1504,6 +1513,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       diveTo: -1,
       diveHits: 0,
       downUntil: 0,
+      ammo: 0,
+      devourAt: input.spec.devour ? input.spawnAt + input.spec.devour.init : -1,
+      salvoAt: input.spec.salvo ? input.spawnAt + input.spec.salvo.init : -1,
+      devourUntil: -1,
+      devourTargets: [],
+      boundBy: null,
+      devoured: false,
     });
   /** シミュレーター内の決定的な乱数（ボスの攻撃対象・手下の移動先） */
   let seed = 0x2545f491;
@@ -1625,6 +1641,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.stoneUntil = -1;
     e.alive = false;
     e.reviveAt = null;
+    // 仮想敵：黒雲が倒れると、吞み込みの途中の敵は放される
+    if (e.devourUntil >= 0) stopDevour(e);
     // ボスが倒れると手下も消える
     if (e.input.spec.boss) for (const m of enemies) if (m.alive && m.input.spec.minionOf === e.input.key) m.alive = false;
     if (asleep(e)) {
@@ -3798,10 +3816,88 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
   };
 
+  /** 仮想敵：黒雲の吞み込みを止める（バインドした敵を放す） */
+  const stopDevour = (e: Enemy) => {
+    for (const o of e.devourTargets) {
+      if (o.boundBy !== e) continue;
+      o.boundBy = null;
+      o.rootUntil = Math.min(o.rootUntil, t);
+    }
+    e.devourTargets = [];
+    e.devourUntil = -1;
+  };
+  /**
+   * 仮想敵：黒雲：周囲の精鋭・ボスでない飛行の敵をバインドして吞み込み、弾薬にする。弾薬があれば全弾発射。
+   * スタン・凍結・睡眠・恐怖・特殊能力の無効化（沈黙）の間は使わず、吞み込みの途中なら中断する
+   */
+  const tickBlackCloud = () => {
+    for (const e of enemies) {
+      const dv = e.input.spec.devour;
+      const sv = e.input.spec.salvo;
+      if ((!dv && !sv) || !e.alive || !e.spawned) continue;
+      if (isFrozen(e) || asleep(e) || t < e.stunUntil || t < e.fearUntil || neutral(e)) {
+        if (e.devourUntil >= 0) stopDevour(e);
+        continue;
+      }
+      if (dv && e.devourUntil >= 0) {
+        if (t < e.devourUntil) continue;
+        // 吞み込み：バインドしたまま生きている敵を倒し、1体につき弾薬+ammo
+        for (const o of e.devourTargets) {
+          if (o.boundBy !== e) continue;
+          o.boundBy = null;
+          if (!o.alive) continue;
+          release(o);
+          o.alive = false;
+          o.devoured = true;
+          e.ammo = Math.min(dv.maxAmmo, e.ammo + dv.ammo);
+        }
+        e.devourTargets = [];
+        e.devourUntil = -1;
+      }
+      if (dv && t >= e.devourAt) {
+        const cands = enemies
+          .filter((o) => o !== e && o.alive && o.spawned && o.input.spec.flying && !o.input.spec.elite && !o.input.spec.boss && !o.input.spec.large && !o.input.spec.projectile && !o.input.spec.roam && o.boundBy === null && o.reviveAt === null)
+          .map((o) => ({ o, dist: Math.hypot(o.x - e.x, o.y - e.y) }))
+          .filter((c) => c.dist <= dv.radius + 1e-9)
+          .sort((a, b) => a.dist - b.dist || a.o.id - b.o.id)
+          .slice(0, dv.max);
+        if (cands.length) {
+          e.devourAt = t + dv.cooldown;
+          e.devourUntil = t + dv.channel;
+          e.devourTargets = cands.map((c) => c.o);
+          for (const o of e.devourTargets) {
+            o.boundBy = e;
+            o.rootUntil = Math.max(o.rootUntil, e.devourUntil);
+          }
+          continue;
+        }
+      }
+      if (sv && e.ammo > 0 && t >= e.salvoAt) {
+        const cands = rt.filter(
+          (u) => u.alive && u.input.pos !== undefined && unitTile(u) !== 'smog' && !unitStealthed(u) && !untargetable(u, e) && Math.hypot(cellX(u.input.pos) - e.x, cellY(u.input.pos) - e.y) <= sv.range,
+        );
+        if (!cands.length) continue;
+        // 弾薬の数だけ、射程内のランダムな味方に攻撃力×scale の物理ダメージ
+        for (let i = 0; i < e.ammo; i++) {
+          const live = cands.filter((u) => u.alive);
+          if (!live.length) break;
+          const u = live[Math.floor(rand() * live.length)];
+          emit([3, e.id, u.input.uid, 0]);
+          hurt(u, enemyAtk(e, e.input.spec.attack!.atk * sv.scale) * weakFactor(e), false, e);
+        }
+        e.ammo = 0;
+        e.salvoAt = t + sv.cooldown;
+        if (e.blockedBy === null) e.stallUntil = t + RANGED_ATTACK_STALL;
+      }
+    }
+  };
+
   const enemyAttacks = () => {
     for (const e of enemies) {
       const a = e.input.spec.attack;
       if (!a || !e.alive || e.reviveAt !== null || e.thrown || e.stoneUntil >= 0) continue;
+      // 仮想敵：黒雲の吞み込みの間は、黒雲もバインドされた敵も攻撃しない
+      if (e.boundBy !== null || e.devourUntil >= 0) continue;
       const lib = e.input.spec.liberty;
       // 解放後の囚人はHPが回復する
       if (lib?.regen && !e.confined) e.hp = Math.min(e.maxHp, e.hp + lib.regen * dt);
@@ -4209,8 +4305,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
       const path = e.input.path;
       const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) * tileEnemySpeed(e) * zaroSlow(e) : 1) * (e.enraged ? (e.input.spec.enrage?.speedMult ?? 1) : 1) * (e.thrown ? (e.input.spec.throwOnce?.speedMult ?? 1) : 1) * (t < e.selfFearSpeedUntil ? (e.input.spec.selfFear?.speedMult ?? 1) : 1);
-      // バインド：その場から動かない（恐怖で逃げている間も）
-      if (t < e.rootUntil) continue;
+      // バインド：その場から動かない（恐怖で逃げている間も）。仮想敵：黒雲は吞み込みの間は動かない
+      if (t < e.rootUntil || e.devourUntil >= 0) continue;
       if (t < e.fearUntil) {
         // 恐怖：来た道を逃げる（ブロックされない）
         e.d = Math.max(0, e.d - speed * dt);
@@ -4340,6 +4436,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       tickTalents();
       tickTiles();
       enemyAttacks();
+      tickBlackCloud();
       tickZones();
       tickPollution();
       tickSleep();
@@ -4861,7 +4958,8 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
   // ボスの弾（<刺胄之弹>）は敵の数に入れない
   const counted = r.enemies.filter((e) => !e.input.spec.projectile && !vanished(e));
   const killed = counted.filter(isKilled).length;
-  const bountyKilled = counted.filter((e) => e.input.bounty && isKilled(e));
+  // 仮想敵：黒雲に吞み込まれた敵は懸賞の対象にならない
+  const bountyKilled = counted.filter((e) => e.input.bounty && isKilled(e) && !e.devoured);
   const totalHp = counted.reduce((s, e) => s + e.input.spec.hp, 0);
   const perUnit = r.units.map((u) => outResult(u.result));
   return {

@@ -116,6 +116,13 @@ export interface EnemySpec {
   throwOnce?: { radius: number; speedMult: number };
   /** HPが初めて ratio 以下になった時、fear 秒の恐怖、speedDuration 秒の間 移動速度×speedMult（「サンクタの翼」「サンクタの眼」） */
   selfFear?: { ratio: number; fear: number; speedMult: number; speedDuration: number };
+  /**
+   * 仮想敵：黒雲：init 秒後から cooldown 秒ごとに、半径 radius 内の精鋭・ボスでない飛行の敵を max 体までバインドし（その間は自身も動かず攻撃しない）、
+   * channel 秒後に吞み込んで1体につき弾薬+ammo（上限 maxAmmo）。対象がいなければ待つ
+   */
+  devour?: { init: number; cooldown: number; radius: number; max: number; channel: number; ammo: number; maxAmmo: number };
+  /** 仮想敵：黒雲：弾薬があれば init 秒後から cooldown 秒ごとに、弾薬をすべて使い、射程 range 内のランダムな味方へ弾薬の数だけ攻撃力×scale の物理ダメージ */
+  salvo?: { init: number; cooldown: number; scale: number; range: number };
   /** 挑発レベル：味方はブロック中の敵の次に、挑発レベルの高い敵を優先して狙う */
   taunt?: number;
   /** 敵の弾（<刺胄之弹>）：飛行中の的。突破・撃破の数には入れない */
