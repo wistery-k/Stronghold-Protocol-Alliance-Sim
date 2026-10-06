@@ -249,6 +249,13 @@ def main():
         if boomb and e.get('attack'):
             mv = next((b_['value'] for b_ in (boomb.get('blackboard') or []) if b_['key'] == 'move_speed'), 0)
             e['throwOnce'] = {'radius': 1, 'speedMult': 1 + mv}
+        # 攻撃は目標を中心に燃焼区域を残す（ウルサス軍重野砲。半径 projectile_range、projectile_life_time 秒、毎秒 value のダメージ）
+        if 'projectileboomrange.attack@value' in bb and e.get('attack'):
+            e['attack']['burn'] = {
+                'radius': bb['projectileboomrange.attack@projectile_range']['value'],
+                'duration': bb['projectileboomrange.attack@projectile_life_time']['value'],
+                'dps': bb['projectileboomrange.attack@value']['value'],
+            }
         # HPが初めて半分以下になると、数秒間恐怖になり移動速度が上がる（「サンクタの翼」「サンクタの眼」。半分は図鑑の説明から。
         # move_speed は加算（+150%）と解釈する：同じ形の他の敵（市井盗贼 0.9「大幅提升」など）は1未満でも速くなるため）
         if 'selffear.fear' in bb:

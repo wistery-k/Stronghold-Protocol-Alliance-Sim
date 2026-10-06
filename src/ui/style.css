@@ -1873,6 +1873,23 @@ body.dragging * {
   stroke-width: 2;
   stroke-dasharray: 3 5;
 }
+.fx-burn {
+  fill: rgba(240, 110, 30, 0.22);
+  stroke: rgba(240, 110, 30, 0.75);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+  animation: fx-burn-flicker 0.35s ease-in-out infinite alternate;
+}
+@keyframes fx-burn-flicker {
+  from {
+    fill-opacity: 0.6;
+    stroke-opacity: 0.6;
+  }
+  to {
+    fill-opacity: 1;
+    stroke-opacity: 1;
+  }
+}
 .band-ban {
   display: flex;
   flex-wrap: wrap;

@@ -148,6 +148,7 @@ export interface ReplayFrame {
  * - 8 剣雨の命中（術ダメージとスタン）：[uid, x×100, y×100]
  * - 9 ザーロの1秒ごとの術ダメージ：[uid, x×100, y×100]
  * - 13 派手なスキルの演出（SKILL_FX）：[uid, 演出の種類, 0 = 発動・1 = スキル中の攻撃, 命中した敵の位置 x×100, y×100 の並び]
+ * - 15 敵の燃焼区域（ウルサス軍重野砲）：[敵id, x×100, y×100, 半径×100, 秒数×10]
  * - 14 グレイディーアS3の渦：[uid, 0 = 生成, x×100, y×100, 半径×100, 秒数×10] / [uid, 1 = ダメージと引き寄せ・2 = 消滅（スキル終了時は引き寄せ）, x×100, y×100, 半径×100, 巻き込んだ敵の位置 x×100, y×100 の並び]
  */
 export type FxEvent = number[];
@@ -3102,10 +3103,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   /** 錬金ユニットの効果範囲 */
   /** 敵の汚染秽蝕：範囲内の味方は毎秒HPを失う（防御・術耐性無視） */
   const pollutions: { x: number; y: number; radius: number; high: number; low: number; until: number; duration: number }[] = [];
+  /** 敵の燃焼区域（ウルサス軍重野砲の攻撃の跡） */
+  const burnZones: { x: number; y: number; radius: number; dps: number; until: number }[] = [];
   const tickPollution = () => {
     for (const z of pollutions) {
       if (t >= z.until) continue;
       for (const o of alliesNear(z.x, z.y, z.radius)) takeDps(o, o.hp / o.maxHp > 0.5 ? z.high : z.low);
+    }
+    // 燃焼区域：範囲内の味方に毎秒の物理ダメージ（防御力で軽減。区域が重なれば重複する）
+    for (const z of burnZones) {
+      if (t >= z.until) continue;
+      for (const o of alliesNear(z.x, z.y, z.radius)) takeDps(o, mitigate(o, z.dps, false));
     }
   };
   // ---- グレイディーアS3「渇水の乱渦狂舞」の渦 ----
@@ -3910,6 +3918,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         hurt(target, enemyAtk(e, a.atk * scaleAll * (free ? 1 + lib.atk : 1) * ambush) * weakFactor(e), a.arts, e, free ? lib.defPen : 0);
         // 祝祭のジャズ奏者の灼熱損傷は火炎放射だけ
         if (e.input.spec.element && !fl) addOpElement(target, e.input.spec.element.type, a.atk * e.input.spec.element.ratio * weakFactor(e));
+      }
+      // ウルサス軍重野砲：攻撃は目標のマスを中心に燃焼区域を残す（目標が倒れても残る）
+      if (a.burn && target.input.pos !== undefined) {
+        const bx = cellX(target.input.pos);
+        const by = cellY(target.input.pos);
+        burnZones.push({ x: bx, y: by, radius: a.burn.radius, dps: a.burn.dps, until: t + a.burn.duration });
+        emit([15, e.id, Math.round(bx * 100), Math.round(by * 100), Math.round(a.burn.radius * 100), Math.round(a.burn.duration * 10)]);
       }
       if (lib && e.confined && ++e.confAttacks >= lib.times) liberate(e);
       // 遠距離攻撃の間は一瞬足を止める
