@@ -157,6 +157,20 @@ describe('マップ戦闘', () => {
     }
   });
 
+  it('鈎縄師（グレイディーア）は通常攻撃もスキルも飛行の敵に当たる', () => {
+    const hms = UNITS.filter((u) => u.subProfession === 'hookmaster');
+    expect(hms.map((u) => u.charId)).toEqual(['char_474_glady']);
+    const glady = hms[0];
+    expect(glady.position).toBe('melee');
+    const board: OwnedUnit[] = [{ uid: 1, defId: glady.id, star: 1, pos: 29, dir: 'right' }];
+    const r = run(board, oneEnemy('test_hook_fly', true, { hp: 200000, def: 0, res: 0, speed: 0.1 }));
+    const u = r.perUnit[0];
+    expect(u.hits > 0).toBe(true);
+    expect(u.byKind.physical > 0).toBe(true);
+    // 範囲内に飛行の敵しかいなくてもスキルを発動する
+    expect(u.skillCasts > 0).toBe(true);
+  });
+
   it('近距離の非領主は飛行の敵を攻撃できない', () => {
     const guard = UNITS.find((u) => u.profession === 'guard' && u.position === 'melee' && u.subProfession !== 'lord')!;
     const r = run([{ uid: 1, defId: guard.id, star: 1, pos: 29, dir: 'right' }], oneEnemy('test_fly_g', true, { speed: 0.3 }));
