@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { battleSetup, evaluateAlliances } from '../src/core/alliance';
+import { alliancesCompletedBy, battleSetup, evaluateAlliances } from '../src/core/alliance';
 import { behindOf, frontOf, sameRow } from '../src/core/board';
 import { applyAction, createGame, levelUpCost, priceOf, rollBans, roundSpecOf, type GameState } from '../src/core/game';
 import { Rng } from '../src/core/rng';
@@ -33,6 +33,23 @@ describe('盟約', () => {
     const st = evaluateAlliances([ou(1, 'サイレンス')], [ou(2, 'イネス')]).find((a) => a.id === 'visi')!;
     expect(st.count).toBe(2);
     expect(st.level).toBe(1);
+  });
+
+  it('ショップで光らせる：先見・奇跡の2種類目、投資家の3種類目', () => {
+    // 先見：1種類いれば、別のオペレーターで2種類目（同じオペレーターは数えない）
+    expect(alliancesCompletedBy([ou(1, 'サイレンス')], id('イネス'))).toEqual(['visi']);
+    expect(alliancesCompletedBy([ou(1, 'サイレンス')], id('サイレンス'))).toEqual([]);
+    expect(alliancesCompletedBy([], id('イネス'))).toEqual([]);
+    // 既に発動しているなら光らせない
+    expect(alliancesCompletedBy([ou(1, 'サイレンス'), ou(2, 'スワイヤー')], id('イネス'))).toEqual([]);
+    // 奇跡
+    expect(alliancesCompletedBy([ou(1, 'エクシア', 2)], id('カゼマル'))).toContain('mira');
+    // 投資家：2種類いれば3種類目
+    expect(alliancesCompletedBy([ou(1, 'ブリキ')], id('マウンテン'))).toEqual([]);
+    expect(alliancesCompletedBy([ou(1, 'ブリキ'), ou(2, 'ブリキ')], id('マウンテン'))).toEqual([]);
+    expect(alliancesCompletedBy([ou(1, 'ブリキ'), ou(2, '琳琅スワイヤー')], id('マウンテン'))).toContain('invest');
+    // 核心盟約は対象外
+    expect(alliancesCompletedBy([ou(1, 'マッターホルン'), ou(2, 'ハロルド')], id('スノーハンター'))).toEqual([]);
   });
 
   it('孤高はちょうど1名のときだけ発動', () => {

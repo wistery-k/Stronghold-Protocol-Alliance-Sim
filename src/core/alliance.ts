@@ -95,6 +95,20 @@ export function evaluateAlliances(board: OwnedUnit[], bench: OwnedUnit[] = [], b
   return result.sort((a, b) => b.level - a.level || b.count - a.count);
 }
 
+/**
+ * そのオペレーターを獲得すると発動人数に届く、控えも数える盟約（先見・奇跡・投資家）。
+ * まだ所持していない種類として加わって、ちょうど発動人数になるものを返す（ショップで光らせる）
+ */
+export function alliancesCompletedBy(owned: OwnedUnit[], defId: string): AllianceId[] {
+  const charId = getUnit(defId).charId;
+  return unitAlliances(defId).filter((id) => {
+    const def = ALLIANCES[id];
+    if (def.countMode !== 'boardAndBench') return false;
+    const chars = new Set(owned.filter((o) => ownedBonds(o).includes(id)).map((o) => getUnit(o.defId).charId));
+    return !chars.has(charId) && def.thresholds.includes(chars.size + 1);
+  });
+}
+
 export function activeAllianceIds(statuses: AllianceStatus[]): Set<AllianceId> {
   return new Set(statuses.filter((s) => s.level > 0).map((s) => s.id));
 }

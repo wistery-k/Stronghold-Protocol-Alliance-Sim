@@ -19,6 +19,8 @@ export interface CardOptions {
   selected?: boolean;
   /** 所持中（非精鋭）のオペレーターと同じものを強調 */
   owned?: boolean;
+  /** 獲得すると発動人数に届く盟約（先見・奇跡・投資家）。カードとその盟約のタグを強調 */
+  completes?: AllianceId[];
   dim?: boolean;
   onClick?: () => void;
   onDblClick?: () => void;
@@ -42,12 +44,12 @@ export function unitCard(defId: string, opts: CardOptions = {}) {
     {
       role: 'button',
       tabindex: 0,
-      class: `card tier-${d.tier}${opts.selected ? ' selected' : ''}${opts.owned ? ' owned' : ''}${opts.dim ? ' dim' : ''}${opts.star === 2 ? ' golden' : ''}`,
+      class: `card tier-${d.tier}${opts.selected ? ' selected' : ''}${opts.owned ? ' owned' : ''}${opts.completes?.length ? ' completes' : ''}${opts.dim ? ' dim' : ''}${opts.star === 2 ? ' golden' : ''}`,
       onclick: opts.onClick ? () => opts.onClick!() : undefined,
       ondblclick: opts.onDblClick ? () => opts.onDblClick!() : undefined,
       onmouseenter: opts.onHover ? () => opts.onHover!(true) : undefined,
       onmouseleave: opts.onHover ? () => opts.onHover!(false) : undefined,
-      title: `${d.name}（${PROFESSION_NAME[d.profession]}）\n${st.skill.name}：${st.skill.description}\n\n${st.garrisons.map((g) => g.description).join('\n')}`,
+      title: `${d.name}（${PROFESSION_NAME[d.profession]}）${opts.completes?.length ? `\n獲得すると${opts.completes.map((a) => `【${ALLIANCES[a].name}】`).join('')}が発動` : ''}\n${st.skill.name}：${st.skill.description}\n\n${st.garrisons.map((g) => g.description).join('\n')}`,
     },
     h(
       'div',
@@ -59,7 +61,7 @@ export function unitCard(defId: string, opts: CardOptions = {}) {
     h(
       'div',
       { class: 'card-tags' },
-      d.bonds.map((t) => h('span', { class: `tag ${ALLIANCES[t].kind}${opts.highlight?.has(t) ? ' on' : ''}` }, ALLIANCES[t].name)),
+      d.bonds.map((t) => h('span', { class: `tag ${ALLIANCES[t].kind}${opts.highlight?.has(t) ? ' on' : ''}${opts.completes?.includes(t) ? ' completes' : ''}` }, ALLIANCES[t].name)),
     ),
     opts.items?.length
       ? h(
