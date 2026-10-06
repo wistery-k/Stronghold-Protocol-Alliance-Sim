@@ -148,6 +148,12 @@ h3 {
   font-size: 11px;
   color: var(--muted);
 }
+.build-info a {
+  color: inherit;
+}
+.build-info a:hover {
+  color: var(--text);
+}
 .tabs {
   display: flex;
   gap: 4px;
