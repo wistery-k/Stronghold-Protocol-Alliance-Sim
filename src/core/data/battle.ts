@@ -32,8 +32,11 @@ export interface EnemySpec {
   defReduce?: { max: number; def: number; res: number };
   /** 倒れると別の敵を生む */
   deadSpawn?: { enemy: string; count: number };
-  /** 倒れると「hits 回の攻撃で倒せる」状態になり、interval 秒後に復活する（1回だけ） */
-  revive?: { hits: number; interval: number };
+  /**
+   * 倒れると「hits 回の攻撃で倒せる」状態になり、interval 秒後に復活する（何度でも）。
+   * stealth：その状態（ダブリン追炎戦士の<怨念の残火>など）はステルス
+   */
+  revive?: { hits: number; interval: number; stealth?: boolean };
   /** 倒れると周囲に汚染秽蝕を残す（範囲内の味方は毎秒HPを失う。HP50%超で high、以下で low） */
   deathPollution?: { high: number; low: number; duration: number; radius: number };
   /**

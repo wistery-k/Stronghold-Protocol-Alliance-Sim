@@ -3299,7 +3299,8 @@
    },
    "revive": {
     "hits": 5,
-    "interval": 10.0
+    "interval": 10.0,
+    "stealth": true
    }
   },
   "enemy_1288_duskls": {
@@ -3322,7 +3323,8 @@
    },
    "revive": {
     "hits": 5,
-    "interval": 10.0
+    "interval": 10.0,
+    "stealth": true
    }
   },
   "enemy_1292_duskld": {
@@ -3345,7 +3347,8 @@
    },
    "revive": {
     "hits": 10,
-    "interval": 10.0
+    "interval": 10.0,
+    "stealth": true
    }
   },
   "enemy_1208_msfji": {

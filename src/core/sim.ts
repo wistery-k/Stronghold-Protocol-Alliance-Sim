@@ -414,6 +414,8 @@ function flagFactor(mods: Modifier, t: number): number {
 const SPLASH_SUB = new Set(['splashcaster', 'bombarder', 'blastcaster', 'fortress']);
 /** スプラッシュの半径（マス）。通常の値は仮。「ダメージ発生範囲拡大」（シーS1）は攻略 wiki の値 */
 const SPLASH_RADIUS = 1.0;
+/** 残火（ダブリン追炎系の復活待ち）の挑発レベル（「狙われやすい」。データに無い。ユーザーの指定） */
+const REMNANT_TAUNT = 1;
 const NEXT_ATTACK_SPLASH_RADIUS = 1.7;
 /** 攻撃範囲内の敵すべてを攻撃 */
 const ALL_IN_RANGE_SUB = new Set(['stalker']);
@@ -897,7 +899,6 @@ interface Enemy {
   /** レミュアンの素質：指名手配（【ラテラーノ】の攻撃範囲内に滞在した時間と、手配済みか） */
   wantedTime: number;
   wanted: boolean;
-  revived: boolean;
   defense: DefenseState;
   phases: EnemyPhase[];
   phaseIdx: number;
@@ -1291,7 +1292,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.neutralUntil = Math.max(e.neutralUntil, t + seconds);
     e.defense.res = currentRes(e);
   };
-  const isStealthed = (e: Enemy) => !!e.input.spec.stealth && e.blockedBy === null && e.reviveAt === null && !neutral(e) && !revealed(e);
+  // 復活待ちの敵は、ステルスの残火（ダブリン追炎戦士・従兵）だけがステルス
+  const isStealthed = (e: Enemy) =>
+    (e.reviveAt !== null ? !!e.input.spec.revive?.stealth : !!e.input.spec.stealth) && e.blockedBy === null && !neutral(e) && !revealed(e);
+  /** 敵の狙われやすさ（挑発レベル）。残火は「狙われやすい」（データに無い。ユーザーの指定） */
+  const enemyTaunt = (e: Enemy) => Math.max(e.input.spec.taunt ?? 0, e.reviveAt !== null && e.input.spec.revive?.stealth ? REMNANT_TAUNT : 0);
 
   /** スキルによる防御力・術耐性低下を反映した敵の防御 */
   /** 範囲に敵が入っているか（大型のボスは占めるマスのどれかが入っていればよい） */
@@ -1451,7 +1456,6 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       reviveAt: null,
       wantedTime: 0,
       wanted: false,
-      revived: false,
       neutralUntil: -1,
       atkTimer: 0,
       vulnUntil: -1,
@@ -1614,18 +1618,24 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
 
   const killEnemy = (e: Enemy, by: Runtime | null) => {
+    const blocker = e.blockedBy !== null ? byUid.get(e.blockedBy) : undefined;
     release(e);
     // <刺胄之弹>を撃ち落とした：撃破には数えない
     if (e.input.spec.projectile) {
       e.alive = false;
       return;
     }
-    // 復活する敵：攻撃回数で倒せる状態になってその場に留まる
+    // 復活する敵：攻撃回数で倒せる状態になってその場に留まる（復活は何度でも）
     const rv = e.input.spec.revive;
-    if (rv && !e.revived && e.reviveAt === null && !neutral(e)) {
+    if (rv && e.reviveAt === null && !neutral(e)) {
       e.reviveAt = t + rv.interval;
       e.hp = rv.hits;
       e.maxHp = rv.hits;
+      // 残火（ダブリン追炎系）はその場で生まれるので、ブロックされていればそのままブロックされる
+      if (rv.stealth && blocker?.alive) {
+        e.blockedBy = blocker.input.uid;
+        blocker.blocked.push(e);
+      }
       return;
     }
     // 墓守の石像：一度目に倒れると石像形態（HPは最大値、防御力・術耐性が上がり、動かず攻撃しない）
@@ -1860,7 +1870,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (!e.alive) return false;
       if (!field) return true;
       if ((isFlying(e) || e.input.spec.float) && !hitsAir(u, skillActive)) return false;
-      // ステルス：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
+      // ステルス：ブロックされている間だけ狙える（特殊能力無効化中は狙える。復活待ちはステルスの残火だけがステルス）
       if (isStealthed(e)) return false;
       // ボスの手下は無敵（攻撃の対象にならない。突進中・撃ち落とされた後は狙える）
       if (e.input.spec.roam && (e.minion === 'roam' || e.minion === 'back')) return false;
@@ -1876,7 +1886,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return list.sort(
       (a, b) =>
         Number(b.blockedBy === u.input.uid) - Number(a.blockedBy === u.input.uid) ||
-        (b.input.spec.taunt ?? 0) - (a.input.spec.taunt ?? 0) ||
+        enemyTaunt(b) - enemyTaunt(a) ||
         remaining(a) - remaining(b),
     );
   };
@@ -4286,16 +4296,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.d = 0;
         release(e);
       }
-      if (!e.input.path || e.blockedBy !== null) continue;
-      // 復活待ち：その場に留まり、時間が来たら元のHPで復活する
-      if (e.reviveAt !== null) {
-        if (t >= e.reviveAt) {
-          e.reviveAt = null;
-          e.revived = true;
-          e.hp = e.input.spec.hp;
-          e.maxHp = e.input.spec.hp;
-        } else continue;
+      // 復活待ち：元と同じ速さで進み、時間が来たら元のHPで復活する。残火（ダブリン追炎系）はブロックされ、それ以外（仮想敵：再生）はブロックされない
+      if (e.reviveAt !== null && t >= e.reviveAt) {
+        e.reviveAt = null;
+        e.hp = e.input.spec.hp;
+        e.maxHp = e.input.spec.hp;
       }
+      if (!e.input.path || e.blockedBy !== null) continue;
       if (t < e.stallUntil || asleep(e) || t < e.stunUntil) continue;
       if (e.frozenUntil >= 0) {
         if (t < e.frozenUntil) continue;
@@ -4319,7 +4326,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const curTile = path[Math.min(Math.round(e.d), path.length - 1)];
       const nd = e.d + speed * dt;
       const nextTile = path[Math.min(Math.round(nd), path.length - 1)];
-      if (!e.input.spec.unblockable && (!e.input.spec.flying || (field && !e.input.spec.projectile && !e.input.spec.roam && rt.some(lifted)))) {
+      if (!e.input.spec.unblockable && !(e.reviveAt !== null && !e.input.spec.revive?.stealth) && (!e.input.spec.flying || (field && !e.input.spec.projectile && !e.input.spec.roam && rt.some(lifted)))) {
         // 今いるマス・次に入るマスにブロックできるユニットがいれば止まる
         const b = blockerAt(curTile, e) ?? (nextTile !== curTile ? blockerAt(nextTile, e) : undefined);
         if (b) {
@@ -4915,7 +4922,8 @@ export function battleTimeLimit(spec: RoundSpec): number {
     const speed = Math.max(0.01, e.spec.speed * spec.moveMultiplier);
     // 遠距離の敵は攻撃のたびに足を止めるので、そのぶん余裕を持たせる
     const stall = e.spec.attack?.kind === 'ranged' ? 1 + RANGED_ATTACK_STALL / Math.max(0.5, e.spec.attack.interval) : 1;
-    limit = Math.max(limit, e.spawnAt + ((e.path.length - 1) / speed) * stall + 5);
+    // 復活する敵は復活待ちの間その場に留まる
+    limit = Math.max(limit, e.spawnAt + ((e.path.length - 1) / speed) * stall + (e.spec.revive?.interval ?? 0) + 5);
   }
   return Math.ceil(limit);
 }
