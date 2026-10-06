@@ -3110,10 +3110,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (t >= z.until) continue;
       for (const o of alliesNear(z.x, z.y, z.radius)) takeDps(o, o.hp / o.maxHp > 0.5 ? z.high : z.low);
     }
-    // 燃焼区域：範囲内の味方に毎秒の物理ダメージ（防御力で軽減。区域が重なれば重複する）
+    // 燃焼区域：範囲内の味方に毎秒の術ダメージ（術耐性で軽減。区域が重なれば重複する）
     for (const z of burnZones) {
       if (t >= z.until) continue;
-      for (const o of alliesNear(z.x, z.y, z.radius)) takeDps(o, mitigate(o, z.dps, false));
+      for (const o of alliesNear(z.x, z.y, z.radius)) takeDps(o, mitigate(o, z.dps, true));
     }
   };
   // ---- グレイディーアS3「渇水の乱渦狂舞」の渦 ----

@@ -166,8 +166,6 @@ function enemyBadges(e: EnemySpec) {
   if (e.parasite) b('寄生', `ブロックした相手に寄生し、${e.parasite.interval}秒ごとに攻撃力の${Math.round(e.parasite.scale * 100)}%の術ダメージ。相手が受ける元素損傷×${e.parasite.epTaken}、相手の元素損傷が爆発すると周囲4マスの味方に同じ元素損傷${e.parasite.spread}。狙われにくい`, 'sp');
   if (e.appearStrike) b('出現時攻撃', `出現時、HPが最も高い味方とその周囲8マスでHPが最も高い味方に攻撃力の物理ダメージを${e.appearStrike}回`, 'sp');
   if (e.attack?.groundOnly) b('地面のみ', `地面マスの味方だけを攻撃。ブロックしている相手には攻撃力×${e.attack.meleeScale ?? 1}${e.attack.pollute ? `、${e.attack.pollute.every}回目ごとの攻撃は目標に汚染秽蝕（${e.attack.pollute.duration}秒）を残す` : ''}`, 'sp');
-  if (e.attack?.burn)
-    b('燃焼', `攻撃は目標のマスを中心に半径${e.attack.burn.radius}マスの燃焼区域を${e.attack.burn.duration}秒残す（範囲内の味方に毎秒${e.attack.burn.dps}の物理ダメージ）`, 'sp');
   if (e.attack?.multi) b('連撃', `${e.attack.multi.init}秒後から${e.attack.multi.cooldown}秒ごとに、次の攻撃が${e.attack.multi.times}連撃。遠距離攻撃は攻撃力×${e.attack.rangedScale ?? 1}`, 'sp');
   if (e.attack?.lockStrike)
     b('砲撃誘導', `攻撃は射程${e.attack.range}マス（常に円で表示）内の味方をロックオンし、${e.attack.lockStrike.delay}秒後にそのマスを中心とする3×3マスへ攻撃力の${e.attack.arts ? '術' : '物理'}ダメージの砲撃が着弾する。撃墜しても発射済みの砲撃は止まらない`, 'sp');

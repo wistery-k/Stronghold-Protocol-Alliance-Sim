@@ -1431,7 +1431,7 @@ describe('寒冷・凍結とスキルの細部', () => {
       expect((r.fx ?? []).some((x) => x[1] === 6)).toBe(true);
     });
 
-    it('ウルサス軍重野砲：攻撃は目標のマスを中心に燃焼区域を残し、範囲内の味方に毎秒の物理ダメージ', () => {
+    it('ウルサス軍重野砲：攻撃は目標のマスを中心に燃焼区域を残し、範囲内の味方に毎秒の術ダメージ', () => {
       const spec = ENEMIES.enemy_10122_uacann_2;
       expect(spec.attack!.burn).toEqual({ radius: 1, duration: 3, dps: 150 });
       const board: OwnedUnit[] = [{ uid: 1, defId: sn, star: 2, pos: 24, dir: 'down' }];
@@ -1445,7 +1445,7 @@ describe('寒冷・凍結とスキルの細部', () => {
       expect(burns.length > 0).toBe(true);
       expect(burns[0].slice(5)).toEqual([100, 30]);
       expect((noBurn.fx ?? []).some((x) => x[1] === 15)).toBe(false);
-      // 区域1つあたり 3秒 × 150（防御力で軽減）以下の追加ダメージ
+      // 区域1つあたり 3秒 × 150（術耐性で軽減）以下の追加ダメージ
       const extra = r.perUnit[0].taken - noBurn.perUnit[0].taken;
       expect(extra > 0).toBe(true);
       expect(extra <= burns.length * 3 * 150 + 1).toBe(true);
