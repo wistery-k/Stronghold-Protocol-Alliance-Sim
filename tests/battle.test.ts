@@ -1609,6 +1609,17 @@ describe('【カジミエーシュ】の配置回数と〈配置時〉の特性'
     const gained = r.stackSources.filter((x) => x.uid === 1 && x.cause === '戦闘中の配置' && x.bond === 'kazimierz').reduce((s, x) => s + x.amount, 0);
     expect(gained).toBe(Math.min(4 * blem, 8));
   });
+  it('リプレイ用に、所属者の uid・攻撃力上昇の推移と、堅守特性の攻撃速度（耀騎士ニアール）を記録する', () => {
+    const spec = oneEnemy('kazDummy', false, { def: 0, res: 0 });
+    setActiveMap('legacy');
+    const { inputs, globals } = buildSimInputs(board, [], { kazimierz: 9 });
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    expect([...r.kazimierz!.members].sort()).toEqual([1, 2, 3]);
+    expect(r.frames![0].kz).toBe(Math.round(Math.min(0.6, globals.kazimierz!.maxAtk) * 100));
+    expect(r.frames!.at(-1)!.kz).toBe(Math.round(r.kazimierz!.atkPct * 100));
+    // 加算数9 → 3回分（攻撃速度+0.5×3）。自身のほか前方1マスにも付与される
+    expect(new Map(r.garrisonAspd).get(2)).toBe(1.5);
+  });
 });
 
 describe('被撃回復のスキル', () => {

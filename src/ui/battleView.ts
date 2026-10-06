@@ -957,6 +957,11 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   const unitElem = new Map<number, { g: SVGElement; x: number; y: number; key: string }>();
   /** 【サルゴン】の強化（攻撃速度）の小さな表示（左下） */
   const unitSargon = new Map<number, SVGElement>();
+  /** 【カジミエーシュ】の攻撃力上昇の小さな表示（左下、ASの上） */
+  const unitAtkUp = new Map<number, SVGElement>();
+  /** 堅守特性による攻撃速度（耀騎士ニアールなど。戦闘中は一定） */
+  const garrisonAspd = new Map(r.garrisonAspd ?? []);
+  const kazMembers = new Set(r.kazimierz?.members ?? []);
   const homeUnits = new Map(units.map((u) => [u.uid, u]));
   for (const u of units) {
     if (u.pos === undefined) continue;
@@ -985,10 +990,15 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     const elemG = s('g', { class: 'rp-elem' });
     g.append(elemG);
     unitElem.set(u.uid, { g: elemG, x: x + 22, y: y + 21, key: '' });
-    if (r.sargon || r.siracusa) {
+    if (r.sargon || r.siracusa || garrisonAspd.has(u.uid)) {
       const sg = s('text', { x: x + 13, y: y + 74, 'text-anchor': 'start', class: 'rp-sargon' }, '');
       g.append(sg);
       unitSargon.set(u.uid, sg);
+    }
+    if (kazMembers.has(u.uid)) {
+      const kz = s('text', { x: x + 13, y: y + 58, 'text-anchor': 'start', class: 'rp-atkup' }, '');
+      g.append(kz);
+      unitAtkUp.set(u.uid, kz);
     }
     // 傀儡師：身替りと入れ替わっている間の表示
     g.append(s('text', { x: x + S / 2, y: y + 24, 'text-anchor': 'middle', class: 'rp-unit-doll' }, '身替り'));
@@ -1257,8 +1267,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
         }),
       );
     }
-    // 【サルゴン】の強化・【シラクーザ】の攻撃速度上昇：受けているオペレーターだけ「AS+36」のように表示
-    if (r.sargon || r.siracusa) {
+    // 【サルゴン】の強化・【シラクーザ】・堅守特性の攻撃速度上昇：受けているオペレーターだけ「AS+36」のように表示
+    if (unitSargon.size) {
       const layers = new Map(a.sg ?? []);
       const sc = new Set(a.sc ?? []);
       for (const [uid, el] of unitSargon) {
@@ -1266,16 +1276,28 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
         const n = down ? 0 : (layers.get(uid) ?? 0);
         const sgAs = r.sargon ? n * r.sargon.aspd : 0;
         const scAs = !down && r.siracusa && sc.has(uid) ? r.siracusa.aspd : 0;
-        const total = Math.round(sgAs + scAs);
+        const grAs = down ? 0 : (garrisonAspd.get(uid) ?? 0);
+        const total = Math.round((sgAs + scAs + grAs) * 10) / 10;
         const text = total > 0 ? `AS+${total}` : '';
         if (el.getAttribute('data-k') !== text) {
           el.setAttribute('data-k', text);
           const parts = [
             sgAs ? `【サルゴン】${n}層：攻撃速度+${sgAs}${r.sargon!.atkPct ? `・攻撃力+${Math.round(n * r.sargon!.atkPct * 100)}%` : ''}` : '',
             scAs ? `【シラクーザ】攻撃速度+${Math.round(scAs)}（配置後${Math.round(r.siracusa!.duration)}秒間）` : '',
+            grAs ? `堅守特性：攻撃速度+${Math.round(grAs * 10) / 10}（【カジミエーシュ】の加算数に応じる）` : '',
           ].filter(Boolean);
           el.replaceChildren(text, ...(parts.length ? [s('title', {}, parts.join('\n'))] : []));
         }
+      }
+    }
+    // 【カジミエーシュ】：所属者の攻撃力上昇（戦闘中の配置回数）を「ATK+8%」のように表示
+    for (const [uid, el] of unitAtkUp) {
+      const down = unitNodes.get(uid)?.classList.contains('down');
+      const pct = down ? 0 : (a.kz ?? 0);
+      const text = pct > 0 ? `ATK+${pct}%` : '';
+      if (el.getAttribute('data-k') !== text) {
+        el.setAttribute('data-k', text);
+        el.replaceChildren(text, ...(text ? [s('title', {}, `【カジミエーシュ】攻撃力+${pct}%（この戦闘でオペレーターが配置された回数に応じて上昇）`)] : []));
       }
     }
     timeLabel.textContent = `${t.toFixed(1)}秒`;
@@ -1331,6 +1353,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel, coldLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）。水色の縁と左上の雪の結晶は寒冷、氷塊に包まれた敵は凍結（凍った瞬間に氷が弾ける。下の「寒冷・凍結」が今の数）。ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3は専用の演出（冷気の波と氷の棘、三日月の斬撃、前方を薙ぐ銀の弧、落ちてくる氷の峰）。デーゲンブレヒャーS3のモーション中はスキルの攻撃範囲を黄色の点線で示し、ゲージ（黄色）がモーションの残りに合わせて減っていく。右下に「慄」の印が付いた敵は戦慄（ブロックされている間は通常攻撃できない）、左下に「縛」の印が付いた敵はバインド（その場から動けない。攻撃はする）。赤い枠で右下に「襲」と出ている味方は【強襲】で敵の周囲へ再配置されたもの（撤退・再配置もその位置で行う）'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】・堅守特性（耀騎士ニアールなど）による攻撃速度、その上の「ATK+」は【カジミエーシュ】の攻撃力上昇（戦闘中の配置回数に応じる）。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）。水色の縁と左上の雪の結晶は寒冷、氷塊に包まれた敵は凍結（凍った瞬間に氷が弾ける。下の「寒冷・凍結」が今の数）。ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3は専用の演出（冷気の波と氷の棘、三日月の斬撃、前方を薙ぐ銀の弧、落ちてくる氷の峰）。デーゲンブレヒャーS3のモーション中はスキルの攻撃範囲を黄色の点線で示し、ゲージ（黄色）がモーションの残りに合わせて減っていく。右下に「慄」の印が付いた敵は戦慄（ブロックされている間は通常攻撃できない）、左下に「縛」の印が付いた敵はバインド（その場から動けない。攻撃はする）。赤い枠で右下に「襲」と出ている味方は【強襲】で敵の周囲へ再配置されたもの（撤退・再配置もその位置で行う）'),
   );
 }

@@ -199,6 +199,8 @@ export interface Modifier {
   respawnFlat?: number;
   /** 再配置時間（割合、加算。-0.3 で30%短縮） */
   respawnPct?: number;
+  /** 堅守特性による攻撃速度（aspd に含まれる。リプレイの表示用） */
+  garrisonAspd?: number;
   /** 攻撃時に確率で寒冷を付与（イェラグの不融氷） */
   coldProb?: number;
   coldDur?: number;

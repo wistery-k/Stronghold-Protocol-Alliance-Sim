@@ -194,7 +194,13 @@ const GIVE_TARGET: Record<string, 'front' | 'selfFront' | 'rowRightmost' | 'fron
 /** 盤面の各ユニットが戦闘中に持つ特性（自身の特性＋付与された特性） */
 export function effectiveGarrisons(board: OwnedUnit[]): Map<number, GarrisonData[]> {
   const out = new Map<number, GarrisonData[]>();
-  for (const o of board) out.set(o.uid, [...unitState(getUnit(o.defId), o.star).garrisons]);
+  // 付与する特性の中身（耀騎士ニアールの 144・159 など。説明文が「【145】」で始まる）は、同じユニットの一覧にあっても
+  // 付与を通してだけ効く（自身にも付与されるので、そのまま数えると二重になる）
+  for (const o of board) {
+    const own = unitState(getUnit(o.defId), o.star).garrisons;
+    const given = new Set(own.map((g) => g.blackboard.give_garrison_id).filter(Boolean));
+    out.set(o.uid, own.filter((g) => !given.has(g.id)));
+  }
   for (const o of board) {
     for (const g of unitState(getUnit(o.defId), o.star).garrisons) {
       const gid = g.blackboard.give_garrison_id as string | undefined;
@@ -245,16 +251,16 @@ export function garrisonBattleModifier(g: GarrisonData, stacks: Partial<Record<A
   if (key === 'act1autochess_gar_eff_chaos') return { weakDamage: true };
   if (key === 'act1autochess_gar_eff_attrByBond') {
     const times = Math.floor(bondStacks() / n('divide_num'));
-    return { atkPct: times * n('atk'), aspd: times * n('attack_speed'), spRegen: times * n('sp_recovery_per_sec') };
+    return { atkPct: times * n('atk'), aspd: times * n('attack_speed'), garrisonAspd: times * n('attack_speed'), spRegen: times * n('sp_recovery_per_sec') };
   }
   if (key === 'act2autochess_gar_eff_attrByBond_add_onstart') {
     const times = Math.floor(bondStacks() / n('divide_num'));
     return { atkFlat: times * n('atk') };
   }
   if (key === 'act1autochess_gar_eff_respawnTimeByBond') {
-    // 説明文では再配置時間短縮に加えて攻撃速度が上がる（-1.5%ごとに+0.5）
+    // 説明文の攻撃速度は、一緒に付与される別の特性（attrByBond）の方で上がる
     const times = Math.floor(bondStacks() / n('divide_num'));
-    return { aspd: (times * -n('respawn_time')) / 0.03, respawnPct: times * n('respawn_time') };
+    return { respawnPct: times * n('respawn_time') };
   }
   return null;
 }
