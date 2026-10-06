@@ -393,6 +393,7 @@ const RANGED_TRAIT_SUBPROF = new Set(['lord', 'agent']);
  */
 const LIBRATOR_ATK = 2.0;
 const LIBRATOR_MAX_TIME = 40;
+const MLYNAR = 'char_4064_mlynar';
 /** スキル中、領主の遠距離攻撃の攻撃力低下が無くなる（ラップランドS2・チューバイS3は「無効化」、シルバーアッシュS3は「近接攻撃と見なす」） */
 const LORD_FULL_ATK_SKILL = new Set(['char_140_whitew', 'char_4082_qiubai', 'char_172_svrash']);
 /** 近距離だが、スキルは飛行の敵にも当たる（凛御シルバーアッシュS2・デーゲンブレヒャーS3） */
@@ -1716,10 +1717,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken, 'true');
       // カジミエーシュLv2：ブロックしていない時は攻撃に攻撃力30%の確定ダメージを追加
       if (g.kazimierzPulse?.members.has(uid) && !kazimierzBlocking(u)) deal(u, e, atk * g.kazimierzPulse.pure * e.defense.damageTaken, 'true');
-      // ムリナールS3：他の味方【カジミエーシュ】がスキル範囲内の敵を攻撃すると、ムリナールの攻撃力×atk_scale の確定ダメージ
+      // ムリナールS3：味方【カジミエーシュ】（ムリナール自身を含む）がスキル範囲内の敵を攻撃すると、ムリナールの攻撃力×atk_scale の確定ダメージ
       if (def.bonds.includes('kazimierz')) {
         for (const y of rt) {
-          if (y === u || !y.alive || y.skillLeft <= 0 || !y.skill.bb.trait_up || y.input.def.subProfession !== 'librator') continue;
+          if (!y.alive || y.skillLeft <= 0 || !y.skill.bb.trait_up || y.input.def.subProfession !== 'librator') continue;
           if (field && !covers(y.rangeSkill, e)) continue;
           deal(y, e, y.curAtk * (y.skill.bb.atk_scale ?? 0) * e.defense.damageTaken, 'true');
         }
@@ -2331,16 +2332,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   /** ブレミシャインの素質「盾剣騎士」：配置中なら被撃回復のスキルが攻撃時に回復するSP */
   const blemishineSp = () => rt.find((o) => o.alive && !o.owner && cid(o) === 'char_423_blemsh')?.tb[0].sp ?? 0;
   /**
-   * 解放者の特性の攻撃力上昇（割合）。スキル中でない間に溜まり、スキル中は溜まらない（仮）。
-   * ムリナールS3はスキル中に特性の効果が trait_up 倍、スキル中に倒した敵1体ごとに倍率 per_kill_reduce（下限0、仮）
+   * 解放者の特性の攻撃力上昇（割合）。溜まるのはスキル中でない間（スキル中は溜まらない、仮）。
+   * ムリナールS3はスキル中に特性の効果が trait_up 倍で、スキル中に倒した敵1体ごとに攻撃力上昇が per_kill_reduce（-10%）ずつ下がる（下限+0%。ユーザー確認済み）
    */
-  const liberatorAtk = (u: Runtime, dt: number) => {
+  const liberatorAtk = (u: Runtime) => {
     if (u.input.def.subProfession !== 'librator') return 0;
-    const skillOn = u.skillLeft > 0 || u.ammoLeft > 0;
-    if (!skillOn) u.liberStack = Math.min(LIBRATOR_MAX_TIME, u.liberStack + dt);
     const bb = u.skill.bb;
-    const mult = skillOn && bb.trait_up ? Math.max(0, bb.trait_up + (bb.per_kill_reduce ?? 0) * u.liberKills) : 1;
-    return (LIBRATOR_ATK * u.liberStack) / LIBRATOR_MAX_TIME * mult;
+    const up = (LIBRATOR_ATK * u.liberStack) / LIBRATOR_MAX_TIME;
+    if (!(u.skillLeft > 0 || u.ammoLeft > 0) || !bb.trait_up) return up;
+    return Math.max(0, up * bb.trait_up + (bb.per_kill_reduce ?? 0) * u.liberKills);
   };
   const kazimierzAtk = (u: Runtime) => (g.kazimierz?.members.has(u.input.uid) ? Math.min(deployCount * g.kazimierz.atkPerDeploy, g.kazimierz.maxAtk) : 0);
 
@@ -2557,7 +2557,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   /** 離陸中の味方は地上の敵の攻撃対象にならない */
   const untargetable = (u: Runtime, e: Enemy) => lifted(u) && !e.input.spec.flying;
   /** 狙われやすさ（装備＋スキル中の taunt_level。バブル） */
-  const unitTaunt = (u: Runtime) => (u.input.mods.taunt ?? 0) + (u.skillLeft > 0 ? (u.skill.bb.taunt_level ?? 0) : 0);
+  const unitTaunt = (u: Runtime) =>
+    (u.input.mods.taunt ?? 0) + (u.skillLeft > 0 ? (u.skill.bb.taunt_level ?? 0) : 0) + (cid(u) === MLYNAR ? (u.tb[1]?.taunt_level ?? 0) : 0);
   /** 固定値の被ダメージ軽減（海溝の実験体）。1回分のダメージから差し引く */
   const flatCut = (u: Runtime, amount: number) => Math.max(0, amount - (u.input.mods.damageFlatReduce ?? 0));
   /** 毎秒ダメージ（1秒ごとに1回受けるものとして固定値軽減を適用） */
@@ -2618,6 +2619,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     philaeCounter(u);
     mixerCounter(u);
+    mlynarCounter(u, src);
     // 被撃回復のスキル：攻撃を受けるたびSP+1（スキル中は溜まらない）
     if (u.skill.charge === 'hit' && u.skillLeft <= 0 && u.ammoLeft <= 0 && !inDoll(u)) u.sp += 1;
     if (talentOnHurt(u, arts, src)) return;
@@ -2860,6 +2862,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (u.ammoLeft === 0) endSkill(u);
   };
   /** サンクタ・ミキサー：スキル中に攻撃を受けると、攻撃範囲内の敵最大3体に反撃（弾薬1発消費。最小間隔は通常攻撃間隔の一定割合） */
+  /** ムリナールの素質「我関せず」：味方【カジミエーシュ】（ムリナール自身を含む）が攻撃を受けるたび、攻撃元へムリナールの攻撃力×atk_scale の確定ダメージ */
+  const mlynarCounter = (u: Runtime, src: Enemy) => {
+    if (!u.input.def.bonds.includes('kazimierz')) return;
+    for (const y of rt) {
+      if (!y.alive || cid(y) !== MLYNAR || !src.alive) continue;
+      deal(y, src, y.curAtk * (y.tb[1]?.atk_scale ?? 0) * src.defense.damageTaken, 'true');
+    }
+  };
   const mixerCounter = (u: Runtime) => {
     if (cid(u) !== MIXER || u.ammoLeft <= 0 || t < u.counterReadyAt) return;
     const targets = targetsInRange(u, true).slice(0, u.skill.maxTarget);
@@ -4187,6 +4197,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         }
         if (!u.alive) continue;
       }
+      // 解放者の特性の攻撃力上昇：スキル中でない間に溜まる（スタン中も溜まる）
+      if (def.subProfession === 'librator' && u.skillLeft <= 0 && u.ammoLeft <= 0) u.liberStack = Math.min(LIBRATOR_MAX_TIME, u.liberStack + dt);
       // 神経の爆発：スタン中は何もできない
       if (stunned(u)) continue;
       const stats = unitState(def, star).stats;
@@ -4206,7 +4218,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         talentAtkPct(u) +
         tileAtkPct(u) +
         kazimierzAtk(u) +
-        liberatorAtk(u, dt);
+        liberatorAtk(u);
       // 琳琅スワイヤー：コインを使って「シャンパン爆弾」（範囲内の敵に物理ダメージ）
       if (swire && field) {
         u.bombTimer -= dt;

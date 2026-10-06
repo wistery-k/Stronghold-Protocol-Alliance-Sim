@@ -1374,13 +1374,22 @@ describe('解放者（ムリナール）', () => {
     expect(r.perUnit[0].damage).toBeGreaterThan(0);
   });
 
-  it('S3中、他の味方【カジミエーシュ】がスキル範囲内の敵を攻撃するとムリナールの確定ダメージが加わる', () => {
+  it('S3中、味方【カジミエーシュ】（自身を含む）がスキル範囲内の敵を攻撃するとムリナールの確定ダメージが加わる', () => {
     const spec = { ...oneEnemy('test_mlynar_kz', false, { speed: 0.01, def: 0 }), timeLimit: 90 };
     const solo = run(board(), spec);
     const meteor = UNITS.find((u) => u.name === 'メテオ')!.id;
     const duo = run([...board(), { uid: 2, defId: meteor, star: 1, pos: 13, dir: 'down' }], spec);
-    expect(solo.perUnit[0].byKind.true).toBe(0);
-    expect(duo.perUnit[0].byKind.true).toBeGreaterThan(0);
+    expect(solo.perUnit[0].byKind.true).toBeGreaterThan(0);
+    expect(duo.perUnit[0].byKind.true > solo.perUnit[0].byKind.true).toBe(true);
+  });
+
+  it('素質「我関せず」：味方【カジミエーシュ】が攻撃を受けるたび、攻撃元へ確定ダメージで反撃する', () => {
+    const attack = { kind: 'ranged' as const, atk: 100, interval: 1, range: 5, arts: false };
+    const spec = oneEnemy('test_mlynar_counter', false, { speed: 0.01, def: 0, attack });
+    const r = run(board(), spec);
+    const quiet = run(board(), oneEnemy('test_mlynar_quiet', false, { speed: 0.01, def: 0 }));
+    expect(r.perUnit[0].taken).toBeGreaterThan(0);
+    expect(r.perUnit[0].byKind.true > quiet.perUnit[0].byKind.true).toBe(true);
   });
 });
 

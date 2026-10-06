@@ -336,7 +336,7 @@ export const TALENT_STATUS: Record<string, [TalentImpl, string?][]> = {
   char_1045_svash2: [['none', '待機中のオペレーターが無いため未再現'], ['partial', '15秒後の倍増・凍結無効は未再現']],
   char_1039_thorn2: [['partial', '錬金ユニットの持続時間延長は未再現'], ['partial', '敵の攻撃速度低下と、直線経路での倍増は未再現']],
   char_264_f12yin: [['partial', '確率は期待値。攻撃力低下は未再現'], ['full', '回避は期待値']],
-  char_4064_mlynar: [['full'], ['none']],
+  char_4064_mlynar: [['full'], ['full']],
   char_291_aglina: [['full'], ['full']],
   char_341_sntlla: [['full']],
   char_4146_nymph: [['full'], ['full']],
