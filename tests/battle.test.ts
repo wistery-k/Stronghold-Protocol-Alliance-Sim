@@ -262,17 +262,26 @@ describe('マップ戦闘', () => {
     const open = remnant(false);
     expect(open.r.killed).toBe(1);
     expect(open.frames.some((f) => ((f.e[0][4] ?? 0) & 8) !== 0)).toBe(false);
-    // ステルスの残火：遠距離からは狙えず（HPが減らない）、10秒後に復活する。何度倒しても残火になる
+    // ステルスの残火：遠距離からは狙えず（HPが減らない）、元と同じ速さで進み続ける
     const hidden = remnant(true);
     const stealthed = hidden.frames.filter((f) => ((f.e[0][4] ?? 0) & 8) !== 0);
     expect(stealthed.length > 0).toBe(true);
     expect(stealthed.every((f) => f.e[0][3] === 100)).toBe(true);
-    expect(stealthed[stealthed.length - 1].t - stealthed[0].t > 9).toBe(true);
+    expect(stealthed.some((f) => f.e[0][1] !== stealthed[0].e[0][1] || f.e[0][2] !== stealthed[0].e[0][2])).toBe(true);
     expect(hidden.r.killed).toBe(0);
-    // 復活してもすぐ倒されて、また残火になる（2回以上）
-    expect(stealthed[stealthed.length - 1].t - stealthed[0].t > 20).toBe(true);
-    const lastSeen = (x: typeof open) => x.r.frames!.filter((f) => f.e.length).pop()!.t;
-    expect(lastSeen(hidden) > lastSeen(open)).toBe(true);
+  });
+
+  it('ダブリン追炎戦士の残火：ブロックされていればそのままブロックされ、ステルスにならずに倒される', () => {
+    const atk = { kind: 'melee' as const, atk: 1, interval: 5, range: 0, arts: false };
+    // 追炎戦士（残火になる）、続けて倒れない敵を出し、重装が2体ともブロックする
+    oneEnemy('test_wall', false, { hp: 1e9, def: 0, res: 0, attack: atk });
+    const spec = oneEnemy('test_remnant_block', false, { hp: 1500, def: 0, res: 0, attack: atk, revive: { hits: 5, interval: 10, stealth: true } });
+    const two: RoundSpec = { ...spec, timeLimit: 40, spawns: [spec.spawns[0], { ...spec.spawns[0], enemy: 'test_wall', delay: 0.3 }] };
+    const tank = byProf('defender');
+    const r = run([{ uid: 1, defId: tank.id, star: 3, pos: 31, dir: 'right' }], two);
+    // 残火はブロックされたままでステルスにならず、復活前に倒しきられる
+    expect(r.killed).toBe(1);
+    expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 8) !== 0))).toBe(false);
   });
 
   it('攻撃回数で倒れる敵は、ダメージ量に関係なく回数で倒れる', () => {
