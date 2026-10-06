@@ -75,6 +75,7 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 - イネス：素質のバインド（`rootEnemy`・`Enemy.rootUntil`）、退場で奪った攻撃力を返して影哨を残す（`inesLeaves`・`inesSentinels`）、S2の自身のステルスと攻撃速度の奪取（`Enemy.stolenAspd`・`enemyAspdRate`）
 - 【強襲】の再配置（`sim.ts` の `raidRelocate`・`placeAt`、`BattleGlobals.raid`）：10秒攻撃しないかスキル準備完了で範囲内に敵がいなければ、地上の敵の周囲へ移る（配置時の効果も発動。撤退・再配置はその位置）。攻撃力・HP+25%（+1%／層）はスキル発動中だけ（`raidSkillBuff`、移動とは無関係。ユーザー確認済み）。リプレイは赤い枠と「襲」の印（コマの `mv`）
 - 【カジミエーシュ】の攻撃力は戦闘中の配置回数（`sim.ts` の `deployCount`・`countDeploy`・`kazimierzAtk`、`BattleGlobals.kazimierz`）。所属者が配置中かに関係なく全員にかかる（ユーザー確認済み）。〈配置時〉の堅守特性（`GarrisonEvent` の `deploy`）は戦闘中の再配置でも発動
+- 被撃回復のスキル（`SkillModel.charge === 'hit'`、`hurt()` の先頭で SP+1）、ブレミシャインの「盾剣騎士」（`blemishineSp`）、リスカムS2の自身のスタン・スキルの確率スタン（`skillStun`）。エステルS2の治療対象外は未実装
 
 ## 仮の値・未確認の点（ユーザーに伝え済み）
 

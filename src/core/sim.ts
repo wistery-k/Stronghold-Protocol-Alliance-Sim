@@ -203,7 +203,8 @@ export const MIN_DAMAGE_RATIO = 0.05;
 // ------------------------------------------------------------
 
 export interface SkillModel {
-  charge: 'time' | 'attack' | 'none';
+  /** SPの溜まり方：時間・攻撃・被撃（攻撃を受けるたび1） */
+  charge: 'time' | 'attack' | 'hit' | 'none';
   passive: boolean;
   spCost: number;
   initSp: number;
@@ -262,7 +263,7 @@ export function parseSkill(s: SkillData): SkillModel {
   // 配置時に発動して時間で終わるスキル（ウタゲ・グラベル・血掟テキサス）
   const onDeploy = s.skillType === 'PASSIVE' && s.description.startsWith('配置後') && (bb.duration !== undefined || s.duration > 0);
   const passive = s.skillType === 'PASSIVE' && !onDeploy;
-  const charge = s.spType === 'INCREASE_WITH_TIME' ? 'time' : s.spType === 'INCREASE_WHEN_ATTACK' ? 'attack' : 'none';
+  const charge = s.spType === 'INCREASE_WITH_TIME' ? 'time' : s.spType === 'INCREASE_WHEN_ATTACK' ? 'attack' : s.spType === 'INCREASE_WHEN_TAKEN_DAMAGE' ? 'hit' : 'none';
   const atk = get('atk', 'attack@atk') ?? 0;
   const timesRaw = get('times', 'attack@times');
   const hits = timesRaw !== undefined && Number.isInteger(timesRaw) && timesRaw >= 2 ? timesRaw : 1;
@@ -1035,6 +1036,8 @@ interface Runtime {
   motionLen: number;
   slashLeft: number;
   slashTimer: number;
+  /** スキルの攻撃時の確率スタン（リスカムS2・マドロックS2）の累積（期待値） */
+  stunAcc: number;
   /** 【強襲】：最後に攻撃した（または配置された）時刻と、戦闘開始時の位置と向き */
   raidIdleFrom: number;
   home: { pos: number | undefined; dir: Direction | undefined };
@@ -1122,6 +1125,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       slashLeft: 0,
       slashTimer: 0,
       raidIdleFrom: 0,
+      stunAcc: ACC_START,
       home: { pos: input.pos, dir: input.dir },
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
@@ -1826,6 +1830,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const endSkill = (u: Runtime) => {
     setSkillHp(u, false);
     returnStolenAspd(u);
+    // リスカムS2：効果時間終了後、自身がスタン
+    if (cid(u) === 'char_107_liskam' && u.skill.bb.stun && u.alive) u.stunUntil = Math.max(u.stunUntil, t + u.skill.bb.stun);
     if (cid(u) === TIPPI) land(u);
     if (cid(u) === LEMUEN) lemuenBombard(u);
     // カゼマル：スキル終了で召喚した身替りは消える
@@ -1988,6 +1994,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       for (const [e, m] of hitList) {
         for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m);
         if (s.cold > 0) applyCold(e, s.cold);
+        // マドロックS2：確率で短時間スタン
+        if (field && s.bb.buff_prob && s.bb.stun) skillStun(u, e, s.bb.buff_prob, s.bb.stun);
       }
       endSkill(u);
     }
@@ -2270,6 +2278,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // 〈配置時〉の堅守特性（ブレミシャインなど）：戦闘開始時の配置は戦闘前に加算済み
     if (t > 0) for (const ev of u.events) if (ev.kind === 'deploy') gainStacks(ev);
   };
+  /** スキルの攻撃時の確率スタン（確率は累積方式） */
+  const skillStun = (u: Runtime, e: Enemy, prob: number, seconds: number) => {
+    u.stunAcc += prob;
+    if (u.stunAcc < 1) return;
+    u.stunAcc -= 1;
+    stunEnemy(e, seconds);
+  };
+  /** ブレミシャインの素質「盾剣騎士」：配置中なら被撃回復のスキルが攻撃時に回復するSP */
+  const blemishineSp = () => rt.find((o) => o.alive && !o.owner && cid(o) === 'char_423_blemsh')?.tb[0].sp ?? 0;
   const kazimierzAtk = (u: Runtime) => (g.kazimierz?.members.has(u.input.uid) ? Math.min(deployCount * g.kazimierz.atkPerDeploy, g.kazimierz.maxAtk) : 0);
 
   // ---- コスト・再配置 ----
@@ -2546,6 +2563,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     philaeCounter(u);
     mixerCounter(u);
+    // 被撃回復のスキル：攻撃を受けるたびSP+1（スキル中は溜まらない）
+    if (u.skill.charge === 'hit' && u.skillLeft <= 0 && u.ammoLeft <= 0 && !inDoll(u)) u.sp += 1;
     if (talentOnHurt(u, arts, src)) return;
     // 聖約イグゼキュター：スキル中は近接攻撃を確率で回避し、弾薬を補充（期待値）
     if (EVADE_REFILL.has(u.input.def.charId) && u.ammoLeft > 0 && src.input.spec.attack?.kind === 'melee') {
@@ -4314,6 +4333,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           if (whitw2Stage(u) >= 2) neutralize(e0, u.tb[0]['attack@silence_duration'] ?? 2);
         } else
         for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1) * talentScale(u, e, activeNow) * lordScale(u, e, activeNow));
+        // リスカムS2：スキル中の攻撃で確率スタン
+        if (field && activeNow && !s.passive && s.bb['attack@buff_prob'] && s.bb['attack@stun']) for (const [e] of targets) skillStun(u, e, s.bb['attack@buff_prob'], s.bb['attack@stun']);
         if (def.charId === TITI) {
           for (const [e] of targets) {
             // 素質：移動していない敵に攻撃力15%の術ダメージを追加
@@ -4356,6 +4377,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           useAmmo(u);
         } else if (s.charge === 'attack' && !activeNow) {
           u.sp += 1;
+        } else if (s.charge === 'hit' && !activeNow) {
+          // ブレミシャインの素質「盾剣騎士」：配置中、味方全員の被撃回復のスキルは攻撃時にもSP回復
+          u.sp += blemishineSp();
         }
       }
       if (u.atkTimer > 0) u.atkTimer -= dt;

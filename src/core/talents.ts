@@ -291,7 +291,7 @@ export const TALENT_STATUS: Record<string, [TalentImpl, string?][]> = {
   char_4079_haini: [['full']],
   char_440_pinecn: [['partial', '60秒の制限なし']],
   char_4211_snhunt: [['full']],
-  char_423_blemsh: [['none', '被撃回復系のスキルは未再現'], ['none', '睡眠は未再現']],
+  char_423_blemsh: [['full'], ['none', '睡眠は未再現']],
   char_4054_malist: [['full', '確率は期待値']],
   char_174_slbell: [['full'], ['full']],
   char_150_snakek: [['full']],

@@ -1610,3 +1610,24 @@ describe('【カジミエーシュ】の配置回数と〈配置時〉の特性'
     expect(gained).toBe(Math.min(4 * blem, 8));
   });
 });
+
+describe('被撃回復のスキル', () => {
+  const spec = () => {
+    const sp = oneEnemy('hitDummy', false, { def: 0, res: 0, attack: { kind: 'melee', atk: 100, interval: 1, range: 0 } } as Partial<EnemySpec>);
+    return { ...sp, timeLimit: 60 };
+  };
+  it('攻撃を受けるたびSPが溜まり、スキルを発動する（エステル・リスカム・マドロック・ブレミシャイン）', () => {
+    for (const id of ['1_12', '1_20', '4_18', '3_12']) {
+      const r = run([{ uid: 1, defId: id, star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit], spec());
+      expect(r.perUnit[0].skillCasts >= 1).toBe(true);
+    }
+  });
+  it('ブレミシャインの「盾剣騎士」：配置中は被撃回復のスキルが攻撃時にもSPを回復する', () => {
+    // 敵が攻撃しなければ被撃でSPは溜まらないので、攻撃時の回復だけで発動する
+    const quiet = oneEnemy('quietDummy', false, { def: 0, res: 0 });
+    const est: OwnedUnit = { uid: 1, defId: '1_12', star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit;
+    const blem: OwnedUnit = { uid: 2, defId: '3_12', star: 1, pos: 14, dir: 'left', items: [] } as OwnedUnit;
+    expect(run([est], { ...quiet, timeLimit: 60 }).perUnit[0].skillCasts).toBe(0);
+    expect(run([est, blem], { ...quiet, timeLimit: 60 }).perUnit.find((u) => u.uid === 1)!.skillCasts >= 1).toBe(true);
+  });
+});
