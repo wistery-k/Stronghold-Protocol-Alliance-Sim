@@ -1,4 +1,6 @@
-import { applyAction, createGame, type Action, type GameState } from './core/game';
+import { applyAction, createGame, rollBans, type Action, type GameState } from './core/game';
+import { Rng } from './core/rng';
+import type { AllianceId } from './core/types';
 import { getMap, setActiveMap } from './core/board';
 import { h } from './ui/dom';
 import { gameView } from './ui/gameView';
@@ -18,6 +20,8 @@ const app = {
   choosingBand: !saved,
   /** 戦術選択中のゲームのシード（BANはシードで決まるので、選択画面で先に見せる） */
   pendingSeed: Math.floor(Math.random() * 2 ** 31),
+  /** 戦術選択画面で再抽選した盟約BAN（null ならシードで決まるBAN） */
+  pendingBanned: null as AllianceId[] | null,
   /** 遊べるゲームがある（戦術選択をキャンセルできる） */
   hasGame: !!saved,
   sandbox: createSandbox(),
@@ -65,12 +69,13 @@ function dispatch(a: Action) {
 
 function newGame() {
   app.pendingSeed = Math.floor(Math.random() * 2 ** 31);
+  app.pendingBanned = null;
   app.choosingBand = true;
   render();
 }
 
 function startGame(band: BandId) {
-  app.game = createGame(app.pendingSeed, { band });
+  app.game = createGame(app.pendingSeed, { band, banned: app.pendingBanned ?? undefined });
   app.choosingBand = false;
   app.hasGame = true;
   app.selectedUid = null;
@@ -88,8 +93,13 @@ function render() {
       ? bandView(
           startGame,
           app.hasGame && app.game.phase !== 'gameover' && app.game.phase !== 'clear' ? () => { app.choosingBand = false; render(); } : null,
-          createGame(app.pendingSeed).banned,
+          app.pendingBanned ?? createGame(app.pendingSeed).banned,
           getMap(createGame(app.pendingSeed).mapId).name,
+          () => {
+            // 盟約BANだけを引き直す（マップ・敵・ショップのシードはそのまま）
+            app.pendingBanned = rollBans(new Rng(Math.floor(Math.random() * 2 ** 31)));
+            render();
+          },
         )
       : app.mode === 'game'
       ? gameView({

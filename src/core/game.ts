@@ -190,6 +190,8 @@ export interface ActionResult {
 export interface GameOptions {
   /** 盟約BAN：'random' = 核心盟約3つ・追加盟約4つをランダムに、'none' = なし */
   ban?: 'random' | 'none';
+  /** 盟約BANを直接指定する（戦術選択画面で再抽選した時。ショップなどの乱数はシードのまま） */
+  banned?: AllianceId[];
   /** 戦術 */
   band?: BandId | null;
   /** マップ（省略時は抽選） */
@@ -210,6 +212,17 @@ export const BAN_CORE_COUNT = 3;
 export const BAN_EXTRA_COUNT = 4;
 /** BANの対象にならない追加盟約（本家データで出現の重みが0のもの） */
 const BAN_EXEMPT: AllianceId[] = ['invest', 'mani', 'empty', 'sunt'];
+
+/** 盟約BANを抽選する（核心盟約 BAN_CORE_COUNT 個・追加盟約 BAN_EXTRA_COUNT 個） */
+export function rollBans(rng: Rng): AllianceId[] {
+  const pick = (cands: AllianceId[], n: number) => {
+    const out: AllianceId[] = [];
+    while (out.length < n && cands.length) out.push(cands.splice(rng.int(cands.length), 1)[0]);
+    return out;
+  };
+  const extras = ALLIANCE_IDS.filter((id) => !CORE_IDS.includes(id as never) && !BAN_EXEMPT.includes(id));
+  return [...pick([...CORE_IDS], BAN_CORE_COUNT), ...pick(extras, BAN_EXTRA_COUNT)];
+}
 
 export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: GameOptions = {}): GameState {
   const pool: Record<string, number> = {};
@@ -258,15 +271,9 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
     events: [],
   };
   if ((opts.ban ?? 'random') === 'random') {
-    state.banned = withRng(state, (rng) => {
-      const pick = (cands: AllianceId[], n: number) => {
-        const out: AllianceId[] = [];
-        while (out.length < n && cands.length) out.push(cands.splice(rng.int(cands.length), 1)[0]);
-        return out;
-      };
-      const extras = ALLIANCE_IDS.filter((id) => !CORE_IDS.includes(id as never) && !BAN_EXEMPT.includes(id));
-      return [...pick([...CORE_IDS], BAN_CORE_COUNT), ...pick(extras, BAN_EXTRA_COUNT)];
-    });
+    // 指定がある時も乱数は同じだけ進める（ショップなどの乱数の系列を変えない）
+    const rolled = withRng(state, rollBans);
+    state.banned = opts.banned ? [...opts.banned] : rolled;
   }
   rollShop(state);
   bandRoundStart(state);

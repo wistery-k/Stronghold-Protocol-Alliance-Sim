@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { battleSetup, evaluateAlliances } from '../src/core/alliance';
 import { behindOf, frontOf, sameRow } from '../src/core/board';
-import { applyAction, createGame, levelUpCost, priceOf, roundSpecOf, type GameState } from '../src/core/game';
+import { applyAction, createGame, levelUpCost, priceOf, rollBans, roundSpecOf, type GameState } from '../src/core/game';
+import { Rng } from '../src/core/rng';
+import { CORE_IDS } from '../src/core/data/alliances';
+import { unitAvailable } from '../src/core/items';
 import { UNITS, getUnit } from '../src/core/data/units';
 import { BENCH_SIZE, DEPLOY_CAP, MAX_STACKS, roundIncome } from '../src/core/rules';
 import { addStacks, allTargets, onDeployStacks, triggerGarrisons } from '../src/core/garrison';
@@ -397,6 +400,20 @@ describe('盟約BAN', () => {
     const kj = evaluateAlliances(board, [], ['kjerag']).find((a) => a.id === 'kjerag')!;
     expect(kj.level).toBe(1);
     expect(kj.banned).toBe(true);
+  });
+
+  it('再抽選したBANを指定して始めると、マップ・敵・乱数の系列はシードのまま', () => {
+    const base = createGame(5);
+    const rerolled = rollBans(new Rng(12345));
+    expect(rerolled).toHaveLength(7);
+    expect(rerolled.filter((b) => (CORE_IDS as readonly string[]).includes(b))).toHaveLength(3);
+    expect(rerolled).not.toEqual(base.banned);
+    const s = createGame(5, { banned: rerolled });
+    expect(s.banned).toEqual(rerolled);
+    expect(s.mapId).toBe(base.mapId);
+    expect(s.enemyTypes).toEqual(base.enemyTypes);
+    expect(s.rngState).toBe(base.rngState);
+    for (const d of s.shop) expect(unitAvailable(s, d!)).toBe(true);
   });
 
   it('BANなしでも遊べる', () => {
