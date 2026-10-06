@@ -132,6 +132,17 @@ describe('マップ戦闘', () => {
     expect(sk.length > 0).toBe(true);
   });
 
+  it('偵察兵（イネス）は飛行の敵も攻撃でき、攻撃力の低下はない', () => {
+    const ines = UNITS.find((u) => u.subProfession === 'agent')!;
+    expect(ines.position).toBe('melee');
+    const board: OwnedUnit[] = [{ uid: 1, defId: ines.id, star: 1, pos: 29, dir: 'right' }];
+    const r = run(board, oneEnemy('test_agent_fly', true, { def: 0, res: 0, speed: 1 }));
+    expect(r.perUnit[0].hits > 0).toBe(true);
+    // 1撃目（スキル発動前）のダメージは攻撃力そのまま（領主のような80%への低下が無い）
+    const i = r.timeline.findIndex((p, k) => k > 0 && p.hp < r.timeline[k - 1].hp);
+    expect(Math.round(r.timeline[i - 1].hp - r.timeline[i].hp)).toBe(ines.normal.stats.atk);
+  });
+
   it('近距離の非領主は飛行の敵を攻撃できない', () => {
     const guard = UNITS.find((u) => u.profession === 'guard' && u.position === 'melee' && u.subProfession !== 'lord')!;
     const r = run([{ uid: 1, defId: guard.id, star: 1, pos: 29, dir: 'right' }], oneEnemy('test_fly_g', true, { speed: 0.3 }));

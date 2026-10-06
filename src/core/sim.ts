@@ -373,6 +373,8 @@ const SPLASH_SUB = new Set(['splashcaster', 'bombarder', 'blastcaster', 'fortres
 const ALL_IN_RANGE_SUB = new Set(['stalker']);
 /** 領主の特性：遠距離攻撃（自身がブロックしていない敵への攻撃）は攻撃力80%。飛行の敵も攻撃できる */
 const LORD_RANGED_SCALE = 0.8;
+/** 特性で遠距離攻撃もできる近距離の職分（飛行の敵も攻撃する）：領主・偵察兵（偵察兵は攻撃力の低下なし） */
+const RANGED_TRAIT_SUBPROF = new Set(['lord', 'agent']);
 /** スキル中、領主の遠距離攻撃の攻撃力低下が無くなる（ラップランドS2・チューバイS3は「無効化」、シルバーアッシュS3は「近接攻撃と見なす」） */
 const LORD_FULL_ATK_SKILL = new Set(['char_140_whitew', 'char_4082_qiubai', 'char_172_svrash']);
 /** 近距離だが、スキルは飛行の敵にも当たる（凛御シルバーアッシュS2・デーゲンブレヒャーS3） */
@@ -1684,9 +1686,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return e.input.path ? e.input.path.length - 1 - e.d : 0;
   };
 
-  /** 飛行（浮遊）の敵を攻撃できるか：遠距離・離陸中・領主（特性の遠距離攻撃）・対空のスキル中 */
+  /** 飛行（浮遊）の敵を攻撃できるか：遠距離・離陸中・領主／偵察兵（特性の遠距離攻撃）・対空のスキル中 */
   const hitsAir = (u: Runtime, skillActive: boolean) =>
-    !u.melee || lifted(u) || u.input.def.subProfession === 'lord' || (skillActive && SKILL_ANTI_AIR.has(cid(u)));
+    !u.melee || lifted(u) || RANGED_TRAIT_SUBPROF.has(u.input.def.subProfession) || (skillActive && SKILL_ANTI_AIR.has(cid(u)));
   /** 領主の遠距離攻撃（自身がブロックしていない敵）の攻撃力の倍率 */
   const lordScale = (u: Runtime, e: Enemy, skillOn: boolean) =>
     u.input.def.subProfession === 'lord' && field && e.blockedBy !== u.input.uid && !(skillOn && LORD_FULL_ATK_SKILL.has(cid(u))) ? LORD_RANGED_SCALE : 1;
