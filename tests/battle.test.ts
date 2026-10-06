@@ -347,6 +347,16 @@ describe('コストと再配置', () => {
     expect(r.perUnit.find((x) => x.uid === 1)!.retreats).toBe(0);
   });
 
+  it('【エーギル】Lv2：捕食で倒れたエーギルも、最初の3名は即座に復活する', () => {
+    const spec = oneEnemy('test_target', false, { speed: 0.01 });
+    const at = (uid: number, name: string, x: number): OwnedUnit => ({ uid, defId: UNITS.find((u) => u.name === name)!.id, star: 1, pos: cellPos(x + 1, 3), dir: 'right' });
+    const r = run([at(1, 'アンダーフロー', 0), at(2, 'ルシーラ', 1), at(3, 'スペクター', 2), at(4, 'グレイディーア', 3), at(5, '帰溟スペクター', 4)], spec);
+    for (const uid of [2, 3, 4]) {
+      expect(r.perUnit.find((x) => x.uid === uid)!.retreats).toBe(0);
+      expect(r.frames![0].u!.find((x) => x[0] === uid)![1]).toBe(100);
+    }
+  });
+
   it('行商人は配置中にコストを消費する（琳琅スワイヤーはコインで追加攻撃）', () => {
     const spec = oneEnemy('test_target', false, { speed: 0.01 });
     const swire = UNITS.find((u) => u.name === '琳琅スワイヤー')!;

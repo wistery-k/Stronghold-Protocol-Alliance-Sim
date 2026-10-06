@@ -27,7 +27,7 @@ export interface SimUnitInput {
   /** マップ上の位置と向き（マップ戦闘で使う） */
   pos?: number;
   dir?: Direction;
-  /** 【エーギル】に捕食されて戦闘開始時に倒れている（撤退扱い。再配置タイマーは0秒から動く） */
+  /** 【エーギル】に捕食されて戦闘開始時に倒れる（倒れた時の効果も発動し、撤退なら再配置タイマーは0秒から動く） */
   devoured?: boolean;
 }
 
@@ -2580,9 +2580,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (cid(u) === TEXAS2) texasAppear(u);
   };
   if (field) {
-    for (const u of rt) if (!u.input.devoured) onDeployed(u);
-    // 【エーギル】に捕食された者：戦闘開始時に倒れ、そのマスで再配置を待つ
-    for (const u of rt) if (u.input.devoured) leaveField(u);
+    for (const u of rt) onDeployed(u);
   } else deployCount = rt.length;
 
   const tickCost = () => {
@@ -4217,6 +4215,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const steps = Math.round(timeLimit / dt);
   const sampleEvery = Math.max(1, Math.round(0.5 / dt));
   const frameEvery = Math.max(1, Math.round(0.2 / dt));
+  // 【エーギル】に捕食された者：戦闘開始時に倒れる（倒れた時の効果・復活も発動。撤退ならそのマスで再配置を待つ）
+  if (field) {
+    for (const u of rt) {
+      if (!u.input.devoured) continue;
+      u.hp = 0;
+      unitDown(u);
+    }
+  }
   timeline.push({ t: 0, hp: remainingHp(), alive: 0 });
 
   for (let step = 0; step < steps; step++) {
