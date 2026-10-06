@@ -272,6 +272,17 @@ def main():
         # 本家データに数値が無いため仮の値（ロックオンから着弾まで2秒、目標と周囲8マスに攻撃力の物理）
         if key in LOCK_STRIKE_ENEMIES and e.get('attack'):
             e['attack']['lockStrike'] = dict(LOCK_STRIKE)
+        # 仮想敵：黒雲：【KillOthers】半径 range_radius 内の精鋭・ボスでない飛行の敵を最大 maxSp 体バインドし、duration 秒後に吞み込んで
+        # 1体につき弾薬（SP）+sp。【FireWeapon】弾薬をすべて使い、弾薬の数だけ攻撃力×atk_scale の物理ダメージ（対象は射程内からランダム）
+        skl_ = {x['prefabKey']: x for x in (ed.get('skills') or [])}
+        if 'KillOthers' in skl_ and 'FireWeapon' in skl_ and e.get('attack'):
+            ko, fw = skl_['KillOthers'], skl_['FireWeapon']
+            kbb = {b_['key']: b_['value'] for b_ in (ko.get('blackboard') or [])}
+            fbb = {b_['key']: b_['value'] for b_ in (fw.get('blackboard') or [])}
+            max_ammo = int((ed.get('spData') or {}).get('maxSp') or 3)
+            e['devour'] = {'init': ko['initCooldown'], 'cooldown': ko['cooldown'], 'radius': kbb.get('range_radius', 1.5), 'max': max_ammo,
+                           'channel': kbb.get('duration', 4.0), 'ammo': int(kbb.get('sp', 1)), 'maxAmmo': max_ammo}
+            e['salvo'] = {'init': fw['initCooldown'], 'cooldown': fw['cooldown'], 'scale': fbb.get('atk_scale', 1.0), 'range': fbb.get('range_radius', e['attack']['range'])}
         # 大型のボス：移動せず、マップ右上の2列×3行を占める
         if re.sub(r'_\d$', '', key) in LARGE_BOSSES:
             e['large'] = True

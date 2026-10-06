@@ -1940,3 +1940,50 @@ describe('被撃回復のスキル', () => {
     expect(run([est, blem], { ...quiet, timeLimit: 60 }).perUnit.find((u) => u.uid === 1)!.skillCasts >= 1).toBe(true);
   });
 });
+
+describe('仮想敵：黒雲', () => {
+  it('データ：5秒後から10秒ごとに半径1.5の飛行の敵を最大3体バインドし、4秒後に吞み込んで弾薬にする。全弾発射は1発あたり攻撃力の130%', () => {
+    const c = ENEMIES.enemy_9009_acfort;
+    expect(c.devour).toEqual({ init: 5, cooldown: 10, radius: 1.5, max: 3, channel: 4, ammo: 1, maxAmmo: 3 });
+    expect(c.salvo).toEqual({ init: 5, cooldown: 10, scale: 1.3, range: 2.5 });
+  });
+
+  /** 黒雲と、同じ位置を同じ速さで飛ぶ怪鳥Mk2を birds 体（攻撃しない） */
+  const cloudRound = (birds: number, timeLimit = 30): RoundSpec => {
+    setActiveMap('legacy');
+    const c = ENEMIES.enemy_9009_acfort;
+    ENEMIES.test_cloud = { ...c, hp: 1e9, attack: { ...c.attack!, atk: 1000, interval: 999, range: 9 }, salvo: { ...c.salvo!, range: 9 } };
+    ENEMIES.test_cloud_bird = { ...ENEMIES.enemy_1005_yokai_2, hp: 1e9, speed: c.speed, attack: undefined };
+    const spawns: RoundSpec['spawns'] = [{ enemy: 'test_cloud', count: 1, interval: 0, delay: 0, spawn: 1 }];
+    if (birds) spawns.push({ enemy: 'test_cloud_bird', count: birds, interval: 0, delay: 0, spawn: 1 });
+    return { round: 1, levelId: 'test', timeLimit, moveMultiplier: 0.5, spawns };
+  };
+
+  it('周囲の精鋭でない飛行の敵を3体までバインドして4秒後に吞み込み、その間は黒雲も動かない', () => {
+    const r = run([], cloudRound(4));
+    const frames = r.frames!;
+    const birdsAt = (tt: number) => frames.find((f) => f.t >= tt)!.e.filter((e) => e[0] !== 1);
+    // 5秒でバインド（3体）、9秒で吞み込まれて1体だけ残る
+    expect(birdsAt(4.9).length).toBe(4);
+    expect(birdsAt(5.5).filter((e) => ((e[4] ?? 0) & 1024) !== 0).length).toBe(3);
+    expect(birdsAt(9.2).length).toBe(1);
+    const cloudAt = (tt: number) => frames.find((f) => f.t >= tt)!.e.find((e) => e[0] === 1)!;
+    expect(cloudAt(5.5)[1]).toBe(cloudAt(8.5)[1]);
+    expect(cloudAt(5.5)[2]).toBe(cloudAt(8.5)[2]);
+    // 残りの1体は次の吞み込み（15秒）で吞み込まれる。吞み込まれた敵は撃破に数え、突破にはならない
+    expect(birdsAt(14.9).length).toBe(1);
+    expect(birdsAt(19.2).length).toBe(0);
+    expect(r.killed).toBe(4);
+  });
+
+  it('弾薬の数だけ攻撃力の130%の物理ダメージ（弾薬が無ければ撃たない）', () => {
+    const def = byProf('defender');
+    const board: OwnedUnit[] = [{ uid: 1, defId: def.id, star: 1, pos: 29, dir: 'right' }];
+    const none = run(board, cloudRound(0, 12));
+    const two = run(board, cloudRound(2, 12));
+    const d = def.normal.stats.def;
+    // 通常攻撃（最初の1回だけ）との差が全弾発射の2発分
+    expect(two.perUnit[0].taken - none.perUnit[0].taken).toBeCloseTo(2 * Math.max(1300 - d, 1300 * 0.05), 0);
+  });
+
+});
