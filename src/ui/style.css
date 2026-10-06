@@ -1401,6 +1401,19 @@ aside {
   stroke-dasharray: 6 4;
   fill: #f3ecfb;
 }
+.rp-unit-raid {
+  display: none;
+  fill: #d0452f;
+  font-size: 13px;
+  font-weight: 700;
+}
+.rp-unit.raided .rp-unit-raid {
+  display: inline;
+}
+.rp-unit.raided .rp-unit-box {
+  stroke: #d0452f;
+  stroke-width: 3;
+}
 .rp-ghost-field {
   pointer-events: none;
 }

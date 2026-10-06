@@ -1,5 +1,5 @@
 import { bondKey, type BattleGlobals } from './alliance';
-import { BOSS_CELLS, BOSS_CENTER, DIR_DELTA, ENEMY_PATHS, GOAL, canBlockAt, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
+import { BOARD_COLS, BOARD_ROWS, BOSS_CELLS, BOSS_CENTER, DIR_DELTA, ENEMY_PATHS, GOAL, PATH_TILES, canBlockAt, canPlace, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
 import { ENEMIES, rangeGrid, unitRangeIds, type ElementType, type EnemySpec, type RoundSpec } from './data/battle';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE, ENEMY_SPEED_SCALE } from './rules';
 import { unitState } from './data/units';
@@ -57,6 +57,8 @@ export interface SimUnitResult {
   /** 撤退（倒れた・コスト不足）回数と再配置回数 */
   retreats: number;
   redeploys: number;
+  /** 【強襲】で敵の周囲へ再配置された回数 */
+  raids?: number;
 }
 
 export interface SimResult {
@@ -114,6 +116,8 @@ export interface ReplayFrame {
   lf?: number[];
   /** 身替りと入れ替わっているオペレーターの uid（傀儡師） */
   dl?: number[];
+  /** 【強襲】で再配置されて元の位置にいないオペレーター [uid, マス, 向き（0右・1下・2左・3上）] */
+  mv?: [number, number, number][];
   /** 召喚された身替り（カゼマルの紙人形）[uid, マス, HP%, 召喚主の uid] */
   tk?: [number, number, number, number][];
   /** 荒蕪ラップランドS3のザーロ [uid, x×100, y×100, 取り付いていれば1] */
@@ -1024,6 +1028,11 @@ interface Runtime {
   motionLen: number;
   slashLeft: number;
   slashTimer: number;
+  /** 【強襲】：最後に攻撃した（または配置された）時刻、再配置で上がった最大HP（0なら強化なし）、元の配置位置と向き */
+  raidIdleFrom: number;
+  raided: boolean;
+  raidHpAdd: number;
+  home: { pos: number | undefined; dir: Direction | undefined };
 }
 
 interface EngineResult {
@@ -1105,6 +1114,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       motionLen: 0,
       slashLeft: 0,
       slashTimer: 0,
+      raidIdleFrom: 0,
+      raided: false,
+      raidHpAdd: 0,
+      home: { pos: input.pos, dir: input.dir },
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
       evadeAcc: ACC_START,
@@ -2037,6 +2050,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.ammoLeft = 0;
     u.qalaisaStacks = 0;
     u.mberryShield = 0;
+    if (u.raided) raidReturn(u);
     if (field && u.input.pos !== undefined) u.redeployAt = t + u.respawn;
   };
 
@@ -2124,6 +2138,78 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     rt.push(tk);
     byUid.set(tk.input.uid, tk);
     dollBlast(tk, cands[0]);
+  };
+
+  // ---- 【強襲】の再配置 ----
+  const inMotion0 = (u: Runtime) => u.motionLen > 0 && u.skillLeft > 0;
+  /** 位置と向きを変える（攻撃範囲・ブロックを置き直し、ブロック中の敵は解放する） */
+  const placeAt = (u: Runtime, pos: number | undefined, dir: Direction | undefined) => {
+    for (const e of u.blocked) e.blockedBy = null;
+    u.blocked = [];
+    u.input = { ...u.input, pos, dir };
+    const ids = unitRangeIds(u.input.def.id, u.input.star);
+    u.rangeNormal = toSet(pos, dir, ids.range);
+    u.rangeSkill = toSet(pos, dir, ids.skillRange ?? ids.range);
+    u.blocker = pos !== undefined && canBlockAt(pos) && u.input.def.damageType !== 'heal';
+    u.block = u.blocker ? unitState(u.input.def, u.input.star).stats.block : 0;
+  };
+  /** 再配置の強化を外して元の位置に戻す（撤退した時。再配置は元の位置に行う） */
+  const raidReturn = (u: Runtime) => {
+    u.raided = false;
+    u.baseMaxHp -= u.raidHpAdd;
+    u.raidHpAdd = 0;
+    placeAt(u, u.home.pos, u.home.dir);
+  };
+  const DIRS: Direction[] = ['right', 'down', 'left', 'up'];
+  /**
+   * 地上の敵1体（防衛地点に最も近いもの）の周囲8マス（その敵のマスも含む）の空いている配置可能なマスへ再配置する。
+   * マスと向きは、その敵が攻撃範囲に入るもののうち、範囲内の地上の敵が多い → 敵をブロックできる地上マス → 敵に近い → 範囲に入る敵の経路のマスが多い順で選ぶ
+   */
+  const raidRelocate = (u: Runtime) => {
+    if (!g.raid) return;
+    const ground = enemies
+      .filter((e) => e.alive && e.spawned && !isFlying(e) && !e.input.spec.float && !e.input.spec.roam && !e.input.spec.projectile && !isStealthed(e))
+      .sort((a, b) => remaining(a) - remaining(b));
+    if (!ground.length) return;
+    const taken = new Set(rt.filter((o) => o !== u && (o.alive || o.redeployAt !== null) && o.input.pos !== undefined).map((o) => o.input.pos!));
+    const ids = unitRangeIds(u.input.def.id, u.input.star);
+    for (const target of ground) {
+      const tx = Math.round(target.x);
+      const ty = Math.round(target.y);
+      let best: { pos: number; dir: Direction; score: number[] } | null = null;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const x = tx + dx;
+          const y = ty + dy;
+          if (x < 0 || y < 0 || x >= BOARD_COLS || y >= BOARD_ROWS) continue;
+          const c = cellPos(x, y);
+          if (c === u.input.pos || taken.has(c) || !canPlace(c, u.input.def.id)) continue;
+          for (const dir of DIRS) {
+            const range = toSet(c, dir, ids.range);
+            const onTile = c === enemyTile(target) && canBlockAt(c);
+            if (!covers(range, target) && !onTile) continue;
+            const n = ground.filter((e) => covers(range, e)).length;
+            const score = [n, canBlockAt(c) ? 1 : 0, -(Math.abs(dx) + Math.abs(dy)), [...(range ?? [])].filter((x) => PATH_TILES.has(x)).length];
+            const diff = best ? score.findIndex((v, i) => v !== best!.score[i]) : 0;
+            if (!best || (diff >= 0 && score[diff] > best.score[diff])) best = { pos: c, dir, score };
+          }
+        }
+      }
+      if (!best) continue;
+      placeAt(u, best.pos, best.dir);
+      if (!u.raided) {
+        u.raided = true;
+        u.raidHpAdd = u.baseMaxHp * g.raid.hp;
+        u.baseMaxHp += u.raidHpAdd;
+        u.maxHp += u.raidHpAdd;
+        u.hp += u.raidHpAdd;
+      }
+      u.raidIdleFrom = t;
+      // 後から配置されたので、遠距離の敵に一番狙われやすくなる
+      u.order = ++orderCounter;
+      u.result.raids = (u.result.raids ?? 0) + 1;
+      return;
+    }
   };
 
   const unitDown = (u: Runtime) => {
@@ -2332,6 +2418,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     const s = u.skill;
     // 素質：配置からの時間、マドロックのシールド（配置時に1枚）、アルケットのシールド
     u.ts.deployedAt = t;
+    u.raidIdleFrom = t;
     u.ts.shields = cid(u) === 'char_311_mudrok' ? 1 : 0;
     u.ts.shieldTimer = u.tb[0].interval ?? 9;
     u.ts.archShield = false;
@@ -3950,6 +4037,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       .map((u): [number, number] => [u.input.uid, u.sargonBuffs.filter((until) => until > t).length])
       .filter((x) => x[1] > 0);
 
+  const moveFrame = (): [number, number, number][] =>
+    rt.filter((u) => u.raided && u.input.pos !== undefined).map((u) => [u.input.uid, u.input.pos!, DIRS.indexOf(u.input.dir ?? DEFAULT_DIRECTION)]);
   const stealthFrame = (): number[] => rt.filter((u) => u.alive && u.input.pos !== undefined && unitStealthed(u)).map((u) => u.input.uid);
   const siracusaFrame = (): number[] =>
     g.siracusa ? rt.filter((u) => u.alive && u.input.pos !== undefined && g.siracusa!.members.has(u.input.uid) && t - u.ts.deployedAt < g.siracusa!.duration).map((u) => u.input.uid) : [];
@@ -4033,7 +4122,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u.talentStacks * (ELEMENT_TALENT[def.charId]?.atkPerApoptosisBurst?.atk ?? 0) +
         u.qalaisaStacks * (g.qalaisa?.atk ?? 0) +
         talentAtkPct(u) +
-        tileAtkPct(u);
+        tileAtkPct(u) +
+        (u.raided && g.raid ? g.raid.atk : 0);
       // 琳琅スワイヤー：コインを使って「シャンパン爆弾」（範囲内の敵に物理ダメージ）
       if (swire && field) {
         u.bombTimer -= dt;
@@ -4050,6 +4140,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
       // スキル発動判定（攻撃役は攻撃範囲に敵がいる時だけ発動する）
       const skillActive = () => u.skillLeft > 0 || u.ammoLeft > 0;
+      // 【強襲】：10秒間攻撃していないかスキル準備完了で、範囲内に敵がいなければ地上の敵の周囲へ再配置（SPはそのまま）
+      if (field && g.raid?.members.has(uid) && !u.owner && !inMotion0(u)) {
+        const ready = !s.passive && !skillActive() && s.spCost > 0 && u.sp >= s.spCost && t >= u.recastAt;
+        if ((t - u.raidIdleFrom >= g.raid.idle - 1e-9 || ready) && !targetsInRange(u, false).length && !targetsInRange(u, true).length) raidRelocate(u);
+      }
       if (!s.passive && !skillActive() && t >= u.recastAt && u.sp >= s.spCost && s.spCost > 0 && !(field && def.charId === TIPPI) && !inDoll(u) && !opBursting(u, 'apoptosis') && (heal
           ? !field || injuredInRange(u, true).length > 0
           : field && (SUPPORT_SKILL[def.charId] === 'nextHeal' || SUPPORT_SKILL[def.charId] === 'areaHeal')
@@ -4086,6 +4181,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           const targets = pickTargets(u, true);
           if (targets.length) emit([2, uid, 1]);
           for (const [e] of targets) strike(u, e, atk, (last ? s.bb.e_atk_scale_end : s.bb.d_atk_scale) ?? 1);
+          if (targets.length) u.raidIdleFrom = t;
           u.slashLeft--;
           u.slashTimer += s.bb.d_hit_interval ?? 0.3;
         }
@@ -4240,6 +4336,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           if (ally) healUnit(u, ally, atk * (s.bb.heal_scale ?? 0));
         }
         u.result.hits += hits;
+        u.raidIdleFrom = t;
         if (field && activeNow && s.costPerAttack) cost = Math.min(MAX_COST, cost + s.costPerAttack);
         u.attacks++;
         u.ts.barrierTimer = 0;
@@ -4308,6 +4405,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         st: stealthFrame(),
         lf: rt.filter((u) => u.alive && lifted(u)).map((u) => u.input.uid),
         dl: rt.filter((u) => u.alive && inDoll(u)).map((u) => u.input.uid),
+        mv: moveFrame(),
         tk: rt.filter((u) => u.alive && u.owner && u.input.pos !== undefined).map((u): [number, number, number, number] => [u.input.uid, u.input.pos!, Math.round((u.hp / u.maxHp) * 100), u.owner!.input.uid]),
         zr: zaroFrame(),
         c: Math.floor(cost),
@@ -4332,6 +4430,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         st: stealthFrame(),
         lf: rt.filter((u) => u.alive && lifted(u)).map((u) => u.input.uid),
         dl: rt.filter((u) => u.alive && inDoll(u)).map((u) => u.input.uid),
+        mv: moveFrame(),
         tk: rt.filter((u) => u.alive && u.owner && u.input.pos !== undefined).map((u): [number, number, number, number] => [u.input.uid, u.input.pos!, Math.round((u.hp / u.maxHp) * 100), u.owner!.input.uid]),
         zr: zaroFrame(),
       c: Math.floor(cost),

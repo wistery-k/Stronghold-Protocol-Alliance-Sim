@@ -29,6 +29,8 @@ import { fmt, h, pct, s } from './dom';
 // マップ戦闘まわりの表示：配置マップ、ラウンドの敵、予測、戦闘結果とリプレイ
 
 const DIR_ARROW: Record<Direction, string> = { up: '↑', right: '→', down: '↓', left: '←' };
+/** リプレイのコマ mv の向きの番号 */
+const MOVE_DIRS: Direction[] = ['right', 'down', 'left', 'up'];
 
 /** 配置マップ。カードの辺をクリックで向きを変更、マウスを乗せると攻撃範囲を表示 */
 export function mapGrid(
@@ -348,6 +350,7 @@ function damageBars(r: BattleResult) {
             u.downAt !== null && u.downAt !== undefined ? h('span', { class: 'ng' }, `・${u.downAt.toFixed(0)}秒で撤退`) : '',
             u.retreats > 1 ? h('span', { class: 'ng' }, `（計${u.retreats}回）`) : '',
             u.redeploys ? `・再配置${u.redeploys}回` : '',
+            u.raids ? `・【強襲】で敵の周囲へ${u.raids}回` : '',
           ),
         );
       }),
@@ -499,11 +502,12 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
     const n = locks.slice(0, i).filter((o) => o[2] === l[2]).length;
     return bombs.filter((bm) => bm[2] === l[2])[n]?.[0] ?? Infinity;
   });
-  const byUid = new Map(units.map((u) => [u.uid, u]));
+  const homeByUid = new Map(units.map((u) => [u.uid, u]));
+  let byUid = homeByUid;
   const center = (pos: number) => ({ x: cellX(pos) * S + S / 2, y: cellY(pos) * S + S / 2 });
   const rangeCache = new Map<string, number[]>();
   const rangeOf = (u: ReplayUnit, skill: boolean) => {
-    const key = `${u.uid}:${skill}`;
+    const key = `${u.uid}:${skill}:${u.pos}:${u.dir}`;
     let cells = rangeCache.get(key);
     if (!cells) {
       cells = unitRangeCells({ uid: u.uid, defId: u.defId, star: u.star, pos: u.pos, dir: u.dir } as OwnedUnit, skill);
@@ -525,6 +529,13 @@ function replayFx(r: BattleResult, units: ReplayUnit[], S: number) {
   };
 
   return (layer: SVGElement, t: number, a: NonNullable<BattleResult['frames']>[number], b: NonNullable<BattleResult['frames']>[number], f: number) => {
+    // 【強襲】で再配置されたオペレーターは今の位置から演出を出す
+    byUid = a.mv?.length
+      ? new Map([...homeByUid].map(([uid, u]) => {
+          const m = a.mv!.find((x) => x[0] === uid);
+          return [uid, m ? { ...u, pos: m[1], dir: MOVE_DIRS[m[2]] } : u];
+        }))
+      : homeByUid;
     // 敵の現在位置（消えた敵は最後の位置）
     const next = new Map(b.e.map((e) => [e[0], e]));
     for (const e of a.e) {
@@ -938,6 +949,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
   const unitElem = new Map<number, { g: SVGElement; x: number; y: number; key: string }>();
   /** 【サルゴン】の強化（攻撃速度）の小さな表示（左下） */
   const unitSargon = new Map<number, SVGElement>();
+  const homeUnits = new Map(units.map((u) => [u.uid, u]));
   for (const u of units) {
     if (u.pos === undefined) continue;
     const def = getUnit(u.defId);
@@ -950,6 +962,8 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       s('text', { x: x + S / 2, y: y + 44, 'text-anchor': 'middle', class: 'rp-unit-name' }, def.name.length > 6 ? def.name.slice(0, 6) : def.name),
       s('text', { x: x + S / 2, y: y + 70, 'text-anchor': 'middle', class: 'rp-unit-dir' }, DIR_ARROW[u.dir ?? DEFAULT_DIRECTION]),
       s('rect', { x: x + 14, y: y + S - 22, width: S - 28, height: 6, class: 'rp-hp-bg' }),
+      // 【強襲】で再配置されて強化されている間の印
+      s('text', { x: x + S - 12, y: y + 70, 'text-anchor': 'end', class: 'rp-unit-raid' }, '襲'),
     );
     const bar = s('rect', { x: x + 14, y: y + S - 22, width: S - 28, height: 6, class: 'rp-unit-hp' });
     g.append(bar);
@@ -1174,6 +1188,20 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     for (const [uid, f] of ghostField) f.style.display = dolls.has(uid) ? '' : 'none';
     const lifted = new Set(a.lf ?? []);
     for (const [uid, g] of unitNodes) g.classList.toggle('lifted', lifted.has(uid));
+    // 【強襲】の再配置：元の位置からずらして描き、向きの矢印を変える
+    const moved = new Map((a.mv ?? []).map((m) => [m[0], m]));
+    for (const [uid, g] of unitNodes) {
+      const u = homeUnits.get(uid)!;
+      const m = moved.get(uid);
+      const key = m ? `${m[1]}:${m[2]}` : '';
+      if (g.getAttribute('data-mv') === key) continue;
+      g.setAttribute('data-mv', key);
+      g.classList.toggle('raided', !!m);
+      if (m) g.setAttribute('transform', `translate(${(cellX(m[1]) - cellX(u.pos!)) * S},${(cellY(m[1]) - cellY(u.pos!)) * S})`);
+      else g.removeAttribute('transform');
+      const arrow = g.querySelector('.rp-unit-dir');
+      if (arrow) arrow.textContent = DIR_ARROW[m ? MOVE_DIRS[m[2]] : (u.dir ?? DEFAULT_DIRECTION)];
+    }
     for (const [uid, bar] of unitBars) {
       const st = states.get(uid);
       const v = st?.[1] ?? 100;
@@ -1295,6 +1323,6 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel, coldLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）。水色の縁と左上の雪の結晶は寒冷、氷塊に包まれた敵は凍結（凍った瞬間に氷が弾ける。下の「寒冷・凍結」が今の数）。ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3は専用の演出（冷気の波と氷の棘、三日月の斬撃、前方を薙ぐ銀の弧、落ちてくる氷の峰）。デーゲンブレヒャーS3のモーション中はスキルの攻撃範囲を黄色の点線で示し、ゲージ（黄色）がモーションの残りに合わせて減っていく。右下に「慄」の印が付いた敵は戦慄（ブロックされている間は通常攻撃できない）、左下に「縛」の印が付いた敵はバインド（その場から動けない。攻撃はする）'),
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】による攻撃速度。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）。水色の縁と左上の雪の結晶は寒冷、氷塊に包まれた敵は凍結（凍った瞬間に氷が弾ける。下の「寒冷・凍結」が今の数）。ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3は専用の演出（冷気の波と氷の棘、三日月の斬撃、前方を薙ぐ銀の弧、落ちてくる氷の峰）。デーゲンブレヒャーS3のモーション中はスキルの攻撃範囲を黄色の点線で示し、ゲージ（黄色）がモーションの残りに合わせて減っていく。右下に「慄」の印が付いた敵は戦慄（ブロックされている間は通常攻撃できない）、左下に「縛」の印が付いた敵はバインド（その場から動けない。攻撃はする）。赤い枠で右下に「襲」と出ている味方は【強襲】で敵の周囲へ再配置されたもの（攻撃力・HPアップ。撤退すると元の位置に戻る）'),
   );
 }

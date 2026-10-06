@@ -1548,3 +1548,42 @@ describe('イネス', () => {
     expect(s0 < s1).toBe(true);
   });
 });
+
+describe('【強襲】', () => {
+  const utage = UNITS.find((u) => u.id === '1_18')!;
+  const humus = UNITS.find((u) => u.id === '2_09')!;
+  const other = UNITS.find((u) => u.profession === 'guard' && !u.bonds.includes('raid') && u.tier <= 2)!;
+  // 旧マップの (5,1)・(4,2) は敵の通らない地上マス。左向きなら経路は攻撃範囲に入らない
+  const board = (second: string): OwnedUnit[] => [
+    { uid: 1, defId: utage.id, star: 1, pos: 14, dir: 'left', items: [] } as OwnedUnit,
+    { uid: 2, defId: second, star: 1, pos: 22, dir: 'left', items: [] } as OwnedUnit,
+  ];
+
+  it('2人で、範囲内に敵がいないまま10秒攻撃しないと地上の敵の周囲へ再配置され、攻撃するようになる', () => {
+    const spec = oneEnemy('raidDummy', false, { def: 0, res: 0 });
+    const r = run(board(humus.id), spec);
+    const moved = r.frames!.find((f) => f.mv?.length)!;
+    expect(!!moved).toBe(true);
+    const [, pos] = moved.mv![0];
+    expect(canPlace(pos, utage.id)).toBe(true);
+    const e = moved.e[0];
+    expect(Math.max(Math.abs(cellX(pos) - e[1] / 100), Math.abs(cellY(pos) - e[2] / 100)) <= 1.5).toBe(true);
+    expect(r.perUnit.reduce((s, u) => s + (u.raids ?? 0), 0) >= 1).toBe(true);
+    // 1人だけ（盟約が発動していない）なら動かない
+    const r1 = run(board(other.id), spec);
+    expect(r1.frames!.some((f) => f.mv?.length)).toBe(false);
+    expect(r1.perUnit.every((u) => !u.raids)).toBe(true);
+  });
+
+  it('再配置の間は攻撃力が上がる（層数に応じて）', () => {
+    const spec = oneEnemy('raidDummy2', false, { def: 0, res: 0 });
+    setActiveMap('legacy');
+    const a = buildSimInputs(board(humus.id), [], {});
+    const b = buildSimInputs(board(humus.id), [], { raid: 30 });
+    expect(a.globals.raid!.atk).toBe(0.25);
+    expect(Math.abs(b.globals.raid!.atk - 0.55) < 1e-9).toBe(true);
+    const ra = simulateBattle(a.inputs, spec, { globals: a.globals });
+    const rb = simulateBattle(b.inputs, spec, { globals: b.globals });
+    expect(rb.totalDamage > ra.totalDamage).toBe(true);
+  });
+});

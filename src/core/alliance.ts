@@ -152,6 +152,8 @@ export interface BattleGlobals {
   mberry?: { members: Set<number>; prob: number };
   /** 戦術【リサイクル】：地上オペレーターのスキル終了時に隣の味方のSP回復 */
   humus?: { sp: number };
+  /** 強襲：一定時間攻撃しないかスキル準備完了時、範囲内に敵がいなければ地上の敵の周囲へ再配置され、その間攻撃力・最大HP上昇 */
+  raid?: { members: Set<number>; atk: number; hp: number; idle: number };
 }
 
 export interface BattleOptions {
@@ -456,7 +458,15 @@ export function battleSetup(
       duration: v('arcane', 'weak_duration'),
     };
   }
-  // 強襲：50層で全員の攻撃速度+50
+  // 強襲：敵の周囲への再配置（sim.ts の raidRelocate）。50層で全員の攻撃速度+50
+  if (lv('raid') >= 1) {
+    globals.raid = {
+      members: members('raid'),
+      atk: v('raid', 'base_atk') + v('raid', 'atk_per_stack') * sk('raid'),
+      hp: v('raid', 'base_max_hp') + v('raid', 'max_hp_per_stack') * sk('raid'),
+      idle: v('raid', 'no_attack_duration'),
+    };
+  }
   if (lv('raid') >= 1 && sk('raid') >= v('raid', 'power_bond_stack_cnt')) apply(all, { aspd: v('raid', 'power_attack_speed') });
   // 共同防衛
   if (lv('empty') >= 1) {
