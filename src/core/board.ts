@@ -351,6 +351,8 @@ export function egirDevour(board: OwnedUnit[], egirMembers: Set<number>, damage 
   const atkGain = new Map<number, number>();
   const blockGain = new Map<number, number>();
   const dead = new Set<number>();
+  /** 捕食された回数（戦闘開始時にその回数だけ物理ダメージを受ける） */
+  const hits = new Map<number, number>();
   const done = new Set<number>();
   const busy = new Set<number>();
   let stacks = 0;
@@ -375,6 +377,7 @@ export function egirDevour(board: OwnedUnit[], egirMembers: Set<number>, damage 
     atkGain.set(eater.uid, (atkGain.get(eater.uid) ?? 0) + st.atk + (atkGain.get(prey.uid) ?? 0));
     blockGain.set(eater.uid, (blockGain.get(eater.uid) ?? 0) + st.block + (blockGain.get(prey.uid) ?? 0));
     stacks += preyDef.tier;
+    hits.set(prey.uid, (hits.get(prey.uid) ?? 0) + 1);
     if (!dead.has(prey.uid) && st.hp <= Math.max(damage - st.def, damage * 0.05)) dead.add(prey.uid);
   };
   for (const eater of order) devour(eater);
@@ -382,7 +385,7 @@ export function egirDevour(board: OwnedUnit[], egirMembers: Set<number>, damage 
     atkGain.delete(uid);
     blockGain.delete(uid);
   }
-  return { atkGain, blockGain, dead, stacks };
+  return { atkGain, blockGain, dead, hits, stacks };
 }
 
 setActiveMap(LEGACY_MAP.id);

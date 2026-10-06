@@ -317,7 +317,7 @@ function prepView(p: GameViewProps): HTMLElement {
     return [
       title,
       unitDetail(shown.unit, shown.where === 'board' ? setup.mods.get(shown.unit.uid) : undefined),
-      setup.excluded.has(shown.unit.uid) ? h('p', { class: 'small ng' }, '【エーギル】に捕食され、戦闘開始時に倒れます') : null,
+      setup.excluded.has(shown.unit.uid) ? h('p', { class: 'small ng' }, '【エーギル】に捕食され、戦闘開始時に物理ダメージを受けて倒れる見込みです') : null,
       isSelected
         ? h(
             'div',

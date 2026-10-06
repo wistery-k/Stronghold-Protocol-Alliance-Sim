@@ -176,8 +176,10 @@ export interface BattleSetup {
   rowCount: Map<number, number>;
   /** 特性で加算数が増える時の追加量（シヴィライト・エテルナ） */
   bonusGain: Map<number, number>;
-  /** 戦闘開始時に倒れているユニット（エーギルの捕食） */
+  /** 戦闘開始時に倒れる見込みのユニット（エーギルの捕食。盟約などの補正込みのHP・防御力での目安。素質やバリアは見ない） */
   excluded: Set<number>;
+  /** 【エーギル】の捕食で受けるダメージ（1回の値と回数） */
+  devour: Map<number, { damage: number; hits: number }>;
 }
 
 /** 特性を付与する特性の対象（付与元の特性IDの番号 → 対象） */
@@ -457,11 +459,11 @@ export function battleSetup(
     apply(targets, { aspd: v('skillful', 'base_attack_speed') + v('skillful', 'attack_speed_per_stack') * sk('skillful') });
   }
   // エーギル：前方1マスを捕食して基礎攻撃力・ブロック数を得る（連鎖する）
-  let excluded = new Set<number>();
+  const devour = new Map<number, { damage: number; hits: number }>();
   if (lv('egir') >= 1) {
     const dv = egirDevour(board, members('egir'), v('egir', 'damage_value'));
     for (const [uid, atk] of dv.atkGain) apply([uid], { atkFlat: atk, blockFlat: dv.blockGain.get(uid) });
-    excluded = dv.dead;
+    for (const [uid, hits] of dv.hits) devour.set(uid, { damage: v('egir', 'damage_value'), hits });
   }
   // 秘術
   if (lv('arcane') >= 1) {
@@ -689,5 +691,16 @@ export function battleSetup(
       break;
   }
 
-  return { statuses, mods, globals, garrisons, rowCount, bonusGain, excluded };
+  // 捕食のダメージで倒れる見込みの者（実際の判定は戦闘シミュレーターで行う）
+  const excluded = new Set<number>();
+  for (const [uid, d] of devour) {
+    const o = board.find((b) => b.uid === uid)!;
+    const st = unitState(getUnit(o.defId), o.star).stats;
+    const m = mods.get(uid) ?? {};
+    const hp = st.hp * (1 + (m.hpPct ?? 0));
+    const def = st.def * (1 + (m.defPct ?? 0)) + (m.defFlat ?? 0);
+    const per = Math.max(d.damage - def, d.damage * 0.05) * Math.max(0, 1 - (m.damageReduce ?? 0) - (m.physReduce ?? 0));
+    if (per * d.hits >= hp) excluded.add(uid);
+  }
+  return { statuses, mods, globals, garrisons, rowCount, bonusGain, excluded, devour };
 }

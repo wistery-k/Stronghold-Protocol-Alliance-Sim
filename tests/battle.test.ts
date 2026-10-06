@@ -328,7 +328,7 @@ describe('コストと再配置', () => {
     expect(r.frames!.some((f) => f.u?.some((x) => x[3] === 4))).toBe(true);
   });
 
-  it('【エーギル】に捕食された者は戦闘開始時に撤退した扱いで、そのマスで再配置を待つ', () => {
+  it('【エーギル】の捕食で倒れた者は戦闘開始時に撤退し、そのマスで再配置を待つ', () => {
     const spec = oneEnemy('test_target', false, { speed: 0.01 });
     const at = (uid: number, name: string, x: number): OwnedUnit => ({ uid, defId: UNITS.find((u) => u.name === name)!.id, star: 1, pos: cellPos(x + 1, 3), dir: 'right' });
     const r = run([at(1, 'アンダーフロー', 0), at(2, 'ルシーラ', 1), at(3, 'スペクター', 2), at(4, 'プロヴァンス', 3)], spec);
@@ -345,6 +345,24 @@ describe('コストと再配置', () => {
       expect(r.perUnit.find((x) => x.uid === uid)!.redeploys).toBe(1);
     }
     expect(r.perUnit.find((x) => x.uid === 1)!.retreats).toBe(0);
+  });
+
+  it('【エーギル】の捕食は5000の物理ダメージで、耐えた者は戦闘に残る', () => {
+    const spec = oneEnemy('test_target', false, { speed: 0.01 });
+    const id = (name: string) => UNITS.find((u) => u.name === name)!.id;
+    // 精鋭のウルピアヌス（HP 5905・【エーギル】のHP上昇込み）は5000では倒れない
+    const board: OwnedUnit[] = [
+      { uid: 1, defId: id('アンダーフロー'), star: 1, pos: cellPos(1, 3), dir: 'right' },
+      { uid: 2, defId: id('ウルピアヌス'), star: 2, pos: cellPos(2, 3), dir: 'up' },
+      { uid: 3, defId: id('ルシーラ'), star: 1, pos: cellPos(6, 3), dir: 'left' },
+    ];
+    setActiveMap('legacy');
+    expect(buildSimInputs(board, [], {}).excluded.has(2)).toBe(false);
+    const r = run(board, spec);
+    expect(r.perUnit.find((x) => x.uid === 2)!.retreats).toBe(0);
+    expect(r.perUnit.find((x) => x.uid === 2)!.taken).toBe(5000);
+    const hp = r.frames![0].u!.find((x) => x[0] === 2)![1];
+    expect(hp > 0 && hp < 100).toBe(true);
   });
 
   it('【エーギル】Lv2：捕食で倒れたエーギルも、最初の3名は即座に復活する', () => {
