@@ -77,6 +77,23 @@ describe('parseSkill', () => {
     expect(s.hitDefDown).toBeCloseTo(-0.25);
     expect(s.hitDefDownTime).toBe(5);
   });
+  it('「次の通常攻撃時」のチャージ・連撃・周囲全員・範囲拡大', () => {
+    const malist = parseSkill(byName('ミニマリスト').golden.skill);
+    expect(malist.charges).toBe(3);
+    expect(malist.hits).toBe(2);
+    const bpipe = parseSkill(byName('バグパイプ').normal.skill);
+    expect(bpipe.charges).toBe(1);
+    expect(bpipe.hits).toBe(2);
+    expect(bpipe.atkScale).toBeCloseTo(1.45);
+    expect(parseSkill(byName('グム').golden.skill).charges).toBe(2);
+    const mud = parseSkill(byName('マドロック').normal.skill);
+    expect(mud.allGround).toBe(true);
+    expect(mud.hits).toBe(1);
+    const dusk = parseSkill(byName('シー').normal.skill);
+    expect(dusk.charges).toBe(2);
+    expect(dusk.splashRadius > 1).toBe(true);
+    expect(parseSkill(byName('メテオ').normal.skill).charges).toBe(1);
+  });
 });
 
 describe('simulateDps', () => {
