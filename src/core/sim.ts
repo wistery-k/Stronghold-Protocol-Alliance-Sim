@@ -289,7 +289,8 @@ export function parseSkill(s: SkillData): SkillModel {
     aspd: get('attack_speed', 'attack@attack_speed') ?? 0,
     intervalAdd: get('base_attack_time', 'attack@base_attack_time') ?? 0,
     // 1未満の倍率は副次効果（範囲ダメージ等）のことが多いので、主攻撃には使わない
-    atkScale: Math.max(1, get('atk_scale', 'attack@atk_scale') ?? 1),
+    // （ムリナールS3の atk_scale 0.1 はカジミエーシュへの追加ダメージで、主攻撃は attack@atk_scale）
+    atkScale: Math.max(1, (get('atk_scale') ?? 0) >= 1 ? get('atk_scale')! : get('attack@atk_scale') ?? 1),
     hits,
     // 配置時のスキルの max_target は副次効果（血掟テキサスの剣雨）の対象数
     maxTarget: onDeploy ? 1 : Math.max(1, Math.round(get('attack@max_target', 'max_target') ?? 1)),
@@ -386,6 +387,12 @@ const ALL_IN_RANGE_SUB = new Set(['stalker']);
 const LORD_RANGED_SCALE = 0.8;
 /** 特性で遠距離攻撃もできる近距離の職分（飛行の敵も攻撃する）：領主・偵察兵（偵察兵は攻撃力の低下なし） */
 const RANGED_TRAIT_SUBPROF = new Set(['lord', 'agent']);
+/**
+ * 解放者（ムリナール）の特性：通常時は攻撃せずブロック数0、攻撃力が最大 +200% まで徐々に上昇（40秒で最大）。
+ * スキル終了時にリセット。値は character_table の trait（atk 2.0・max_stack_cnt 40）。上昇は一定の速さ（仮）
+ */
+const LIBRATOR_ATK = 2.0;
+const LIBRATOR_MAX_TIME = 40;
 /** スキル中、領主の遠距離攻撃の攻撃力低下が無くなる（ラップランドS2・チューバイS3は「無効化」、シルバーアッシュS3は「近接攻撃と見なす」） */
 const LORD_FULL_ATK_SKILL = new Set(['char_140_whitew', 'char_4082_qiubai', 'char_172_svrash']);
 /** 近距離だが、スキルは飛行の敵にも当たる（凛御シルバーアッシュS2・デーゲンブレヒャーS3） */
@@ -995,6 +1002,9 @@ interface Runtime {
   dotDps: number;
   /** 戦術【食腐の蝶】：味方が倒れるたびに得た攻撃力の層 */
   qalaisaStacks: number;
+  /** 解放者：特性の攻撃力上昇を溜めた時間（秒）と、スキル中に倒した敵の数 */
+  liberStack: number;
+  liberKills: number;
   /** 戦術【薬枚実験】：護盾（被弾1回を無効化）と確率の累積 */
   mberryShield: number;
   mberryAcc: number;
@@ -1135,6 +1145,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       home: { pos: input.pos, dir: input.dir },
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
+      liberStack: 0,
+      liberKills: 0,
       evadeAcc: ACC_START,
       tb: [talentBB(input.def, input.star, 0), talentBB(input.def, input.star, 1)],
       ts: newTalentState(),
@@ -1581,6 +1593,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (!by) return;
     by.result.kills++;
     talentOnKill(e, by);
+    // 解放者：スキル中に倒した敵の数（ムリナールS3の特性の倍率が下がる）
+    if (by.input.def.subProfession === 'librator' && by.skillLeft > 0) by.liberKills++;
     // 突撃兵：敵を倒すとコスト+1
     if (field && by.input.def.subProfession === 'charger') cost = Math.min(MAX_COST, cost + 1);
     for (const ev of by.events) if (ev.kind === 'kill' && by.result.kills % ev.every === 0) gainStacks(ev);
@@ -1702,6 +1716,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken, 'true');
       // カジミエーシュLv2：ブロックしていない時は攻撃に攻撃力30%の確定ダメージを追加
       if (g.kazimierzPulse?.members.has(uid) && !kazimierzBlocking(u)) deal(u, e, atk * g.kazimierzPulse.pure * e.defense.damageTaken, 'true');
+      // ムリナールS3：他の味方【カジミエーシュ】がスキル範囲内の敵を攻撃すると、ムリナールの攻撃力×atk_scale の確定ダメージ
+      if (def.bonds.includes('kazimierz')) {
+        for (const y of rt) {
+          if (y === u || !y.alive || y.skillLeft <= 0 || !y.skill.bb.trait_up || y.input.def.subProfession !== 'librator') continue;
+          if (field && !covers(y.rangeSkill, e)) continue;
+          deal(y, e, y.curAtk * (y.skill.bb.atk_scale ?? 0) * e.defense.damageTaken, 'true');
+        }
+      }
       if (siraProc && g.siracusa) {
         const before = u.result.damage;
         deal(u, e, g.siracusa.procDmg * e.defense.damageTaken, 'true');
@@ -1849,6 +1871,13 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // 帰溟スペクター：スキル終了後、身替りと入れ替わる
     if (cid(u) === GHOST2 && !u.owner && u.alive && !inDoll(u)) enterDoll(u);
     talentOnSkillEnd(u);
+    // 解放者：特性の攻撃力上昇をリセットし、ブロックしていた敵を放す
+    if (u.input.def.subProfession === 'librator') {
+      u.liberStack = 0;
+      u.liberKills = 0;
+      for (const e of u.blocked) e.blockedBy = null;
+      u.blocked = [];
+    }
     // 戦術【回収利用】：地上オペレーターのスキル終了時、周囲4マスのランダムな味方1名のSP回復
     if (g.humus && u.melee && u.input.pos !== undefined) {
       const p = u.input.pos;
@@ -2028,6 +2057,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       (u) =>
         u.blocker &&
         u.alive &&
+        // 解放者は通常時ブロック数0
+        !(u.input.def.subProfession === 'librator' && u.skillLeft <= 0 && u.ammoLeft <= 0) &&
         !stunned(u) &&
         u.input.pos === tile &&
         // 離陸中（ティッピ）は空中の敵だけ、それ以外は地上の敵だけをブロックする
@@ -2075,6 +2106,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.skillLeft = 0;
     u.ammoLeft = 0;
     u.qalaisaStacks = 0;
+    u.liberStack = 0;
+    u.liberKills = 0;
     u.mberryShield = 0;
     if (field && u.input.pos !== undefined) u.redeployAt = t + u.respawn;
   };
@@ -2297,6 +2330,18 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
   /** ブレミシャインの素質「盾剣騎士」：配置中なら被撃回復のスキルが攻撃時に回復するSP */
   const blemishineSp = () => rt.find((o) => o.alive && !o.owner && cid(o) === 'char_423_blemsh')?.tb[0].sp ?? 0;
+  /**
+   * 解放者の特性の攻撃力上昇（割合）。スキル中でない間に溜まり、スキル中は溜まらない（仮）。
+   * ムリナールS3はスキル中に特性の効果が trait_up 倍、スキル中に倒した敵1体ごとに倍率 per_kill_reduce（下限0、仮）
+   */
+  const liberatorAtk = (u: Runtime, dt: number) => {
+    if (u.input.def.subProfession !== 'librator') return 0;
+    const skillOn = u.skillLeft > 0 || u.ammoLeft > 0;
+    if (!skillOn) u.liberStack = Math.min(LIBRATOR_MAX_TIME, u.liberStack + dt);
+    const bb = u.skill.bb;
+    const mult = skillOn && bb.trait_up ? Math.max(0, bb.trait_up + (bb.per_kill_reduce ?? 0) * u.liberKills) : 1;
+    return (LIBRATOR_ATK * u.liberStack) / LIBRATOR_MAX_TIME * mult;
+  };
   const kazimierzAtk = (u: Runtime) => (g.kazimierz?.members.has(u.input.uid) ? Math.min(deployCount * g.kazimierz.atkPerDeploy, g.kazimierz.maxAtk) : 0);
 
   // ---- コスト・再配置 ----
@@ -4160,7 +4205,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u.qalaisaStacks * (g.qalaisa?.atk ?? 0) +
         talentAtkPct(u) +
         tileAtkPct(u) +
-        kazimierzAtk(u);
+        kazimierzAtk(u) +
+        liberatorAtk(u, dt);
       // 琳琅スワイヤー：コインを使って「シャンパン爆弾」（範囲内の敵に物理ダメージ）
       if (swire && field) {
         u.bombTimer -= dt;
@@ -4232,10 +4278,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const loop = def.subProfession === 'loopshooter';
       // 剣豪の特性：通常攻撃で2回ダメージを与える
       const hits = activeNow && !s.instant ? (def.charId === TIPPI && u.skillLeft > 0 ? TIPPI_HITS : loop && !s.passive && s.bb.cnt ? s.bb.cnt : s.hits) : def.subProfession === 'sword' ? 2 : 1;
-      // 陣法術師はスキル中しか攻撃しない
+      // 陣法術師・解放者はスキル中しか攻撃しない
       // ヴィルトゥオーサはスキルでのみ攻撃、フィラエはスキル中は攻撃しない
       const canAttack =
-        !heal && !((def.subProfession === 'phalanx' || SKILL_ACTIVE_ONLY_ATTACK.has(def.charId)) && !activeNow) && !(field && SKILL_ONLY_ATTACK.has(def.charId)) && !(PHILAE[def.charId] && u.skillLeft > 0) &&
+        !heal && !((def.subProfession === 'phalanx' || def.subProfession === 'librator' || SKILL_ACTIVE_ONLY_ATTACK.has(def.charId)) && !activeNow) && !(field && SKILL_ONLY_ATTACK.has(def.charId)) && !(PHILAE[def.charId] && u.skillLeft > 0) &&
         !(NO_ATTACK_IN_SKILL.has(def.charId) && u.skillLeft > 0) && !((def.charId === MIXER || def.charId === LEMUEN) && u.ammoLeft > 0) && !inMotion;
 
       // 医療：治療行動（吟遊者は範囲内の全員を毎秒攻撃力の10%回復）

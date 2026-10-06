@@ -1353,6 +1353,37 @@ describe('デーゲンブレヒャー', () => {
   });
 });
 
+describe('解放者（ムリナール）', () => {
+  const board = (): OwnedUnit[] => [{ uid: 1, defId: UNITS.find((u) => u.name === 'ムリナール')!.id, star: 1, pos: 31, dir: 'right' }];
+
+  it('通常時はブロックしない（スキルの準備前に来た地上の敵は素通り）', () => {
+    const spec = oneEnemy('test_mlynar_pass', false);
+    const r = run([{ ...board()[0], pos: 29 }], spec);
+    expect(r.perUnit[0].skillCasts).toBe(0);
+    expect(r.perUnit[0].damage).toBe(0);
+    expect(r.leaked).toBe(1);
+  });
+
+  it('スキル中しか攻撃しない', () => {
+    const spec = { ...oneEnemy('test_mlynar', false, { speed: 0.01, def: 0 }), timeLimit: 90 };
+    const r = run(board(), spec);
+    expect(r.perUnit[0].skillCasts).toBeGreaterThan(0);
+    const t0 = r.frames!.find((f) => f.u![0][3] === 1)!.t;
+    expect(r.fx!.some((e) => e[1] === 0 && e[2] === 1 && e[0] / 100 < t0 - 0.05)).toBe(false);
+    expect(r.fx!.some((e) => e[1] === 0 && e[2] === 1 && e[0] / 100 > t0)).toBe(true);
+    expect(r.perUnit[0].damage).toBeGreaterThan(0);
+  });
+
+  it('S3中、他の味方【カジミエーシュ】がスキル範囲内の敵を攻撃するとムリナールの確定ダメージが加わる', () => {
+    const spec = { ...oneEnemy('test_mlynar_kz', false, { speed: 0.01, def: 0 }), timeLimit: 90 };
+    const solo = run(board(), spec);
+    const meteor = UNITS.find((u) => u.name === 'メテオ')!.id;
+    const duo = run([...board(), { uid: 2, defId: meteor, star: 1, pos: 13, dir: 'down' }], spec);
+    expect(solo.perUnit[0].byKind.true).toBe(0);
+    expect(duo.perUnit[0].byKind.true).toBeGreaterThan(0);
+  });
+});
+
 describe('モジュールの攻撃範囲', () => {
   it('精鋭はモジュールで通常時の攻撃範囲が広がる（スキル専用の範囲はそのまま）', () => {
     // フィリオプシス（モジュール：医療環境分析装置）
