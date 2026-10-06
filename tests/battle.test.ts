@@ -575,6 +575,56 @@ describe('寒冷・凍結とスキルの細部', () => {
     }
   });
 
+  /** スキルの説明文を一時的に書き換えて実行する（チャージ・周囲全員などの比較用） */
+  const withDesc = <T,>(name: string, from: RegExp, fn: () => T): T => {
+    const sk = unit(name).normal.skill;
+    const saved = sk.description;
+    sk.description = saved.replace(from, '');
+    try {
+      return fn();
+    } finally {
+      sk.description = saved;
+    }
+  };
+
+  it('「N回チャージ可能」のスキルは敵がいない間にチャージを溜め、続けて発動する（シーS1）', () => {
+    const dusk = unit('シー');
+    const spec = oneEnemy('test_charge', false, { speed: 0.01, def: 0, res: 0 });
+    spec.spawns[0].delay = 20;
+    const go = () => run([{ uid: 1, defId: dusk.id, star: 1, pos: 34, dir: 'right' }], { ...spec, timeLimit: 30 }).perUnit[0];
+    const charged = go();
+    const single = withDesc('シー', /\n?\d+回チャージ可能/, go);
+    expect(charged.skillCasts > single.skillCasts).toBe(true);
+  });
+
+  it('バグパイプS2は追加でもう一度攻撃する（スキルの攻撃は2ヒット）', () => {
+    const bp = unit('バグパイプ');
+    const sk = bp.normal.skill;
+    const go = () => run([{ uid: 1, defId: bp.id, star: 1, pos: 31, dir: 'right' }], oneEnemy('test_bpipe', false, { def: 0 })).perUnit[0];
+    const withSkill = go();
+    const saved = sk.spCost;
+    sk.spCost = 9999;
+    try {
+      const plain = go();
+      expect(withSkill.skillCasts > 0).toBe(true);
+      expect(withSkill.hits).toBe(plain.hits + withSkill.skillCasts);
+    } finally {
+      sk.spCost = saved;
+    }
+  });
+
+  it('マドロックS2は周囲の地上の敵全員を攻撃する', () => {
+    const mud = unit('マドロック');
+    const spec = oneEnemy('test_mud_all', false, { def: 0, attack: { kind: 'melee', atk: 800, interval: 1, range: 0, arts: false } });
+    spec.spawns[0].count = 3;
+    spec.spawns[0].interval = 0.5;
+    const go = () => run([{ uid: 1, defId: mud.id, star: 1, pos: 31, dir: 'right' }], spec).perUnit[0];
+    const all = go();
+    const single = withDesc('マドロック', /周囲一定範囲内の地面にいる敵全員/, go);
+    expect(all.skillCasts > 0).toBe(true);
+    expect(all.damage > single.damage).toBe(true);
+  });
+
   it('防御力低下は別のオペレーターからなら乗算で重なる（プラマニクスS2とメテオS1）', () => {
     const meteor = unit('メテオ');
     const pram = unit('プラマニクス').normal.skill;

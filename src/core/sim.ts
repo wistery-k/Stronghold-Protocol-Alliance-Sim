@@ -256,6 +256,12 @@ export interface SkillModel {
   noChainDecay: boolean;
   /** 「次の通常攻撃時」のスキル：SPが溜まった後の次の通常攻撃がスキルの攻撃に置き換わる */
   nextAttack: boolean;
+  /** 「N回チャージ可能」：SPを spCost×N まで溜められ、1回の発動で spCost ずつ使う */
+  charges: number;
+  /** 「次の通常攻撃時」に周囲（スキル範囲）の地上の敵全員を攻撃する（マドロックS2） */
+  allGround: boolean;
+  /** 「次の通常攻撃時」のスプラッシュの半径（ダメージ発生範囲拡大。シーS1）。0なら通常どおり */
+  splashRadius: number;
   /** 即時発動スキルの命中で敵の防御力を下げる（割合・秒。メテオS1） */
   hitDefDown: number;
   hitDefDownTime: number;
@@ -277,7 +283,10 @@ export function parseSkill(s: SkillData): SkillModel {
   const charge = s.spType === 'INCREASE_WITH_TIME' ? 'time' : s.spType === 'INCREASE_WHEN_ATTACK' ? 'attack' : s.spType === 'INCREASE_WHEN_TAKEN_DAMAGE' ? 'hit' : 'none';
   const atk = get('atk', 'attack@atk') ?? 0;
   const timesRaw = get('times', 'attack@times');
-  const hits = timesRaw !== undefined && Number.isInteger(timesRaw) && timesRaw >= 2 ? timesRaw : 1;
+  const nextAttack = /次の通常攻撃/.test(s.description);
+  // 「次の通常攻撃時」の連撃：「N回連続」（ミニマリスト）、「追加でもう一度攻撃する」（バグパイプ。2回とも上昇した攻撃力）
+  const nextHits = nextAttack ? Number(/(\d+)回連続/.exec(s.description)?.[1] ?? (s.description.includes('追加でもう一度攻撃') ? 2 : 1)) : 1;
+  const hits = timesRaw !== undefined && Number.isInteger(timesRaw) && timesRaw >= 2 ? timesRaw : nextHits;
   const ammo = s.durationType === 'AMMO' ? get('attack@trigger_time', 'trigger_time', 'ammo', 'cnt', 'attack@cnt') ?? 0 : 0;
   // 「退場まで効果継続」のスキル（スルト）は長い効果時間として扱う。それ以外の duration < 0 は即時発動
   const duration = onDeploy
@@ -321,7 +330,10 @@ export function parseSkill(s: SkillData): SkillModel {
     costOverTime: Number(/所持コストが徐々に増加（合計(\d+)）/.exec(s.description)?.[1] ?? 0),
     costPerAttack: /攻撃するたびに所持コスト\+1/.test(s.description) ? 1 : 0,
     noChainDecay: s.description.includes('跳躍時のダメージ減衰が発生しなくなる'),
-    nextAttack: /次の通常攻撃/.test(s.description),
+    nextAttack,
+    charges: Math.max(1, Number(/(\d+)回チャージ可能/.exec(s.description)?.[1] ?? 1)),
+    allGround: nextAttack && /周囲一定範囲内の地面にいる敵全員/.test(s.description),
+    splashRadius: nextAttack && s.description.includes('ダメージ発生範囲拡大') ? NEXT_ATTACK_SPLASH_RADIUS : 0,
     hitDefDown: hitDefDown ? Number(bb.def) : 0,
     hitDefDownTime: hitDefDown ? Number(bb.duration) : 0,
   };
@@ -391,6 +403,9 @@ function flagFactor(mods: Modifier, t: number): number {
 
 /** 範囲攻撃（対象の周囲1マスにも同じダメージ） */
 const SPLASH_SUB = new Set(['splashcaster', 'bombarder', 'blastcaster', 'fortress']);
+/** スプラッシュの半径（マス）。「ダメージ発生範囲拡大」の値はデータに無いので仮 */
+const SPLASH_RADIUS = 1.0;
+const NEXT_ATTACK_SPLASH_RADIUS = 1.5;
 /** 攻撃範囲内の敵すべてを攻撃 */
 const ALL_IN_RANGE_SUB = new Set(['stalker']);
 /** 領主の特性：遠距離攻撃（自身がブロックしていない敵への攻撃）は攻撃力80%。飛行の敵も攻撃できる */
@@ -1824,7 +1839,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
 
   /** 1回の攻撃で狙う敵と倍率 */
-  const pickTargets = (u: Runtime, skillActive: boolean): [Enemy, number][] => {
+  const pickTargets = (u: Runtime, skillActive: boolean, splash = SPLASH_RADIUS): [Enemy, number][] => {
     const cands = targetsInRange(u, skillActive);
     if (!cands.length) return [];
     const sub = u.input.def.subProfession;
@@ -1856,7 +1871,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       for (const e of enemies) {
         if (!e.alive || main.some(([m]) => m === e)) continue;
         if (isStealthed(e)) continue;
-        if (Math.hypot(e.x - p.x, e.y - p.y) <= 1.0) main.push([e, 1]);
+        if (Math.hypot(e.x - p.x, e.y - p.y) <= splash) main.push([e, 1]);
       }
     }
     return main;
@@ -1940,7 +1955,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const castSkill = (u: Runtime, outerAtkPct: number) => {
     const { mods, uid, def, star } = u.input;
     const s = u.skill;
-    u.sp = 0;
+    // チャージできるスキルは1回分のSPだけ使う（残りは次のチャージ）
+    u.sp = s.charges > 1 ? Math.max(0, u.sp - s.spCost) : 0;
     u.result.skillCasts++;
     u.lockOns = [];
     u.lockTimer = 0;
@@ -2047,9 +2063,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     } else if (s.instant) {
       if (support === 'selfHeal') healUnit(u, u, u.maxHp * (s.bb.hp_ratio ?? 0));
       const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
-      const hitList = pickTargets(u, true);
+      // マドロックS2：スキル範囲の地上の敵全員。シーS1：スプラッシュの範囲拡大
+      const hitList: [Enemy, number][] =
+        field && s.allGround
+          ? enemies.filter((e) => e.alive && e.spawned && !isFlying(e) && !e.input.spec.float && covers(u.rangeSkill, e)).map((e) => [e, 1])
+          : pickTargets(u, true, s.splashRadius || SPLASH_RADIUS);
       const style = SKILL_FX[def.charId];
       if (style) emit([13, uid, style, 0, ...hitList.flatMap(([e]) => [Math.round(e.x * 100), Math.round(e.y * 100)])]);
+      else if (field && s.nextAttack && SPLASH_SUB.has(def.subProfession) && hitList.length)
+        emit([1, uid, Math.round(hitList[0][0].x * 100), Math.round(hitList[0][0].y * 100), Math.round((s.splashRadius || SPLASH_RADIUS) * 100)]);
       else if (hitList.length >= 2) emit([2, uid, 1]);
       for (const [e, m] of hitList) {
         // 「次の通常攻撃時」のスキルは通常攻撃の一種なので、攻撃時の素質（メテオの対空・会心など）も乗る
@@ -4421,7 +4443,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         // 範囲攻撃の演出：攻撃範囲全体（複数を巻き込む攻撃）、または着弾地点の周囲（スプラッシュ）
         if (SPLASH_SUB.has(def.subProfession) && field) {
           const p0 = targets[0][0];
-          emit([1, uid, Math.round(p0.x * 100), Math.round(p0.y * 100), 100]);
+          emit([1, uid, Math.round(p0.x * 100), Math.round(p0.y * 100), SPLASH_RADIUS * 100]);
         } else {
           const inSkill = !s.passive && activeNow;
           if (inSkill && SKILL_FX[def.charId]) emit([13, uid, SKILL_FX[def.charId], 1, ...targets.flatMap(([e]) => [Math.round(e.x * 100), Math.round(e.y * 100)])]);
@@ -4539,6 +4561,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       } else if (u.ammoLeft <= 0 && s.charge === 'time' && !inDoll(u)) {
         u.sp += (1 + (mods.spRegen ?? 0) + (mods.spRegenTalent ?? 0)) * dt;
       }
+      // チャージできるスキルはチャージ数の分までSPを溜める
+      if (s.charges > 1) u.sp = Math.min(u.sp, s.spCost * s.charges);
     }
 
     if (killTime === null && (enemies.every((e) => e.spawned && !e.alive && !e.leaked) || bossDefeated())) killTime = Math.round((t + dt) * 100) / 100;
