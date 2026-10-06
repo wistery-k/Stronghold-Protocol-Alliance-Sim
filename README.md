@@ -9,6 +9,7 @@
 ## 遊び方
 
 公開ページ： https://wistery-k.github.io/Stronghold-Protocol-Alliance-Sim/ （main への push で自動デプロイ）
+画面左上のタイトルの下に、公開中のページをビルドした日時（日本時間）とコミットを「最終更新」として表示しています。
 
 ローカルで動かす場合：
 
