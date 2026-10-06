@@ -27,6 +27,8 @@ export interface SimUnitInput {
   /** マップ上の位置と向き（マップ戦闘で使う） */
   pos?: number;
   dir?: Direction;
+  /** 【エーギル】に捕食されて戦闘開始時に倒れている（撤退扱い。再配置タイマーは0秒から動く） */
+  devoured?: boolean;
 }
 
 /** 与ダメージの種別（元素ダメージは防御力・術耐性の影響を受けない別枠） */
@@ -2577,8 +2579,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     if (cid(u) === TEXAS2) texasAppear(u);
   };
-  if (field) for (const u of rt) onDeployed(u);
-  else deployCount = rt.length;
+  if (field) {
+    for (const u of rt) if (!u.input.devoured) onDeployed(u);
+    // 【エーギル】に捕食された者：戦闘開始時に倒れ、そのマスで再配置を待つ
+    for (const u of rt) if (u.input.devoured) leaveField(u);
+  } else deployCount = rt.length;
 
   const tickCost = () => {
     // ウルピスフォリア：配置中はコストの自然回復速度上昇
@@ -4791,7 +4796,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
 
 export function simulateDps(units: SimUnitInput[], enemy: EnemyDef, opts: SimOptions = {}): SimResult {
   const r = runEngine(
-    units,
+    units.filter((u) => !u.devoured),
     [
       {
         key: enemy.id,
