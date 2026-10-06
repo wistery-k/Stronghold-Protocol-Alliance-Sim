@@ -6,7 +6,7 @@ import { h } from './dom';
 // ゲーム開始時の戦術選択
 
 /** このゲームでBANされる盟約（核心・追加） */
-function banPanel(banned: AllianceId[], mapName: string): HTMLElement {
+function banPanel(banned: AllianceId[], mapName: string, onReroll: (() => void) | null): HTMLElement {
   const core = banned.filter((b) => CORE_IDS.includes(b as never));
   const extra = banned.filter((b) => !CORE_IDS.includes(b as never));
   const chips = (ids: AllianceId[]) => ids.map((b) => h('span', { class: 'ban-chip' }, ALLIANCES[b].name));
@@ -14,7 +14,12 @@ function banPanel(banned: AllianceId[], mapName: string): HTMLElement {
     'div',
     { class: 'band-ban' },
     mapName ? h('div', { class: 'ban-row' }, h('b', null, 'マップ'), h('span', null, mapName)) : null,
-    h('b', null, 'このゲームの盟約BAN'),
+    h(
+      'div',
+      { class: 'ban-row' },
+      h('b', null, 'このゲームの盟約BAN'),
+      onReroll ? h('button', { class: 'btn ghost small', onclick: onReroll, title: '盟約BANだけを引き直します（マップと敵は変わりません）' }, '再抽選') : null,
+    ),
     banned.length
       ? [
           h('div', { class: 'ban-row' }, h('span', { class: 'muted small' }, '核心'), chips(core)),
@@ -24,7 +29,13 @@ function banPanel(banned: AllianceId[], mapName: string): HTMLElement {
   );
 }
 
-export function bandView(onPick: (id: BandId) => void, onCancel: (() => void) | null, banned: AllianceId[] = [], mapName = ''): HTMLElement {
+export function bandView(
+  onPick: (id: BandId) => void,
+  onCancel: (() => void) | null,
+  banned: AllianceId[] = [],
+  mapName = '',
+  onReroll: (() => void) | null = null,
+): HTMLElement {
   const random = () => {
     const pool = BANDS.filter((b) => b.impl !== 'none');
     onPick(pool[Math.floor(Math.random() * pool.length)].id);
@@ -47,7 +58,7 @@ export function bandView(onPick: (id: BandId) => void, onCancel: (() => void) | 
           onCancel ? h('button', { class: 'btn ghost', onclick: onCancel }, 'キャンセル') : null,
         ),
       ),
-      banPanel(banned, mapName),
+      banPanel(banned, mapName, onReroll),
       h(
         'div',
         { class: 'band-list' },
