@@ -415,8 +415,8 @@ const NEXT_ATTACK_SPLASH_RADIUS = 1.7;
 const ALL_IN_RANGE_SUB = new Set(['stalker']);
 /** 領主の特性：遠距離攻撃（自身がブロックしていない敵への攻撃）は攻撃力80%。飛行の敵も攻撃できる */
 const LORD_RANGED_SCALE = 0.8;
-/** 特性で遠距離攻撃もできる近距離の職分（飛行の敵も攻撃する）：領主・偵察兵（偵察兵は攻撃力の低下なし） */
-const RANGED_TRAIT_SUBPROF = new Set(['lord', 'agent']);
+/** 特性で遠距離攻撃もできる近距離の職分（飛行の敵も攻撃する）：領主・偵察兵・哨戒衛士（偵察兵・哨戒衛士は攻撃力の低下なし） */
+const RANGED_TRAIT_SUBPROF = new Set(['lord', 'agent', 'shotprotector']);
 /**
  * 解放者（ムリナール）の特性：通常時は攻撃せずブロック数0、攻撃力が最大 +200% まで徐々に上昇（40秒で最大）。
  * スキル終了時にリセット。値は character_table の trait（atk 2.0・max_stack_cnt 40）。上昇は一定の速さ（仮）
@@ -1813,7 +1813,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return e.input.path ? e.input.path.length - 1 - e.d : 0;
   };
 
-  /** 飛行（浮遊）の敵を攻撃できるか：遠距離・離陸中・領主／偵察兵（特性の遠距離攻撃）・対空のスキル中 */
+  /** 飛行（浮遊）の敵を攻撃できるか：遠距離・離陸中・領主／偵察兵／哨戒衛士（特性の遠距離攻撃）・対空のスキル中 */
   const hitsAir = (u: Runtime, skillActive: boolean) =>
     !u.melee || lifted(u) || RANGED_TRAIT_SUBPROF.has(u.input.def.subProfession) || (skillActive && SKILL_ANTI_AIR.has(cid(u)));
   /** 領主の遠距離攻撃（自身がブロックしていない敵）の攻撃力の倍率 */

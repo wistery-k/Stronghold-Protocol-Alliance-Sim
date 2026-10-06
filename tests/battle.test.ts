@@ -143,6 +143,20 @@ describe('マップ戦闘', () => {
     expect(Math.round(r.timeline[i - 1].hp - r.timeline[i].hp)).toBe(ines.normal.stats.atk);
   });
 
+  it('哨戒衛士（アンダーフロー・リスカム・サンクタ・ミキサー）は飛行の敵も攻撃できる', () => {
+    const sps = UNITS.filter((u) => u.subProfession === 'shotprotector');
+    expect(sps.map((u) => u.charId).sort()).toEqual(['char_107_liskam', 'char_4137_udflow', 'char_4194_rmixer']);
+    for (const sp of sps) {
+      expect(sp.position).toBe('melee');
+      const board: OwnedUnit[] = [{ uid: 1, defId: sp.id, star: 1, pos: 29, dir: 'right' }];
+      // サンクタ・ミキサーは弾薬スキル中は通常攻撃せず反撃だけなので、撃ってくる飛行の敵で反撃が当たるかを見る
+      const over: Partial<EnemySpec> = { def: 0, res: 0, speed: 0.3 };
+      if (sp.charId === 'char_4194_rmixer') over.attack = { kind: 'ranged', atk: 100, interval: 1, range: 1.5, arts: false };
+      const r = run(board, oneEnemy('test_sp_fly_' + sp.charId, true, over));
+      expect([sp.charId, r.perUnit[0].damage > 0]).toEqual([sp.charId, true]);
+    }
+  });
+
   it('近距離の非領主は飛行の敵を攻撃できない', () => {
     const guard = UNITS.find((u) => u.profession === 'guard' && u.position === 'melee' && u.subProfession !== 'lord')!;
     const r = run([{ uid: 1, defId: guard.id, star: 1, pos: 29, dir: 'right' }], oneEnemy('test_fly_g', true, { speed: 0.3 }));
