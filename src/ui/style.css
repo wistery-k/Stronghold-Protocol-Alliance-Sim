@@ -2127,3 +2127,22 @@ body.dragging * {
   font-weight: 700;
   fill: #ffd0d0;
 }
+
+/* バインド */
+.rp-root-mark {
+  display: none;
+  pointer-events: none;
+}
+.rp-enemy.rooted .rp-root-mark {
+  display: inline;
+}
+.rp-root-bg {
+  fill: #2a1840;
+  stroke: #b48cff;
+  stroke-width: 1.5;
+}
+.rp-root-text {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #e4d4ff;
+}

@@ -69,6 +69,8 @@ export interface EnemySpec {
      * 目標のマスを中心に radius マス以内（3×3）の味方に攻撃力のダメージ。着弾までに敵が倒れても砲撃は止まらない。射程の円は常に表示する
      */
     lockStrike?: { delay: number; radius: number };
+    /** 目標が弾薬スキル中なら、ダメージを与える代わりに弾薬を stealAmmo 発奪う（「サンクタの眼」） */
+    stealAmmo?: number;
     /** init 秒後から cooldown 秒ごとに、次の攻撃が times 連撃（「帝国の甲冑」） */
     multi?: { init: number; cooldown: number; times: number };
   };
@@ -110,6 +112,8 @@ export interface EnemySpec {
   flame?: { scale: number; init: number; cost: number; duration: number; interval: number; range: number };
   /** 一度だけ爆弾を投げる（目標と周囲 radius マスに攻撃力の物理ダメージ）。その後は攻撃せず、移動速度×speedMult（バクダンバチ） */
   throwOnce?: { radius: number; speedMult: number };
+  /** HPが初めて ratio 以下になった時、fear 秒の恐怖、speedDuration 秒の間 移動速度×speedMult（「サンクタの翼」「サンクタの眼」） */
+  selfFear?: { ratio: number; fear: number; speedMult: number; speedDuration: number };
   /** 挑発レベル：味方はブロック中の敵の次に、挑発レベルの高い敵を優先して狙う */
   taunt?: number;
   /** 敵の弾（<刺胄之弹>）：飛行中の的。突破・撃破の数には入れない */

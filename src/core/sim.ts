@@ -93,7 +93,7 @@ export interface EnemyMeta {
 /** リプレイ用のコマ：敵ごとに [id, x*100, y*100, HP%] と、スキル中のユニット */
 export interface ReplayFrame {
   t: number;
-  /** [id, x×100, y×100, HP%, 状態ビット（1 = 解放済みの囚人、2 = スタン中、4 = 恐怖中、8 = ステルス中、16 = 活性源石の上、32 = 石像形態、64 = 飛行形態の石像、128 = 寒冷、256 = 凍結、512 = 戦慄）] */
+  /** [id, x×100, y×100, HP%, 状態ビット（1 = 解放済みの囚人、2 = スタン中、4 = 恐怖中、8 = ステルス中、16 = 活性源石の上、32 = 石像形態、64 = 飛行形態の石像、128 = 寒冷、256 = 凍結、512 = 戦慄、1024 = バインド）] */
   e: [number, number, number, number, number?][];
   s: number[];
   /** 所持コスト */
@@ -515,7 +515,7 @@ export interface SimOptions {
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
-  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt' | 'ambush' | 'enrage' | 'throwOnce' | 'flame' | 'float' | 'stone' | 'parasite' | 'appearStrike'>>;
+  Partial<Pick<EnemySpec, 'stealth' | 'unblockable' | 'hitsToKill' | 'refract' | 'hitShield' | 'defReduce' | 'revive' | 'attack' | 'element' | 'elite' | 'deathPollution' | 'liberty' | 'statusResist' | 'large' | 'lowHpGuard' | 'roam' | 'minionOf' | 'bomb' | 'projectile' | 'summon' | 'dive' | 'taunt' | 'ambush' | 'enrage' | 'throwOnce' | 'selfFear' | 'flame' | 'float' | 'stone' | 'parasite' | 'appearStrike'>>;
 
 /**
  * 医療以外の治療・回復を持つスキル
@@ -718,8 +718,9 @@ interface TalentState {
   /** 撃破で得た層・攻撃力・最大HP */
   killStacks: number;
   killAtk: number;
-  /** 奪った攻撃力（イネス） */
+  /** 奪った攻撃力（イネスの素質）・攻撃速度（イネスS2） */
   stealAtk: number;
+  stealAspd: number;
   /** サンクタ・ミキサーの層 */
   mixer: number;
   /** サンクタ・ミキサー：バリアを失ってから（または最後に攻撃してから）の経過時間 */
@@ -762,6 +763,7 @@ const newTalentState = (): TalentState => ({
   killStacks: 0,
   killAtk: 0,
   stealAtk: 0,
+  stealAspd: 0,
   mixer: 0,
   barrierTimer: 0,
   saveUsed: false,
@@ -843,7 +845,14 @@ interface Enemy {
   /** 素質による弱体化（バブル：攻撃力低下、焔影リード：灼痕、イネス：奪われた攻撃力） */
   bubbleUntil: number;
   reedUntil: number;
-  stolenAtk: number;
+  /** イネス：奪われた攻撃力（素質）・攻撃速度（S2）。奪ったオペレーターごと */
+  stolenAtk: Map<Runtime, number>;
+  stolenAspd: Map<Runtime, number>;
+  /** バインド（移動しない。攻撃はする） */
+  rootUntil: number;
+  /** 「サンクタの翼」「サンクタの眼」：HP半分以下での恐怖を使った・移動速度上昇の終わる時刻 */
+  selfFeared: boolean;
+  selfFearSpeedUntil: number;
   /** 素質の継続術ダメージ（攻撃者ごと） */
   dots: Map<Runtime, { until: number; dps: number }>;
   /** 睡眠：終わる時刻・眠った時刻・眠らせたオペレーター（行動せず、通常は攻撃の対象にならない） */
@@ -1358,7 +1367,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       arcaneUntil: -1,
       bubbleUntil: -1,
       reedUntil: -1,
-      stolenAtk: 0,
+      stolenAtk: new Map(),
+      stolenAspd: new Map(),
+      rootUntil: -1,
+      selfFeared: false,
+      selfFearSpeedUntil: -1,
       dots: new Map(),
       confined: !!input.spec.liberty,
       confAttacks: 0,
@@ -1463,6 +1476,19 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (!e.alive || seconds <= 0 || e.input.spec.large || e.input.spec.boss) return;
     e.fearUntil = Math.max(e.fearUntil, t + seconds * (1 - (e.input.spec.statusResist ?? 0)));
     release(e);
+  };
+  /** バインド：移動できない（攻撃はする） */
+  const rootEnemy = (e: Enemy, seconds: number) => {
+    if (!e.alive || seconds <= 0) return;
+    e.rootUntil = Math.max(e.rootUntil, t + seconds * (1 - (e.input.spec.statusResist ?? 0)));
+  };
+  /** 「サンクタの翼」「サンクタの眼」：HPが初めて一定割合以下になると恐怖になり、しばらく移動速度が上がる */
+  const checkSelfFear = (e: Enemy) => {
+    const sf = e.input.spec.selfFear;
+    if (!sf || e.selfFeared || !e.alive || e.hp <= 1e-6 || e.hp / e.maxHp > sf.ratio) return;
+    e.selfFeared = true;
+    fearEnemy(e, sf.fear);
+    e.selfFearSpeedUntil = t + sf.speedDuration;
   };
   /** 戦慄：ブロックされている間は通常攻撃できない */
   const trembleEnemy = (e: Enemy, seconds: number) => {
@@ -1575,6 +1601,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       phaseLog.push({ t, note: p.note });
       e.phaseIdx++;
     }
+    checkSelfFear(e);
     if (e.hp <= 1e-6) killEnemy(e, u);
   };
 
@@ -1769,8 +1796,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.hp = Math.min(u.maxHp, Math.max(1, u.hp + Math.max(0, diff)));
   };
 
+  /** イネスS2で奪った攻撃速度を返す */
+  const returnStolenAspd = (u: Runtime) => {
+    if (!u.ts.stealAspd) return;
+    u.ts.stealAspd = 0;
+    for (const e of enemies) e.stolenAspd.delete(u);
+  };
   const endSkill = (u: Runtime) => {
     setSkillHp(u, false);
+    returnStolenAspd(u);
     if (cid(u) === TIPPI) land(u);
     if (cid(u) === LEMUEN) lemuenBombard(u);
     // カゼマル：スキル終了で召喚した身替りは消える
@@ -1980,10 +2014,21 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return dmg * Math.max(0, 1 - (u.input.mods.damageReduce ?? 0) - (arts ? 0 : (u.input.mods.physReduce ?? 0))) * (1 - protect);
   };
 
+  /** イネスの影哨：撤退した位置に残る（イネスごとに最大1体。通常の攻撃範囲で、素質「影哨」の効果だけを持つ） */
+  const inesSentinels = new Map<Runtime, Set<number>>();
+  /** イネスの退場：奪った攻撃力・攻撃速度を返し（自身の分も消える）、影哨を残す */
+  const inesLeaves = (u: Runtime) => {
+    for (const e of enemies) e.stolenAtk.delete(u);
+    u.ts.stealAtk = 0;
+    u.ts.firstHit.clear();
+    returnStolenAspd(u);
+    if (field && u.rangeNormal) inesSentinels.set(u, u.rangeNormal);
+  };
   /** 戦場から外れる（倒れた・コスト不足で撤退）。再配置タイマーが動き出す */
   const leaveField = (u: Runtime) => {
     u.alive = false;
     u.hp = 0;
+    if (cid(u) === 'char_4087_ines') inesLeaves(u);
     if (u.result.downAt === null) u.result.downAt = Math.round(t * 100) / 100;
     u.result.retreats++;
     for (const e of u.blocked) e.blockedBy = null;
@@ -2878,6 +2923,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         const lost = 1 - u.hp / u.maxHp;
         return (b0.min_attack_speed ?? 0) * Math.max(0, Math.min(1, lost / Math.max(0.01, 1 - (b0.min_hp_ratio ?? 0.3))));
       }
+      case 'char_4087_ines': // イネスS2：奪った攻撃速度
+        return ts.stealAspd;
       case 'char_4194_rmixer': // サンクタ・ミキサー：ダメージを与えるたびに攻撃速度上昇（10秒）
         return t - ts.lastDealtAt < (b0.duration ?? 10) ? ts.mixer * (b0.attack_speed ?? 0) : 0;
       case 'char_4196_reckpr': // レコードキーパー：範囲内の味方のスキル発動で攻撃速度上昇
@@ -2990,12 +3037,27 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           e.reedUntil = t + (b0.duration ?? 6);
         }
         break;
-      case 'char_4087_ines': // イネス：敵ごとに一度だけ攻撃力を奪う
-        if (first && ts.stealAtk < (b0.steal_atk_max ?? 0)) {
-          ts.stealAtk += b0.steal_atk ?? 0;
-          e.stolenAtk += b0.steal_atk ?? 0;
+      case 'char_4087_ines': {
+        // イネスの素質：敵ごとに一度だけ、バインドと攻撃力の奪取（奪った攻撃力は対象が倒れても自身に残る）
+        if (first) {
+          rootEnemy(e, b0.duration ?? 0);
+          const steal = Math.min(b0.steal_atk ?? 0, Math.max(0, (b0.steal_atk_max ?? 0) - ts.stealAtk));
+          if (steal > 0) {
+            ts.stealAtk += steal;
+            e.stolenAtk.set(u, (e.stolenAtk.get(u) ?? 0) + steal);
+          }
+        }
+        // S2：攻撃するたびに対象の攻撃速度を奪う（合計の上限あり。スキル終了・退場まで）
+        const sb = u.skill.bb;
+        if (u.skillLeft > 0 && sb['attack@steal_atk_speed']) {
+          const steal = Math.min(sb['attack@steal_atk_speed'], Math.max(0, (sb['attack@steal_atk_speed_max'] ?? 0) - ts.stealAspd));
+          if (steal > 0) {
+            ts.stealAspd += steal;
+            e.stolenAspd.set(u, (e.stolenAspd.get(u) ?? 0) + steal);
+          }
         }
         break;
+      }
       case 'char_206_gnosis': // ノーシス：攻撃時に寒冷
         if (b0.cold) applyCold(e, b0.cold);
         break;
@@ -3249,12 +3311,18 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
     }
   };
+  /** イネスの素質「影哨」が及ぶ：イネスの今の攻撃範囲（S2中は拡大した範囲）か、撤退後に残した影哨の範囲 */
+  const inSentinel = (w: Runtime, e: Enemy) =>
+    cid(w) === 'char_4087_ines' &&
+    w.tb[1].move_speed !== undefined &&
+    ((w.alive && covers(w.skillLeft > 0 ? w.rangeSkill : w.rangeNormal, e)) || covers(inesSentinels.get(w), e));
   /** 敵の移動速度の倍率（モスティマ・イネスの減速） */
   const talentSlow = (e: Enemy): number => {
     let slow = 0;
     for (const w of rt) {
+      if (inSentinel(w, e)) slow = Math.max(slow, -(w.tb[1].move_speed ?? 0));
       if (!w.alive || !covers(w.rangeNormal, e)) continue;
-      if (cid(w) === 'char_213_mostma' || cid(w) === 'char_4087_ines') slow = Math.max(slow, -(w.tb[1].move_speed ?? 0));
+      if (cid(w) === 'char_213_mostma') slow = Math.max(slow, -(w.tb[1].move_speed ?? 0));
       // 帰溟スペクター：身替りの間、周囲の敵の移動速度低下
       if (cid(w) === GHOST2 && inDoll(w)) slow = Math.max(slow, -(w.tb[0].move_speed ?? 0));
     }
@@ -3264,14 +3332,19 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const revealed = (e: Enemy) =>
     rt.some(
       (w) =>
-        w.alive &&
-        covers(w.rangeNormal, e) &&
-        ((cid(w) === 'char_172_svrash' && (unitState(w.input.def, w.input.star).talents?.length ?? 0) >= 2) ||
-          (cid(w) === 'char_4087_ines' && w.tb[1].move_speed !== undefined)),
+        inSentinel(w, e) ||
+        (w.alive && covers(w.rangeNormal, e) && cid(w) === 'char_172_svrash' && (unitState(w.input.def, w.input.star).talents?.length ?? 0) >= 2),
     );
+  const sumOf = (m: Map<Runtime, number>) => {
+    let v = 0;
+    for (const x of m.values()) v += x;
+    return v;
+  };
+  /** 敵の攻撃速度の倍率（イネスS2に奪われた攻撃速度。敵の攻撃速度は100として扱う） */
+  const enemyAspdRate = (e: Enemy) => (e.stolenAspd.size ? Math.max(20, 100 - sumOf(e.stolenAspd)) / 100 : 1);
   /** 敵の攻撃力（素質の弱体化） */
   const enemyAtk = (e: Enemy, atk: number) =>
-    Math.max(0, atk * (enemyGroundTile(e) === 'infection' ? 1 + INFECTION.atk : 1) * (t < e.bubbleUntil ? 1 + (holders('char_381_bubble')[0]?.tb[0].atk ?? -0.08) : 1) * (t < e.reedUntil ? 0.8 : 1) - e.stolenAtk);
+    Math.max(0, atk * (enemyGroundTile(e) === 'infection' ? 1 + INFECTION.atk : 1) * (t < e.bubbleUntil ? 1 + (holders('char_381_bubble')[0]?.tb[0].atk ?? -0.08) : 1) * (t < e.reedUntil ? 0.8 : 1) - sumOf(e.stolenAtk));
 
   // ------------------------------------------------------------
   // マップの特殊なマス
@@ -3302,6 +3375,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const dps = tl === 'infection' ? INFECTION.dps : tl === 'deepsea' ? DEEPSEA.dps : 0;
       if (!dps) continue;
       e.hp -= dps * dt;
+      checkSelfFear(e);
       if (e.hp <= 1e-6) killEnemy(e, null);
     }
   };
@@ -3329,7 +3403,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       (e.stoned && e.stoneUntil < 0 ? 64 : 0) |
       (t < e.coldUntil ? 128 : 0) |
       (isFrozen(e) ? 256 : 0) |
-      (t < e.trembleUntil ? 512 : 0);
+      (t < e.trembleUntil ? 512 : 0) |
+      (t < e.rootUntil ? 1024 : 0);
     if (flags) f.push(flags);
     return f;
   };
@@ -3406,7 +3481,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (e.atkTimer > 0) {
         // 寒冷中は攻撃速度が下がる。拘束中の囚人も攻撃速度が下がる
         const conf = lib && e.confined ? Math.max(0.1, (100 + lib.confAspd) / 100) : 1;
-        e.atkTimer -= (t < e.coldUntil ? (dt * (100 - COLD_ATTACK_SPEED)) / 100 : dt) * tileEnemyAtkRate(e) * conf;
+        e.atkTimer -= (t < e.coldUntil ? (dt * (100 - COLD_ATTACK_SPEED)) / 100 : dt) * tileEnemyAtkRate(e) * conf * enemyAspdRate(e);
         continue;
       }
       // 戦慄：ブロックされている間は通常攻撃できない（周囲攻撃は通常攻撃ではないので続く）
@@ -3471,6 +3546,14 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         }
         e.thrown = true;
         if (e.blockedBy === null) e.stallUntil = t + RANGED_ATTACK_STALL;
+        continue;
+      }
+      // 「サンクタの眼」：目標が弾薬スキル中なら、ダメージを与える代わりに弾薬を奪う（使い切ったらスキル終了。弾薬の消費には数えない）
+      if (a.stealAmmo && target.ammoLeft > 0) {
+        target.ammoLeft = Math.max(0, target.ammoLeft - a.stealAmmo);
+        if (target.ammoLeft === 0) endSkill(target);
+        e.atkTimer = a.interval;
+        if (a.kind === 'ranged' && e.blockedBy === null) e.stallUntil = t + RANGED_ATTACK_STALL;
         continue;
       }
       const free = lib && !e.confined;
@@ -3557,9 +3640,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.alive = false;
     blast(to.pos, to.stun, to.dotDps, to.dotDuration);
   };
-  /** 味方のステルス：【シラクーザ】Lv2の配置後の一定時間。敵の遠距離攻撃の対象にならない */
+  /** 味方のステルス：【シラクーザ】Lv2の配置後の一定時間、イネスS2の間。敵の遠距離攻撃の対象にならない */
   const unitStealthed = (u: Runtime) =>
-    !!g.siracusa && g.siracusa.fear > 0 && g.siracusa.members.has(u.input.uid) && t - u.ts.deployedAt < g.siracusa.duration;
+    (!!g.siracusa && g.siracusa.fear > 0 && g.siracusa.members.has(u.input.uid) && t - u.ts.deployedAt < g.siracusa.duration) ||
+    (cid(u) === 'char_4087_ines' && u.skillLeft > 0);
   /** ステルス中は次の攻撃の倍率を戻す。臨戦状態の敵は周囲に元素損傷を与え続ける */
   const tickEnemyStates = () => {
     for (const e of enemies) {
@@ -3783,7 +3867,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.defense.res = currentRes(e);
       }
       const path = e.input.path;
-      const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) * tileEnemySpeed(e) * zaroSlow(e) : 1) * (e.enraged ? (e.input.spec.enrage?.speedMult ?? 1) : 1) * (e.thrown ? (e.input.spec.throwOnce?.speedMult ?? 1) : 1);
+      const speed = e.input.spec.speed * moveMultiplier * (field ? talentSlow(e) * tileEnemySpeed(e) * zaroSlow(e) : 1) * (e.enraged ? (e.input.spec.enrage?.speedMult ?? 1) : 1) * (e.thrown ? (e.input.spec.throwOnce?.speedMult ?? 1) : 1) * (t < e.selfFearSpeedUntil ? (e.input.spec.selfFear?.speedMult ?? 1) : 1);
+      // バインド：その場から動かない（恐怖で逃げている間も）
+      if (t < e.rootUntil) continue;
       if (t < e.fearUntil) {
         // 恐怖：来た道を逃げる（ブロックされない）
         e.d = Math.max(0, e.d - speed * dt);

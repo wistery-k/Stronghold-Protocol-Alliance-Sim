@@ -2953,7 +2953,13 @@
    "flying": true,
    "boss": false,
    "elite": false,
-   "lifeReduce": 1
+   "lifeReduce": 1,
+   "selfFear": {
+    "ratio": 0.5,
+    "fear": 5.0,
+    "speedMult": 2.5,
+    "speedDuration": 5.0
+   }
   },
   "enemy_1005_yokai_2": {
    "name": "怪鳥Mk2",
@@ -3026,7 +3032,14 @@
     "atk": 1000,
     "interval": 3.0,
     "range": 1.3,
-    "arts": false
+    "arts": false,
+    "stealAmmo": 1
+   },
+   "selfFear": {
+    "ratio": 0.5,
+    "fear": 5.0,
+    "speedMult": 2.5,
+    "speedDuration": 5.0
    }
   },
   "enemy_1407_hummbd": {

@@ -302,7 +302,7 @@ export const TALENT_STATUS: Record<string, [TalentImpl, string?][]> = {
   char_332_archet: [['full'], ['full']],
   char_4194_rmixer: [['full'], ['full', 'バリアは攻撃を受けた時に先に削られる']],
   char_213_mostma: [['full'], ['full']],
-  char_4087_ines: [['partial', 'バインドは未再現'], ['partial', '撤退後の影哨は未再現']],
+  char_4087_ines: [['full', '奪った攻撃力は対象が倒れても残る（仮）'], ['full', '影哨の範囲は通常の攻撃範囲（仮）']],
   char_1021_kroos2: [['partial', '確率は期待値。スタンは未再現']],
   char_222_bpipe: [['partial', '確率は期待値。攻撃対象数+1は未再現'], ['full']],
   char_437_mizuki: [['full'], ['full']],
