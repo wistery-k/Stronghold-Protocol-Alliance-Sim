@@ -1431,6 +1431,26 @@ describe('寒冷・凍結とスキルの細部', () => {
       expect((r.fx ?? []).some((x) => x[1] === 6)).toBe(true);
     });
 
+    it('ウルサス軍重野砲：攻撃は目標のマスを中心に燃焼区域を残し、範囲内の味方に毎秒の術ダメージ', () => {
+      const spec = ENEMIES.enemy_10122_uacann_2;
+      expect(spec.attack!.burn).toEqual({ radius: 1, duration: 3, dps: 150 });
+      const board: OwnedUnit[] = [{ uid: 1, defId: sn, star: 2, pos: 24, dir: 'down' }];
+      // 攻撃力0にして、燃焼区域の有無で受けるダメージを比べる
+      const r = one('enemy_10122_uacann_2', { hp: 1e9, speed: 0.01, attack: { ...spec.attack!, atk: 0 } }, board);
+      const noBurn = one('enemy_10122_uacann_2', { hp: 1e9, speed: 0.01, attack: { ...spec.attack!, atk: 0, burn: undefined } }, board);
+      // 攻撃のたびに目標のマスへ区域（半径1・3秒）
+      const shots = (r.fx ?? []).filter((x) => x[1] === 3);
+      const burns = (r.fx ?? []).filter((x) => x[1] === 15);
+      expect(burns.length).toBe(shots.length);
+      expect(burns.length > 0).toBe(true);
+      expect(burns[0].slice(5)).toEqual([100, 30]);
+      expect((noBurn.fx ?? []).some((x) => x[1] === 15)).toBe(false);
+      // 区域1つあたり 3秒 × 150（術耐性で軽減）以下の追加ダメージ
+      const extra = r.perUnit[0].taken - noBurn.perUnit[0].taken;
+      expect(extra > 0).toBe(true);
+      expect(extra <= burns.length * 3 * 150 + 1).toBe(true);
+    });
+
     it('墓守の石像：一度目に倒れると石像形態になり、その後は飛行形態で進む', () => {
       // 石像形態の間に倒されないよう、石像の防御力を極端に上げて確認
       const r = one('enemy_1172_dugago', { hp: 3000, def: 0, refract: 0, stone: { def: 99999, res: 30, duration: 10 } }, [{ uid: 1, defId: sn, star: 2, pos: 24, dir: 'down' }], 80);

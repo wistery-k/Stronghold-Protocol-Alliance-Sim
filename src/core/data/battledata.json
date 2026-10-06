@@ -4027,7 +4027,12 @@
     "atk": 500,
     "interval": 5.0,
     "range": 10.0,
-    "arts": false
+    "arts": false,
+    "burn": {
+     "radius": 1.0,
+     "duration": 3.0,
+     "dps": 150.0
+    }
    }
   },
   "enemy_1272_nhtank_2": {
