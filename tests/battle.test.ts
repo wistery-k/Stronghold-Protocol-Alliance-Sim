@@ -1548,3 +1548,86 @@ describe('イネス', () => {
     expect(s0 < s1).toBe(true);
   });
 });
+
+describe('【強襲】', () => {
+  const utage = UNITS.find((u) => u.id === '1_18')!;
+  const humus = UNITS.find((u) => u.id === '2_09')!;
+  const other = UNITS.find((u) => u.profession === 'guard' && !u.bonds.includes('raid') && u.tier <= 2)!;
+  // 旧マップの (5,1)・(4,2) は敵の通らない地上マス。左向きなら経路は攻撃範囲に入らない
+  const board = (second: string): OwnedUnit[] => [
+    { uid: 1, defId: utage.id, star: 1, pos: 14, dir: 'left', items: [] } as OwnedUnit,
+    { uid: 2, defId: second, star: 1, pos: 22, dir: 'left', items: [] } as OwnedUnit,
+  ];
+
+  it('2人で、範囲内に敵がいないまま10秒攻撃しないと地上の敵の周囲へ再配置され、攻撃するようになる', () => {
+    const spec = oneEnemy('raidDummy', false, { def: 0, res: 0 });
+    const r = run(board(humus.id), spec);
+    const moved = r.frames!.find((f) => f.mv?.length)!;
+    expect(!!moved).toBe(true);
+    const [, pos] = moved.mv![0];
+    expect(canPlace(pos, utage.id)).toBe(true);
+    const e = moved.e[0];
+    expect(Math.max(Math.abs(cellX(pos) - e[1] / 100), Math.abs(cellY(pos) - e[2] / 100)) <= 1.5).toBe(true);
+    expect(r.perUnit.reduce((s, u) => s + (u.raids ?? 0), 0) >= 1).toBe(true);
+    // 1人だけ（盟約が発動していない）なら動かない
+    const r1 = run(board(other.id), spec);
+    expect(r1.frames!.some((f) => f.mv?.length)).toBe(false);
+    expect(r1.perUnit.every((u) => !u.raids)).toBe(true);
+  });
+
+  it('スキル発動中は攻撃力が上がる（層数に応じて）', () => {
+    const spec = oneEnemy('raidDummy2', false, { def: 0, res: 0 });
+    setActiveMap('legacy');
+    const a = buildSimInputs(board(humus.id), [], {});
+    const b = buildSimInputs(board(humus.id), [], { raid: 30 });
+    expect(a.globals.raid!.atk).toBe(0.25);
+    expect(Math.abs(b.globals.raid!.atk - 0.55) < 1e-9).toBe(true);
+    const ra = simulateBattle(a.inputs, spec, { globals: a.globals });
+    const rb = simulateBattle(b.inputs, spec, { globals: b.globals });
+    expect(rb.totalDamage > ra.totalDamage).toBe(true);
+  });
+});
+
+describe('【カジミエーシュ】の配置回数と〈配置時〉の特性', () => {
+  const board: OwnedUnit[] = [
+    { uid: 1, defId: '3_12', star: 1, pos: 14, dir: 'left', items: [] } as OwnedUnit,
+    { uid: 2, defId: '6_17', star: 1, pos: 22, dir: 'left', items: [] } as OwnedUnit,
+    { uid: 3, defId: '1_19', star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit,
+  ];
+  it('戦闘開始時の全員と【強襲】の再配置を数え、上限まで攻撃力が上がる。ブレミシャインは再配置のたびに加算数を得る（戦闘1回の上限まで）', () => {
+    const spec = oneEnemy('kazDummy', false, { def: 0, res: 0 });
+    setActiveMap('legacy');
+    const { inputs, globals } = buildSimInputs(board, [], {});
+    expect(globals.kazimierz!.atkPerDeploy).toBe(0.2);
+    const r = simulateBattle(inputs, spec, { globals, activeAlliances: new Set(['kazimierz', 'raid']), stacks: {} });
+    const raids = r.perUnit.reduce((s, u) => s + (u.raids ?? 0), 0);
+    expect(raids >= 1).toBe(true);
+    expect(r.kazimierz!.deploys).toBe(3 + raids);
+    expect(r.kazimierz!.atkPct).toBe(Math.min(0.2 * (3 + raids), 0.5));
+    const blem = r.perUnit.find((u) => u.uid === 1)!.raids ?? 0;
+    expect(blem >= 1).toBe(true);
+    const gained = r.stackSources.filter((x) => x.uid === 1 && x.cause === '戦闘中の配置' && x.bond === 'kazimierz').reduce((s, x) => s + x.amount, 0);
+    expect(gained).toBe(Math.min(4 * blem, 8));
+  });
+});
+
+describe('被撃回復のスキル', () => {
+  const spec = () => {
+    const sp = oneEnemy('hitDummy', false, { def: 0, res: 0, attack: { kind: 'melee', atk: 100, interval: 1, range: 0 } } as Partial<EnemySpec>);
+    return { ...sp, timeLimit: 60 };
+  };
+  it('攻撃を受けるたびSPが溜まり、スキルを発動する（エステル・リスカム・マドロック・ブレミシャイン）', () => {
+    for (const id of ['1_12', '1_20', '4_18', '3_12']) {
+      const r = run([{ uid: 1, defId: id, star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit], spec());
+      expect(r.perUnit[0].skillCasts >= 1).toBe(true);
+    }
+  });
+  it('ブレミシャインの「盾剣騎士」：配置中は被撃回復のスキルが攻撃時にもSPを回復する', () => {
+    // 敵が攻撃しなければ被撃でSPは溜まらないので、攻撃時の回復だけで発動する
+    const quiet = oneEnemy('quietDummy', false, { def: 0, res: 0 });
+    const est: OwnedUnit = { uid: 1, defId: '1_12', star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit;
+    const blem: OwnedUnit = { uid: 2, defId: '3_12', star: 1, pos: 14, dir: 'left', items: [] } as OwnedUnit;
+    expect(run([est], { ...quiet, timeLimit: 60 }).perUnit[0].skillCasts).toBe(0);
+    expect(run([est, blem], { ...quiet, timeLimit: 60 }).perUnit.find((u) => u.uid === 1)!.skillCasts >= 1).toBe(true);
+  });
+});

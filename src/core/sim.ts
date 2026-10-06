@@ -1,5 +1,5 @@
 import { bondKey, type BattleGlobals } from './alliance';
-import { BOSS_CELLS, BOSS_CENTER, DIR_DELTA, ENEMY_PATHS, GOAL, canBlockAt, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
+import { BOARD_COLS, BOARD_ROWS, BOSS_CELLS, BOSS_CENTER, DIR_DELTA, ENEMY_PATHS, GOAL, PATH_TILES, canBlockAt, canPlace, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
 import { ENEMIES, rangeGrid, unitRangeIds, type ElementType, type EnemySpec, type RoundSpec } from './data/battle';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE, ENEMY_SPEED_SCALE } from './rules';
 import { unitState } from './data/units';
@@ -57,6 +57,8 @@ export interface SimUnitResult {
   /** 撤退（倒れた・コスト不足）回数と再配置回数 */
   retreats: number;
   redeploys: number;
+  /** 【強襲】で敵の周囲へ再配置された回数 */
+  raids?: number;
 }
 
 export interface SimResult {
@@ -114,6 +116,8 @@ export interface ReplayFrame {
   lf?: number[];
   /** 身替りと入れ替わっているオペレーターの uid（傀儡師） */
   dl?: number[];
+  /** 【強襲】で再配置されて戦闘開始時の位置にいないオペレーター（撤退中も含む）[uid, マス, 向き（0右・1下・2左・3上）] */
+  mv?: [number, number, number][];
   /** 召喚された身替り（カゼマルの紙人形）[uid, マス, HP%, 召喚主の uid] */
   tk?: [number, number, number, number][];
   /** 荒蕪ラップランドS3のザーロ [uid, x×100, y×100, 取り付いていれば1] */
@@ -179,6 +183,8 @@ export interface BattleResult {
   enBursts: number;
   /** 【サルゴン】のスキル発動時の強化：1層あたりの攻撃速度・攻撃力と、層数の最大・時間平均 */
   sargon?: { aspd: number; atkPct: number; max: number; avg: number };
+  /** 【カジミエーシュ】：戦闘中にオペレーターが配置された回数と、最後の攻撃力上昇 */
+  kazimierz?: { deploys: number; atkPct: number };
   /** 【シラクーザ】の配置後の攻撃速度上昇（上昇量・秒数・対象人数） */
   siracusa?: { aspd: number; duration: number; members: number };
   enemies: EnemyMeta[];
@@ -197,7 +203,8 @@ export const MIN_DAMAGE_RATIO = 0.05;
 // ------------------------------------------------------------
 
 export interface SkillModel {
-  charge: 'time' | 'attack' | 'none';
+  /** SPの溜まり方：時間・攻撃・被撃（攻撃を受けるたび1） */
+  charge: 'time' | 'attack' | 'hit' | 'none';
   passive: boolean;
   spCost: number;
   initSp: number;
@@ -256,7 +263,7 @@ export function parseSkill(s: SkillData): SkillModel {
   // 配置時に発動して時間で終わるスキル（ウタゲ・グラベル・血掟テキサス）
   const onDeploy = s.skillType === 'PASSIVE' && s.description.startsWith('配置後') && (bb.duration !== undefined || s.duration > 0);
   const passive = s.skillType === 'PASSIVE' && !onDeploy;
-  const charge = s.spType === 'INCREASE_WITH_TIME' ? 'time' : s.spType === 'INCREASE_WHEN_ATTACK' ? 'attack' : 'none';
+  const charge = s.spType === 'INCREASE_WITH_TIME' ? 'time' : s.spType === 'INCREASE_WHEN_ATTACK' ? 'attack' : s.spType === 'INCREASE_WHEN_TAKEN_DAMAGE' ? 'hit' : 'none';
   const atk = get('atk', 'attack@atk') ?? 0;
   const timesRaw = get('times', 'attack@times');
   const hits = timesRaw !== undefined && Number.isInteger(timesRaw) && timesRaw >= 2 ? timesRaw : 1;
@@ -410,7 +417,7 @@ const SELF_HEAL_SUB: Record<string, { hp: number; perTarget: boolean }> = {
 // ------------------------------------------------------------
 
 interface GarrisonEvent {
-  kind: 'useskill' | 'kill' | 'ammo' | 'dead' | 'freeze' | 'sleepstun';
+  kind: 'useskill' | 'kill' | 'ammo' | 'dead' | 'freeze' | 'sleepstun' | 'deploy';
   bonds: AllianceId[] | 'maxstack';
   count: number;
   /** シヴィライト・エテルナ：この特性で加算数を得るたびに追加される数（上限の対象外） */
@@ -442,6 +449,7 @@ const STACK_CAUSE: Record<GarrisonEvent['kind'], string> = {
   dead: '撤退',
   freeze: '範囲内の凍結',
   sleepstun: '範囲内の睡眠・スタン',
+  deploy: '戦闘中の配置',
 };
 
 function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
@@ -465,7 +473,9 @@ function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
                 ? 'freeze'
                 : key === 'act2autochess_gar_event_allyenemy_sleepstun_inrange'
                   ? 'sleepstun'
-                  : null;
+                  : key === 'act2autochess_gar_event_onstart'
+                    ? 'deploy'
+                    : null;
     if (!kind) continue;
     if (bb.conditionkey === 'character_same_row' && rowCount < Number(bb.check_count ?? 0)) continue;
     let count: number;
@@ -481,14 +491,16 @@ function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
             ? def.bonds
             : null;
     if (!bonds) continue;
+    const max = Number(bb.max_add_count_per_battle ?? Infinity);
     out.push({
       kind,
       bonds,
       count,
       bonus: input.bonusGain ?? 0,
-      max: Number(bb.max_add_count_per_battle ?? Infinity),
+      max,
       every: Number(kind === 'kill' ? (bb.check_cnt ?? 1) : (bb.consume_count ?? 1)),
-      gained: 0,
+      // 〈配置時〉の戦闘開始時の配置の分は戦闘前に加算済み（garrison.ts）。戦闘中の再配置で残りを加算する
+      gained: kind === 'deploy' ? Math.min(count, max) : 0,
       prob: Number(bb.prob ?? 1),
       acc: ACC_START,
       uid: input.uid,
@@ -1024,6 +1036,11 @@ interface Runtime {
   motionLen: number;
   slashLeft: number;
   slashTimer: number;
+  /** スキルの攻撃時の確率スタン（リスカムS2・マドロックS2）の累積（期待値） */
+  stunAcc: number;
+  /** 【強襲】：最後に攻撃した（または配置された）時刻と、戦闘開始時の位置と向き */
+  raidIdleFrom: number;
+  home: { pos: number | undefined; dir: Direction | undefined };
 }
 
 interface EngineResult {
@@ -1043,6 +1060,8 @@ interface EngineResult {
   opBursts: number;
   enBursts: number;
   sargon?: { aspd: number; atkPct: number; max: number; avg: number };
+  /** 【カジミエーシュ】：戦闘中にオペレーターが配置された回数と、最後の攻撃力上昇 */
+  kazimierz?: { deploys: number; atkPct: number };
   siracusa?: { aspd: number; duration: number; members: number };
 }
 
@@ -1105,6 +1124,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       motionLen: 0,
       slashLeft: 0,
       slashTimer: 0,
+      raidIdleFrom: 0,
+      stunAcc: ACC_START,
+      home: { pos: input.pos, dir: input.dir },
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
       evadeAcc: ACC_START,
@@ -1788,9 +1810,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
 
   /** スキル中の最大HP上昇の付け外し */
+  /** 【強襲】：有効化中の所属者はスキル発動中に攻撃力・最大HP上昇 */
+  const raidSkillBuff = (u: Runtime, key: 'atk' | 'hp') => (field && g.raid?.members.has(u.input.uid) && !u.owner ? g.raid[key] : 0);
   const setSkillHp = (u: Runtime, on: boolean) => {
-    if ((!u.skill.hpPct && !u.skill.hpFlat) || !u.alive) return;
-    const target = u.baseMaxHp * (1 + (on ? u.skill.hpPct : 0)) + (on ? u.skill.hpFlat : 0);
+    const raidHp = raidSkillBuff(u, 'hp');
+    if ((!u.skill.hpPct && !u.skill.hpFlat && !raidHp) || !u.alive) return;
+    const target = u.baseMaxHp * (1 + (on ? u.skill.hpPct + raidHp : 0)) + (on ? u.skill.hpFlat : 0);
     const diff = target - u.maxHp;
     u.maxHp = target;
     u.hp = Math.min(u.maxHp, Math.max(1, u.hp + Math.max(0, diff)));
@@ -1805,6 +1830,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const endSkill = (u: Runtime) => {
     setSkillHp(u, false);
     returnStolenAspd(u);
+    // リスカムS2：効果時間終了後、自身がスタン
+    if (cid(u) === 'char_107_liskam' && u.skill.bb.stun && u.alive) u.stunUntil = Math.max(u.stunUntil, t + u.skill.bb.stun);
     if (cid(u) === TIPPI) land(u);
     if (cid(u) === LEMUEN) lemuenBombard(u);
     // カゼマル：スキル終了で召喚した身替りは消える
@@ -1967,6 +1994,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       for (const [e, m] of hitList) {
         for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m);
         if (s.cold > 0) applyCold(e, s.cold);
+        // マドロックS2：確率で短時間スタン
+        if (field && s.bb.buff_prob && s.bb.stun) skillStun(u, e, s.bb.buff_prob, s.bb.stun);
       }
       endSkill(u);
     }
@@ -2126,6 +2155,64 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     dollBlast(tk, cands[0]);
   };
 
+  // ---- 【強襲】の再配置 ----
+  const inMotion0 = (u: Runtime) => u.motionLen > 0 && u.skillLeft > 0;
+  /** 位置と向きを変える（攻撃範囲・ブロックを置き直し、ブロック中の敵は解放する） */
+  const placeAt = (u: Runtime, pos: number | undefined, dir: Direction | undefined) => {
+    for (const e of u.blocked) e.blockedBy = null;
+    u.blocked = [];
+    u.input = { ...u.input, pos, dir };
+    const ids = unitRangeIds(u.input.def.id, u.input.star);
+    u.rangeNormal = toSet(pos, dir, ids.range);
+    u.rangeSkill = toSet(pos, dir, ids.skillRange ?? ids.range);
+    u.blocker = pos !== undefined && canBlockAt(pos) && u.input.def.damageType !== 'heal';
+    u.block = u.blocker ? unitState(u.input.def, u.input.star).stats.block : 0;
+  };
+  const DIRS: Direction[] = ['right', 'down', 'left', 'up'];
+  /**
+   * 地上の敵1体（防衛地点に最も近いもの）の周囲8マス（その敵のマスも含む）の空いている配置可能なマスへ再配置する。
+   * マスと向きは、その敵が攻撃範囲に入るもののうち、範囲内の地上の敵が多い → 敵をブロックできる地上マス → 敵に近い → 範囲に入る敵の経路のマスが多い順で選ぶ
+   */
+  const raidRelocate = (u: Runtime) => {
+    if (!g.raid) return;
+    const ground = enemies
+      .filter((e) => e.alive && e.spawned && !isFlying(e) && !e.input.spec.float && !e.input.spec.roam && !e.input.spec.projectile && !isStealthed(e))
+      .sort((a, b) => remaining(a) - remaining(b));
+    if (!ground.length) return;
+    const taken = new Set(rt.filter((o) => o !== u && (o.alive || o.redeployAt !== null) && o.input.pos !== undefined).map((o) => o.input.pos!));
+    const ids = unitRangeIds(u.input.def.id, u.input.star);
+    for (const target of ground) {
+      const tx = Math.round(target.x);
+      const ty = Math.round(target.y);
+      let best: { pos: number; dir: Direction; score: number[] } | null = null;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const x = tx + dx;
+          const y = ty + dy;
+          if (x < 0 || y < 0 || x >= BOARD_COLS || y >= BOARD_ROWS) continue;
+          const c = cellPos(x, y);
+          if (c === u.input.pos || taken.has(c) || !canPlace(c, u.input.def.id)) continue;
+          for (const dir of DIRS) {
+            const range = toSet(c, dir, ids.range);
+            const onTile = c === enemyTile(target) && canBlockAt(c);
+            if (!covers(range, target) && !onTile) continue;
+            const n = ground.filter((e) => covers(range, e)).length;
+            const score = [n, canBlockAt(c) ? 1 : 0, -(Math.abs(dx) + Math.abs(dy)), [...(range ?? [])].filter((x) => PATH_TILES.has(x)).length];
+            const diff = best ? score.findIndex((v, i) => v !== best!.score[i]) : 0;
+            if (!best || (diff >= 0 && score[diff] > best.score[diff])) best = { pos: c, dir, score };
+          }
+        }
+      }
+      if (!best) continue;
+      placeAt(u, best.pos, best.dir);
+      // 後から配置されたので、遠距離の敵に一番狙われやすくなる。配置時の効果も発動する（SPはそのまま）
+      u.order = ++orderCounter;
+      u.result.raids = (u.result.raids ?? 0) + 1;
+      onDeployed(u);
+      return;
+    }
+  };
+
   const unitDown = (u: Runtime) => {
     // 召喚された身替り（紙人形）はそのまま消える
     if (u.owner) return removeToken(u);
@@ -2175,12 +2262,32 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (indomAcc >= 1) {
         indomAcc -= 1;
         u.hp = u.maxHp;
+        countDeploy(u);
         return;
       }
     }
     for (const ev of u.events) if (ev.kind === 'dead') gainStacks(ev);
     leaveField(u);
   };
+
+  /** この戦闘でオペレーターが配置された回数（戦闘開始時の全員・再配置・【強襲】の再配置・【不屈】の即時再配置。【カジミエーシュ】の攻撃力） */
+  let deployCount = 0;
+  const countDeploy = (u: Runtime) => {
+    if (u.owner) return;
+    deployCount++;
+    // 〈配置時〉の堅守特性（ブレミシャインなど）：戦闘開始時の配置は戦闘前に加算済み
+    if (t > 0) for (const ev of u.events) if (ev.kind === 'deploy') gainStacks(ev);
+  };
+  /** スキルの攻撃時の確率スタン（確率は累積方式） */
+  const skillStun = (u: Runtime, e: Enemy, prob: number, seconds: number) => {
+    u.stunAcc += prob;
+    if (u.stunAcc < 1) return;
+    u.stunAcc -= 1;
+    stunEnemy(e, seconds);
+  };
+  /** ブレミシャインの素質「盾剣騎士」：配置中なら被撃回復のスキルが攻撃時に回復するSP */
+  const blemishineSp = () => rt.find((o) => o.alive && !o.owner && cid(o) === 'char_423_blemsh')?.tb[0].sp ?? 0;
+  const kazimierzAtk = (u: Runtime) => (g.kazimierz?.members.has(u.input.uid) ? Math.min(deployCount * g.kazimierz.atkPerDeploy, g.kazimierz.maxAtk) : 0);
 
   // ---- コスト・再配置 ----
   let cost = INITIAL_COST + (g.initialCost ?? 0);
@@ -2330,8 +2437,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   /** 配置時に発動するスキル（ウタゲ：HP減少と効果時間、グラベル：バリア） */
   const onDeployed = (u: Runtime) => {
     const s = u.skill;
+    countDeploy(u);
     // 素質：配置からの時間、マドロックのシールド（配置時に1枚）、アルケットのシールド
     u.ts.deployedAt = t;
+    u.raidIdleFrom = t;
     u.ts.shields = cid(u) === 'char_311_mudrok' ? 1 : 0;
     u.ts.shieldTimer = u.tb[0].interval ?? 9;
     u.ts.archShield = false;
@@ -2345,6 +2454,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.skillLeft = s.duration;
     u.castAt = t;
     u.result.skillCasts++;
+    setSkillHp(u, true);
     if (s.deployHpLoss) u.hp = Math.max(1, u.hp * (1 - s.deployHpLoss));
     if (s.barrier) {
       u.barrier = u.maxHp * s.barrier;
@@ -2354,6 +2464,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (cid(u) === TEXAS2) texasAppear(u);
   };
   if (field) for (const u of rt) onDeployed(u);
+  else deployCount = rt.length;
 
   const tickCost = () => {
     // ウルピスフォリア：配置中はコストの自然回復速度上昇
@@ -2452,6 +2563,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     philaeCounter(u);
     mixerCounter(u);
+    // 被撃回復のスキル：攻撃を受けるたびSP+1（スキル中は溜まらない）
+    if (u.skill.charge === 'hit' && u.skillLeft <= 0 && u.ammoLeft <= 0 && !inDoll(u)) u.sp += 1;
     if (talentOnHurt(u, arts, src)) return;
     // 聖約イグゼキュター：スキル中は近接攻撃を確率で回避し、弾薬を補充（期待値）
     if (EVADE_REFILL.has(u.input.def.charId) && u.ammoLeft > 0 && src.input.spec.attack?.kind === 'melee') {
@@ -3950,6 +4063,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       .map((u): [number, number] => [u.input.uid, u.sargonBuffs.filter((until) => until > t).length])
       .filter((x) => x[1] > 0);
 
+  const moveFrame = (): [number, number, number][] =>
+    rt.filter((u) => !u.owner && u.input.pos !== undefined && (u.input.pos !== u.home.pos || u.input.dir !== u.home.dir)).map((u) => [u.input.uid, u.input.pos!, DIRS.indexOf(u.input.dir ?? DEFAULT_DIRECTION)]);
   const stealthFrame = (): number[] => rt.filter((u) => u.alive && u.input.pos !== undefined && unitStealthed(u)).map((u) => u.input.uid);
   const siracusaFrame = (): number[] =>
     g.siracusa ? rt.filter((u) => u.alive && u.input.pos !== undefined && g.siracusa!.members.has(u.input.uid) && t - u.ts.deployedAt < g.siracusa!.duration).map((u) => u.input.uid) : [];
@@ -4033,7 +4148,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u.talentStacks * (ELEMENT_TALENT[def.charId]?.atkPerApoptosisBurst?.atk ?? 0) +
         u.qalaisaStacks * (g.qalaisa?.atk ?? 0) +
         talentAtkPct(u) +
-        tileAtkPct(u);
+        tileAtkPct(u) +
+        kazimierzAtk(u);
       // 琳琅スワイヤー：コインを使って「シャンパン爆弾」（範囲内の敵に物理ダメージ）
       if (swire && field) {
         u.bombTimer -= dt;
@@ -4050,6 +4166,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
       // スキル発動判定（攻撃役は攻撃範囲に敵がいる時だけ発動する）
       const skillActive = () => u.skillLeft > 0 || u.ammoLeft > 0;
+      // 【強襲】：10秒間攻撃していないかスキル準備完了で、範囲内に敵がいなければ地上の敵の周囲へ再配置（SPはそのまま）
+      if (field && g.raid?.members.has(uid) && !u.owner && !inMotion0(u)) {
+        const ready = !s.passive && !skillActive() && s.spCost > 0 && u.sp >= s.spCost && t >= u.recastAt;
+        if ((t - u.raidIdleFrom >= g.raid.idle - 1e-9 || ready) && !targetsInRange(u, skillActive()).length) raidRelocate(u);
+      }
       if (!s.passive && !skillActive() && t >= u.recastAt && u.sp >= s.spCost && s.spCost > 0 && !(field && def.charId === TIPPI) && !inDoll(u) && !opBursting(u, 'apoptosis') && (heal
           ? !field || injuredInRange(u, true).length > 0
           : field && (SUPPORT_SKILL[def.charId] === 'nextHeal' || SUPPORT_SKILL[def.charId] === 'areaHeal')
@@ -4062,7 +4183,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // ヒューマス：スキル中、HP割合に応じた「勇猛」
       const peak = activeNow && !s.passive ? (peakPerformance(s.bb).find(([ratio]) => u.hp / u.maxHp >= ratio)?.[1] ?? 0) : 0;
       const atk =
-        baseAtk(def, star, mods, outerAtkPct + peak + (activeNow && (!PHILAE[def.charId] || u.philaeBoost) ? s.atkPct : 0)) +
+        baseAtk(def, star, mods, outerAtkPct + peak + (activeNow && (!PHILAE[def.charId] || u.philaeBoost) ? s.atkPct : 0) + (activeNow ? raidSkillBuff(u, 'atk') : 0)) +
         (t < u.inspireUntil ? u.inspireAtk : 0) +
         talentAtkFlat(u);
       u.curAtk = atk;
@@ -4086,6 +4207,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           const targets = pickTargets(u, true);
           if (targets.length) emit([2, uid, 1]);
           for (const [e] of targets) strike(u, e, atk, (last ? s.bb.e_atk_scale_end : s.bb.d_atk_scale) ?? 1);
+          if (targets.length) u.raidIdleFrom = t;
           u.slashLeft--;
           u.slashTimer += s.bb.d_hit_interval ?? 0.3;
         }
@@ -4211,6 +4333,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           if (whitw2Stage(u) >= 2) neutralize(e0, u.tb[0]['attack@silence_duration'] ?? 2);
         } else
         for (const [e, m] of targets) for (let h = 0; h < hits; h++) strike(u, e, atk, scale * m * (hunter ? HUNTER_ATK_SCALE : 1) * talentScale(u, e, activeNow) * lordScale(u, e, activeNow));
+        // リスカムS2：スキル中の攻撃で確率スタン
+        if (field && activeNow && !s.passive && s.bb['attack@buff_prob'] && s.bb['attack@stun']) for (const [e] of targets) skillStun(u, e, s.bb['attack@buff_prob'], s.bb['attack@stun']);
         if (def.charId === TITI) {
           for (const [e] of targets) {
             // 素質：移動していない敵に攻撃力15%の術ダメージを追加
@@ -4240,6 +4364,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           if (ally) healUnit(u, ally, atk * (s.bb.heal_scale ?? 0));
         }
         u.result.hits += hits;
+        u.raidIdleFrom = t;
         if (field && activeNow && s.costPerAttack) cost = Math.min(MAX_COST, cost + s.costPerAttack);
         u.attacks++;
         u.ts.barrierTimer = 0;
@@ -4252,6 +4377,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
           useAmmo(u);
         } else if (s.charge === 'attack' && !activeNow) {
           u.sp += 1;
+        } else if (s.charge === 'hit' && !activeNow) {
+          // ブレミシャインの素質「盾剣騎士」：配置中、味方全員の被撃回復のスキルは攻撃時にもSP回復
+          u.sp += blemishineSp();
         }
       }
       if (u.atkTimer > 0) u.atkTimer -= dt;
@@ -4308,6 +4436,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         st: stealthFrame(),
         lf: rt.filter((u) => u.alive && lifted(u)).map((u) => u.input.uid),
         dl: rt.filter((u) => u.alive && inDoll(u)).map((u) => u.input.uid),
+        mv: moveFrame(),
         tk: rt.filter((u) => u.alive && u.owner && u.input.pos !== undefined).map((u): [number, number, number, number] => [u.input.uid, u.input.pos!, Math.round((u.hp / u.maxHp) * 100), u.owner!.input.uid]),
         zr: zaroFrame(),
         c: Math.floor(cost),
@@ -4332,6 +4461,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         st: stealthFrame(),
         lf: rt.filter((u) => u.alive && lifted(u)).map((u) => u.input.uid),
         dl: rt.filter((u) => u.alive && inDoll(u)).map((u) => u.input.uid),
+        mv: moveFrame(),
         tk: rt.filter((u) => u.alive && u.owner && u.input.pos !== undefined).map((u): [number, number, number, number] => [u.input.uid, u.input.pos!, Math.round((u.hp / u.maxHp) * 100), u.owner!.input.uid]),
         zr: zaroFrame(),
       c: Math.floor(cost),
@@ -4339,7 +4469,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   }
   const sargon = g.sargon ? { aspd: g.sargon.aspd, atkPct: g.sargon.atkPct, max: sargonMax, avg: Math.round((sargonSum / Math.max(dt, t)) * 10) / 10 } : undefined;
   const siracusa = g.siracusa && g.siracusa.aspd ? { aspd: g.siracusa.aspd, duration: g.siracusa.duration, members: rt.filter((u) => g.siracusa!.members.has(u.input.uid)).length } : undefined;
-  return { t, enemies, units: rt.filter((u) => !u.owner), timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, bossDefeated: bossDefeated(), colds, freezes, opBursts, enBursts, sargon, siracusa };
+  return { t, enemies, units: rt.filter((u) => !u.owner), timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, bossDefeated: bossDefeated(), colds, freezes, opBursts, enBursts, sargon, siracusa, kazimierz: g.kazimierz ? { deploys: deployCount, atkPct: Math.min(deployCount * g.kazimierz.atkPerDeploy, g.kazimierz.maxAtk) } : undefined };
 }
 
 // ------------------------------------------------------------
@@ -4470,6 +4600,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     enBursts: r.enBursts,
     sargon: r.sargon,
     siracusa: r.siracusa,
+    kazimierz: r.kazimierz,
     enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying && !e.stoned, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined, ring: e.input.spec.attack?.lockStrike ? e.input.spec.attack.range : undefined, large: e.input.spec.large || undefined })),
     bountyGold: bountyKilled.reduce((sum, e) => sum + (e.input.bounty ?? 0), 0),
     bountyKills: bountyKilled.length,
