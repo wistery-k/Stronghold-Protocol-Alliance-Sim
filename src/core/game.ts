@@ -686,7 +686,7 @@ export function buildSimInputs(
       pos: o.pos,
       dir: o.dir,
       bonusGain: setup.bonusGain.get(o.uid),
-      devoured: setup.excluded.has(o.uid) || undefined,
+      devoured: setup.devour.get(o.uid),
     })),
   };
 }

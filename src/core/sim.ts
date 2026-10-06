@@ -27,8 +27,8 @@ export interface SimUnitInput {
   /** マップ上の位置と向き（マップ戦闘で使う） */
   pos?: number;
   dir?: Direction;
-  /** 【エーギル】に捕食されて戦闘開始時に倒れる（倒れた時の効果も発動し、撤退なら再配置タイマーは0秒から動く） */
-  devoured?: boolean;
+  /** 【エーギル】に捕食された：戦闘開始時に damage の物理ダメージを hits 回受ける */
+  devoured?: { damage: number; hits: number };
 }
 
 /** 与ダメージの種別（元素ダメージは防御力・術耐性の影響を受けない別枠） */
@@ -4215,12 +4215,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const steps = Math.round(timeLimit / dt);
   const sampleEvery = Math.max(1, Math.round(0.5 / dt));
   const frameEvery = Math.max(1, Math.round(0.2 / dt));
-  // 【エーギル】に捕食された者：戦闘開始時に倒れる（倒れた時の効果・復活も発動。撤退ならそのマスで再配置を待つ）
+  // 【エーギル】に捕食された者：戦闘開始時に物理ダメージを受ける（倒れれば倒れた時の効果・復活も発動し、撤退ならそのマスで再配置を待つ）
   if (field) {
     for (const u of rt) {
-      if (!u.input.devoured) continue;
-      u.hp = 0;
-      unitDown(u);
+      const dv = u.input.devoured;
+      if (!dv) continue;
+      for (let i = 0; i < dv.hits; i++) takeDamage(u, mitigate(u, dv.damage, false));
     }
   }
   timeline.push({ t: 0, hp: remainingHp(), alive: 0 });
