@@ -340,26 +340,49 @@ export function neighbors(board: OwnedUnit[], o: OwnedUnit, eight = false): Owne
 
 /**
  * 【エーギル】の捕食：戦闘開始時、エーギル所属者が左・上の者から順に前方1マスのオペレーターを捕食し、
- * 5000の物理ダメージを与えて基礎攻撃力を得る。被捕食者の等級ぶん【エーギル】の加算数が増える。
+ * 5000の物理ダメージを与えて基礎攻撃力とブロック数を得る。被捕食者の等級ぶん【エーギル】の加算数が増える。
+ *
+ * 捕食で上がった後の基礎攻撃力・ブロック数を捕食できる（連鎖する）。捕食する前に、被捕食者が【エーギル】なら
+ * その者の捕食を先に済ませる（連鎖の先から順に捕食する）ので、連鎖の根元の者が全員分を得る。
+ * 向き合った2人やループでは、捕食を始めた者は捕食されない（その者を前にした者は捕食せずに倒れる）。
+ * 捕食で倒れたオペレーターも捕食対象になる（2人で同じ者を捕食できる）。
  */
 export function egirDevour(board: OwnedUnit[], egirMembers: Set<number>, damage = 5000) {
   const atkGain = new Map<number, number>();
+  const blockGain = new Map<number, number>();
   const dead = new Set<number>();
+  const done = new Set<number>();
+  const busy = new Set<number>();
   let stacks = 0;
   const order = board
     .filter((o) => egirMembers.has(o.uid) && o.pos !== undefined)
     .sort((a, b) => cellX(a.pos!) - cellX(b.pos!) || cellY(a.pos!) - cellY(b.pos!));
-  for (const eater of order) {
-    if (dead.has(eater.uid)) continue;
+  const isEgir = new Set(order.map((o) => o.uid));
+  const devour = (eater: OwnedUnit) => {
+    if (done.has(eater.uid) || dead.has(eater.uid)) return;
     const prey = frontOf(board, eater);
-    if (!prey || dead.has(prey.uid)) continue;
+    // 捕食を始めた者を前にした者は捕食しない
+    if (!prey || busy.has(prey.uid)) {
+      done.add(eater.uid);
+      return;
+    }
+    busy.add(eater.uid);
+    if (isEgir.has(prey.uid)) devour(prey);
+    busy.delete(eater.uid);
+    done.add(eater.uid);
     const preyDef = getUnit(prey.defId);
     const st = unitState(preyDef, prey.star).stats;
-    atkGain.set(eater.uid, (atkGain.get(eater.uid) ?? 0) + st.atk);
+    atkGain.set(eater.uid, (atkGain.get(eater.uid) ?? 0) + st.atk + (atkGain.get(prey.uid) ?? 0));
+    blockGain.set(eater.uid, (blockGain.get(eater.uid) ?? 0) + st.block + (blockGain.get(prey.uid) ?? 0));
     stacks += preyDef.tier;
-    if (st.hp <= Math.max(damage - st.def, damage * 0.05)) dead.add(prey.uid);
+    if (!dead.has(prey.uid) && st.hp <= Math.max(damage - st.def, damage * 0.05)) dead.add(prey.uid);
+  };
+  for (const eater of order) devour(eater);
+  for (const uid of dead) {
+    atkGain.delete(uid);
+    blockGain.delete(uid);
   }
-  return { atkGain, dead, stacks };
+  return { atkGain, blockGain, dead, stacks };
 }
 
 setActiveMap(LEGACY_MAP.id);

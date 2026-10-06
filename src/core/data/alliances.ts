@@ -115,7 +115,7 @@ export const ALLIANCES: Record<AllianceId, AllianceDef> = {
     describe: (s) => [
       {
         count: 3,
-        text: `【エーギル】の最大HP+${pct(v('egir', 'base_max_hp') + v('egir', 'max_hp_per_stack') * s)}。戦闘開始時、左・上の者から順に前方1マスのオペレーターを捕食し、5000の物理ダメージを与えて基礎攻撃力とブロック数を得る。被捕食者の等級ぶん加算数+`,
+        text: `【エーギル】の最大HP+${pct(v('egir', 'base_max_hp') + v('egir', 'max_hp_per_stack') * s)}。戦闘開始時、左・上の者から順に前方1マスのオペレーターを捕食し、5000の物理ダメージを与えて基礎攻撃力とブロック数を得る（捕食で上がった後の値を得るので連鎖する）。被捕食者の等級ぶん加算数+`,
       },
       { count: 5, text: '最初に倒された【エーギル】3名が即座に復活' },
     ],
