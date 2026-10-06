@@ -557,6 +557,47 @@ describe('寒冷・凍結とスキルの細部', () => {
     }
   });
 
+  it('「次の通常攻撃時」のスキルは通常攻撃を置き換える（メテオS1）', () => {
+    const meteor = unit('メテオ');
+    const sk = meteor.normal.skill;
+    const dmg = () => run([{ uid: 1, defId: meteor.id, star: 1, pos: 34, dir: 'right' }], oneEnemy('test_meteor_next', false, { speed: 0.01, def: 0 })).perUnit[0];
+    const withSkill = dmg();
+    const saved = sk.spCost;
+    sk.spCost = 9999;
+    try {
+      const plain = dmg();
+      // 攻撃回数は変わらず、6回に1回が135%になる（別の1撃として足すと約1.22倍）
+      expect(withSkill.hits).toBe(plain.hits);
+      const ratio = withSkill.damage / plain.damage;
+      expect(ratio > 1.03 && ratio < 1.1).toBe(true);
+    } finally {
+      sk.spCost = saved;
+    }
+  });
+
+  it('防御力低下は別のオペレーターからなら乗算で重なる（プラマニクスS2とメテオS1）', () => {
+    const meteor = unit('メテオ');
+    const pram = unit('プラマニクス').normal.skill;
+    // プラマニクスS2が開始直後から効果時間（14秒）いっぱい掛かっている間だけを見る
+    const spec = { ...oneEnemy('test_meteor_pram', false, { speed: 0.01, def: 1000 }), timeLimit: 13 };
+    const board = (): OwnedUnit[] => [
+      { uid: 1, defId: meteor.id, star: 1, pos: 34, dir: 'right' },
+      { uid: 2, defId: unit('プラマニクス').id, star: 1, pos: 33, dir: 'right' },
+    ];
+    const bb = meteor.normal.skill.blackboard;
+    const saved = [pram.initSp, bb.def] as const;
+    pram.initSp = pram.spCost;
+    try {
+      const withDown = run(board(), spec).perUnit[0].damage;
+      delete bb.def;
+      // プラマニクスの防御力-40%の範囲内でも、メテオの防御力-25%が乗算で上乗せされる（大きい方だけなら差が出ない）
+      expect(run(board(), spec).perUnit[0].damage < withDown).toBe(true);
+    } finally {
+      pram.initSp = saved[0];
+      bb.def = saved[1];
+    }
+  });
+
   it('与ダメージを種別（物理・術・確定・元素）ごとに記録する', () => {
     const spec = oneEnemy('test_kind', false, { speed: 0.01, def: 0, res: 0 });
     const kinds = (name: string) => run([{ uid: 1, defId: unit(name).id, star: 1, pos: 34, dir: 'right' }], spec).perUnit[0];
