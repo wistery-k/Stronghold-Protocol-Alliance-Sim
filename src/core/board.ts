@@ -384,10 +384,7 @@ export function egirDevour(board: OwnedUnit[], egirMembers: Set<number>, damage 
     if (!dead.has(prey.uid) && st.hp <= Math.max(damage - st.def, damage * 0.05)) dead.add(prey.uid);
   };
   for (const eater of order) devour(eater);
-  for (const uid of dead) {
-    atkGain.delete(uid);
-    blockGain.delete(uid);
-  }
+  // 捕食した後に捕食された者も、得た基礎攻撃力・ブロック数は持ち続ける（耐える・復活・再配置した時に効く）
   return { atkGain, blockGain, dead, hits, stacks };
 }
 
