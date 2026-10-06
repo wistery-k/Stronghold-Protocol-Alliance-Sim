@@ -403,9 +403,9 @@ function flagFactor(mods: Modifier, t: number): number {
 
 /** 範囲攻撃（対象の周囲1マスにも同じダメージ） */
 const SPLASH_SUB = new Set(['splashcaster', 'bombarder', 'blastcaster', 'fortress']);
-/** スプラッシュの半径（マス）。「ダメージ発生範囲拡大」の値はデータに無いので仮 */
+/** スプラッシュの半径（マス）。通常の値は仮。「ダメージ発生範囲拡大」（シーS1）は攻略 wiki の値 */
 const SPLASH_RADIUS = 1.0;
-const NEXT_ATTACK_SPLASH_RADIUS = 1.5;
+const NEXT_ATTACK_SPLASH_RADIUS = 1.7;
 /** 攻撃範囲内の敵すべてを攻撃 */
 const ALL_IN_RANGE_SUB = new Set(['stalker']);
 /** 領主の特性：遠距離攻撃（自身がブロックしていない敵への攻撃）は攻撃力80%。飛行の敵も攻撃できる */
