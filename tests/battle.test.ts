@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ENEMY_PATHS, GOAL, MAPS, cellX, cellY, RANDOM_MAPS, SPAWNS, canPlace, setActiveMap, tileAt } from '../src/core/board';
+import { ENEMY_PATHS, GOAL, MAPS, cellPos, cellX, cellY, RANDOM_MAPS, SPAWNS, canPlace, setActiveMap, tileAt } from '../src/core/board';
 import { ENEMIES, ENEMY_GROUPS, ROUNDS, pickRoundGroup, roundSpec, unitRangeIds, type EnemySpec, type RoundSpec } from '../src/core/data/battle';
 import { UNITS } from '../src/core/data/units';
 import { buildSimInputs, createGame, roundGroupOf } from '../src/core/game';
@@ -326,6 +326,35 @@ describe('コストと再配置', () => {
     expect(u.redeploys).toBeGreaterThan(0);
     // 再配置待ちの状態がリプレイに記録される
     expect(r.frames!.some((f) => f.u?.some((x) => x[3] === 4))).toBe(true);
+  });
+
+  it('【エーギル】に捕食された者は戦闘開始時に撤退した扱いで、そのマスで再配置を待つ', () => {
+    const spec = oneEnemy('test_target', false, { speed: 0.01 });
+    const at = (uid: number, name: string, x: number): OwnedUnit => ({ uid, defId: UNITS.find((u) => u.name === name)!.id, star: 1, pos: cellPos(x + 1, 3), dir: 'right' });
+    const r = run([at(1, 'アンダーフロー', 0), at(2, 'ルシーラ', 1), at(3, 'スペクター', 2), at(4, 'プロヴァンス', 3)], spec);
+    for (const uid of [2, 3, 4]) {
+      const u = r.perUnit.find((x) => x.uid === uid)!;
+      expect(u.downAt).toBe(0);
+      expect(u.retreats).toBe(1);
+      // 最初のフレームから再配置待ち（再配置タイマーが動いている）
+      const first = r.frames![0].u!.find((x) => x[0] === uid)!;
+      const later = r.frames!.find((f) => f.t >= 10)!.u!.find((x) => x[0] === uid)!;
+      expect(first[3]).toBe(4);
+      expect(later[3]).toBe(4);
+      expect(later[4]).toBe(first[4] - 100);
+      expect(r.perUnit.find((x) => x.uid === uid)!.redeploys).toBe(1);
+    }
+    expect(r.perUnit.find((x) => x.uid === 1)!.retreats).toBe(0);
+  });
+
+  it('【エーギル】Lv2：捕食で倒れたエーギルも、最初の3名は即座に復活する', () => {
+    const spec = oneEnemy('test_target', false, { speed: 0.01 });
+    const at = (uid: number, name: string, x: number): OwnedUnit => ({ uid, defId: UNITS.find((u) => u.name === name)!.id, star: 1, pos: cellPos(x + 1, 3), dir: 'right' });
+    const r = run([at(1, 'アンダーフロー', 0), at(2, 'ルシーラ', 1), at(3, 'スペクター', 2), at(4, 'グレイディーア', 3), at(5, '帰溟スペクター', 4)], spec);
+    for (const uid of [2, 3, 4]) {
+      expect(r.perUnit.find((x) => x.uid === uid)!.retreats).toBe(0);
+      expect(r.frames![0].u!.find((x) => x[0] === uid)![1]).toBe(100);
+    }
   });
 
   it('行商人は配置中にコストを消費する（琳琅スワイヤーはコインで追加攻撃）', () => {

@@ -640,7 +640,8 @@ export function battleSetup(
   }
 
   // 素質（戦闘開始時に決まる補正）
-  const fielded = board.filter((o) => !excluded.has(o.uid));
+  // 【エーギル】に捕食された者も編成にいる（戦闘開始時に倒れ、復活・再配置する）
+  const fielded = board;
   const talent = applyTalentMods(fielded, ownedBonds, apply);
   if (talent.initialCost) globals.initialCost = talent.initialCost;
 

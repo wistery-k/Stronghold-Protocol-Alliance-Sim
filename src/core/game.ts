@@ -676,19 +676,18 @@ export function buildSimInputs(
   const setup = battleSetup(board, bench, stacks, opts);
   return {
     ...setup,
-    inputs: board
-      .filter((o) => !setup.excluded.has(o.uid))
-      .map((o) => ({
-        uid: o.uid,
-        def: getUnit(o.defId),
-        star: o.star,
-        mods: setup.mods.get(o.uid) ?? {},
-        garrisons: setup.garrisons.get(o.uid),
-        rowCount: setup.rowCount.get(o.uid),
-        pos: o.pos,
-        dir: o.dir,
-        bonusGain: setup.bonusGain.get(o.uid),
-      })),
+    inputs: board.map((o) => ({
+      uid: o.uid,
+      def: getUnit(o.defId),
+      star: o.star,
+      mods: setup.mods.get(o.uid) ?? {},
+      garrisons: setup.garrisons.get(o.uid),
+      rowCount: setup.rowCount.get(o.uid),
+      pos: o.pos,
+      dir: o.dir,
+      bonusGain: setup.bonusGain.get(o.uid),
+      devoured: setup.excluded.has(o.uid) || undefined,
+    })),
   };
 }
 
