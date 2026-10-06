@@ -1347,7 +1347,15 @@ aside {
   font-size: 10px;
   font-weight: 700;
   paint-order: stroke;
-  stroke: rgba(255, 255, 255, 0.85);
+  stroke: var(--panel);
+  stroke-width: 3px;
+}
+.rp-atkup {
+  fill: #e0533c;
+  font-size: 10px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--panel);
   stroke-width: 3px;
 }
 .rp-enemy.boss.large .rp-enemy-body {

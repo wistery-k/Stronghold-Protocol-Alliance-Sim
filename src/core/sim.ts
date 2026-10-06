@@ -110,6 +110,8 @@ export interface ReplayFrame {
   sg?: [number, number][];
   /** 【シラクーザ】の攻撃速度上昇を受けているオペレーターの uid */
   sc?: number[];
+  /** 【カジミエーシュ】の所属者の攻撃力上昇（%） */
+  kz?: number;
   /** ステルス中のオペレーターの uid */
   st?: number[];
   /** 離陸中のオペレーターの uid（ティッピ） */
@@ -183,8 +185,10 @@ export interface BattleResult {
   enBursts: number;
   /** 【サルゴン】のスキル発動時の強化：1層あたりの攻撃速度・攻撃力と、層数の最大・時間平均 */
   sargon?: { aspd: number; atkPct: number; max: number; avg: number };
-  /** 【カジミエーシュ】：戦闘中にオペレーターが配置された回数と、最後の攻撃力上昇 */
-  kazimierz?: { deploys: number; atkPct: number };
+  /** 【カジミエーシュ】：戦闘中にオペレーターが配置された回数と、最後の攻撃力上昇、所属者の uid */
+  kazimierz?: { deploys: number; atkPct: number; members: number[] };
+  /** 堅守特性による攻撃速度 [uid, 攻撃速度]（耀騎士ニアールなど。0 のものは除く） */
+  garrisonAspd?: [number, number][];
   /** 【シラクーザ】の配置後の攻撃速度上昇（上昇量・秒数・対象人数） */
   siracusa?: { aspd: number; duration: number; members: number };
   enemies: EnemyMeta[];
@@ -1060,8 +1064,10 @@ interface EngineResult {
   opBursts: number;
   enBursts: number;
   sargon?: { aspd: number; atkPct: number; max: number; avg: number };
-  /** 【カジミエーシュ】：戦闘中にオペレーターが配置された回数と、最後の攻撃力上昇 */
-  kazimierz?: { deploys: number; atkPct: number };
+  /** 【カジミエーシュ】：戦闘中にオペレーターが配置された回数と、最後の攻撃力上昇、所属者の uid */
+  kazimierz?: { deploys: number; atkPct: number; members: number[] };
+  /** 堅守特性による攻撃速度 [uid, 攻撃速度]（耀騎士ニアールなど。0 のものは除く） */
+  garrisonAspd?: [number, number][];
   siracusa?: { aspd: number; duration: number; members: number };
 }
 
@@ -4066,6 +4072,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const moveFrame = (): [number, number, number][] =>
     rt.filter((u) => !u.owner && u.input.pos !== undefined && (u.input.pos !== u.home.pos || u.input.dir !== u.home.dir)).map((u) => [u.input.uid, u.input.pos!, DIRS.indexOf(u.input.dir ?? DEFAULT_DIRECTION)]);
   const stealthFrame = (): number[] => rt.filter((u) => u.alive && u.input.pos !== undefined && unitStealthed(u)).map((u) => u.input.uid);
+  const kazimierzFrame = (): number | undefined => (g.kazimierz ? Math.round(Math.min(deployCount * g.kazimierz.atkPerDeploy, g.kazimierz.maxAtk) * 100) : undefined);
   const siracusaFrame = (): number[] =>
     g.siracusa ? rt.filter((u) => u.alive && u.input.pos !== undefined && g.siracusa!.members.has(u.input.uid) && t - u.ts.deployedAt < g.siracusa!.duration).map((u) => u.input.uid) : [];
 
@@ -4433,6 +4440,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         ue: elemFrame(),
         sg: sargonFrame(),
         sc: siracusaFrame(),
+        kz: kazimierzFrame(),
         st: stealthFrame(),
         lf: rt.filter((u) => u.alive && lifted(u)).map((u) => u.input.uid),
         dl: rt.filter((u) => u.alive && inDoll(u)).map((u) => u.input.uid),
@@ -4458,6 +4466,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       ue: elemFrame(),
       sg: sargonFrame(),
         sc: siracusaFrame(),
+        kz: kazimierzFrame(),
         st: stealthFrame(),
         lf: rt.filter((u) => u.alive && lifted(u)).map((u) => u.input.uid),
         dl: rt.filter((u) => u.alive && inDoll(u)).map((u) => u.input.uid),
@@ -4467,9 +4476,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       c: Math.floor(cost),
     });
   }
+  const garrisonAspd = rt.filter((u) => !u.owner && (u.input.mods.garrisonAspd ?? 0) > 0).map((u): [number, number] => [u.input.uid, u.input.mods.garrisonAspd!]);
   const sargon = g.sargon ? { aspd: g.sargon.aspd, atkPct: g.sargon.atkPct, max: sargonMax, avg: Math.round((sargonSum / Math.max(dt, t)) * 10) / 10 } : undefined;
   const siracusa = g.siracusa && g.siracusa.aspd ? { aspd: g.siracusa.aspd, duration: g.siracusa.duration, members: rt.filter((u) => g.siracusa!.members.has(u.input.uid)).length } : undefined;
-  return { t, enemies, units: rt.filter((u) => !u.owner), timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, bossDefeated: bossDefeated(), colds, freezes, opBursts, enBursts, sargon, siracusa, kazimierz: g.kazimierz ? { deploys: deployCount, atkPct: Math.min(deployCount * g.kazimierz.atkPerDeploy, g.kazimierz.maxAtk) } : undefined };
+  return { t, enemies, units: rt.filter((u) => !u.owner), timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, bossDefeated: bossDefeated(), colds, freezes, opBursts, enBursts, sargon, siracusa, kazimierz: g.kazimierz ? { deploys: deployCount, atkPct: Math.min(deployCount * g.kazimierz.atkPerDeploy, g.kazimierz.maxAtk), members: [...g.kazimierz.members] } : undefined, garrisonAspd };
 }
 
 // ------------------------------------------------------------
@@ -4601,6 +4611,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     sargon: r.sargon,
     siracusa: r.siracusa,
     kazimierz: r.kazimierz,
+    garrisonAspd: r.garrisonAspd?.length ? r.garrisonAspd : undefined,
     enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying && !e.stoned, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined, ring: e.input.spec.attack?.lockStrike ? e.input.spec.attack.range : undefined, large: e.input.spec.large || undefined })),
     bountyGold: bountyKilled.reduce((sum, e) => sum + (e.input.bounty ?? 0), 0),
     bountyKills: bountyKilled.length,
