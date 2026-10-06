@@ -998,8 +998,13 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       h(
         'span',
         { class: 'rp-stat-list' },
-        statRow('最大HP', fmt(maxHp), base.hp, maxHp),
-        statRow('HP', `${fmt(hp)}（${Math.round((hp / Math.max(1, maxHp)) * 100)}%）`),
+        // HP は「現在/最大」。色分けは最大HPの部分だけ
+        h(
+          'span',
+          { class: 'rp-stat' },
+          h('span', { class: 'rp-stat-label' }, 'HP'),
+          h('span', { class: 'rp-stat-value' }, `${fmt(hp)}/`, h('span', { class: maxHp > base.hp + 0.5 ? 'up' : maxHp < base.hp - 0.5 ? 'down' : '' }, fmt(maxHp))),
+        ),
         statRow('攻撃力', fmt(atk), base.atk, atk),
         statRow('防御力', fmt(df), base.def, df),
         statRow('術耐性', fmt(res), base.res, res),

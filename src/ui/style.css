@@ -1560,10 +1560,12 @@ aside {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.rp-stat-value.up {
+.rp-stat-value.up,
+.rp-stat-value .up {
   color: var(--ok);
 }
-.rp-stat-value.down {
+.rp-stat-value.down,
+.rp-stat-value .down {
   color: var(--ng);
 }
 .rp-slider {
