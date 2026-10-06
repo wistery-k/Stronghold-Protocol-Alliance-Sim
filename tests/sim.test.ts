@@ -70,6 +70,13 @@ describe('parseSkill', () => {
     expect(s.intervalAdd).toBeCloseTo(-1.8);
     expect(s.duration).toBeGreaterThan(0);
   });
+  it('メテオS1：命中した敵の防御力低下', () => {
+    const s = parseSkill(byName('メテオ').normal.skill);
+    expect(s.instant).toBe(true);
+    expect(s.atkScale).toBeCloseTo(1.35);
+    expect(s.hitDefDown).toBeCloseTo(-0.25);
+    expect(s.hitDefDownTime).toBe(5);
+  });
 });
 
 describe('simulateDps', () => {

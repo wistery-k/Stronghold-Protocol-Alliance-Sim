@@ -254,6 +254,11 @@ export interface SkillModel {
   costPerAttack: number;
   /** 連鎖術師：スキル中は跳躍の減衰なし（レイズ） */
   noChainDecay: boolean;
+  /** 「次の通常攻撃時」のスキル：SPが溜まった後の次の通常攻撃がスキルの攻撃に置き換わる */
+  nextAttack: boolean;
+  /** 即時発動スキルの命中で敵の防御力を下げる（割合・秒。メテオS1） */
+  hitDefDown: number;
+  hitDefDownTime: number;
 }
 
 export function parseSkill(s: SkillData): SkillModel {
@@ -267,6 +272,8 @@ export function parseSkill(s: SkillData): SkillModel {
   // 配置時に発動して時間で終わるスキル（ウタゲ・グラベル・血掟テキサス）
   const onDeploy = s.skillType === 'PASSIVE' && s.description.startsWith('配置後') && (bb.duration !== undefined || s.duration > 0);
   const passive = s.skillType === 'PASSIVE' && !onDeploy;
+  // 「敵に…、X秒間防御力-Y%」：命中した敵の防御力を一定時間下げる
+  const hitDefDown = /敵に.*秒間防御力-/.test(s.description) && (bb.def ?? 0) < 0 && (bb.duration ?? 0) > 0;
   const charge = s.spType === 'INCREASE_WITH_TIME' ? 'time' : s.spType === 'INCREASE_WHEN_ATTACK' ? 'attack' : s.spType === 'INCREASE_WHEN_TAKEN_DAMAGE' ? 'hit' : 'none';
   const atk = get('atk', 'attack@atk') ?? 0;
   const timesRaw = get('times', 'attack@times');
@@ -314,6 +321,9 @@ export function parseSkill(s: SkillData): SkillModel {
     costOverTime: Number(/所持コストが徐々に増加（合計(\d+)）/.exec(s.description)?.[1] ?? 0),
     costPerAttack: /攻撃するたびに所持コスト\+1/.test(s.description) ? 1 : 0,
     noChainDecay: s.description.includes('跳躍時のダメージ減衰が発生しなくなる'),
+    nextAttack: /次の通常攻撃/.test(s.description),
+    hitDefDown: hitDefDown ? Number(bb.def) : 0,
+    hitDefDownTime: hitDefDown ? Number(bb.duration) : 0,
   };
 }
 
@@ -834,6 +844,8 @@ interface Enemy {
   atkTimer: number;
   /** 脆弱（被ダメージ増加）の終わる時刻 */
   vulnUntil: number;
+  /** スキルの命中による防御力低下（オペレーターごとの割合と終わる時刻。メテオS1） */
+  defDowns: Map<Runtime, { v: number; until: number }>;
   /** 遠距離攻撃のモーションで足を止めている時刻まで */
   stallUntil: number;
   /** 寒冷・凍結の終わる時刻 */
@@ -1237,16 +1249,23 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   const covers = (range: Set<number> | null | undefined, e: Enemy) =>
     !!range && (e.input.spec.large ? BOSS_CELLS.some((c) => range.has(c)) : range.has(enemyTile(e)));
   const effDefense = (e: Enemy): DefenseState => {
-    let dDef = 0;
+    // 防御力低下：同じオペレーターからのものは重ならず大きい方だけ、別のオペレーターからのものは乗算で重なる
+    const byOp = new Map<Runtime, number>();
     let dRes = 0;
     for (const u of rt) {
       const s = u.skill;
       if (!u.alive || (!s.enemyDef && !s.enemyRes) || !(u.skillLeft > 0 || u.ammoLeft > 0) || !covers(u.rangeSkill, e)) continue;
-      dDef = Math.min(dDef, s.enemyDef);
+      if (s.enemyDef) byOp.set(u, Math.min(byOp.get(u) ?? 0, s.enemyDef));
       dRes = Math.min(dRes, s.enemyRes);
     }
-    if (!dDef && !dRes) return e.defense;
-    return { ...e.defense, def: e.defense.def * (1 + dDef), res: e.defense.res * (1 + dRes) };
+    for (const [u, d] of e.defDowns) {
+      if (t < d.until) byOp.set(u, Math.min(byOp.get(u) ?? 0, d.v));
+      else e.defDowns.delete(u);
+    }
+    if (!byOp.size && !dRes) return e.defense;
+    let defMul = 1;
+    for (const v of byOp.values()) defMul *= 1 + v;
+    return { ...e.defense, def: e.defense.def * defMul, res: e.defense.res * (1 + dRes) };
   };
 
   // ---- 寒冷・凍結 ----
@@ -1387,6 +1406,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       neutralUntil: -1,
       atkTimer: 0,
       vulnUntil: -1,
+      defDowns: new Map(),
       stallUntil: -1,
       coldUntil: -1,
       frozenUntil: -1,
@@ -2032,8 +2052,15 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (style) emit([13, uid, style, 0, ...hitList.flatMap(([e]) => [Math.round(e.x * 100), Math.round(e.y * 100)])]);
       else if (hitList.length >= 2) emit([2, uid, 1]);
       for (const [e, m] of hitList) {
-        for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m);
+        // 「次の通常攻撃時」のスキルは通常攻撃の一種なので、攻撃時の素質（メテオの対空・会心など）も乗る
+        const ts = s.nextAttack ? talentScale(u, e, true) : 1;
+        for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m * ts);
         if (s.cold > 0) applyCold(e, s.cold);
+        if (s.hitDefDown && e.alive) {
+          // 同じオペレーターが掛け直すと、強い方の値で時間を更新
+          const prev = e.defDowns.get(u);
+          e.defDowns.set(u, { v: prev && t < prev.until ? Math.min(prev.v, s.hitDefDown) : s.hitDefDown, until: t + s.hitDefDownTime });
+        }
         // マドロックS2：確率で短時間スタン
         if (field && s.bb.buff_prob && s.bb.stun) skillStun(u, e, s.bb.buff_prob, s.bb.stun);
       }
@@ -4240,7 +4267,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         const ready = !s.passive && !skillActive() && s.spCost > 0 && u.sp >= s.spCost && t >= u.recastAt;
         if ((t - u.raidIdleFrom >= g.raid.idle - 1e-9 || ready) && !targetsInRange(u, skillActive()).length) raidRelocate(u);
       }
-      if (!s.passive && !skillActive() && t >= u.recastAt && u.sp >= s.spCost && s.spCost > 0 && !(field && def.charId === TIPPI) && !inDoll(u) && !opBursting(u, 'apoptosis') && (heal
+      const skillReady = () => !s.passive && !skillActive() && t >= u.recastAt && u.sp >= s.spCost && s.spCost > 0 && !(field && def.charId === TIPPI) && !inDoll(u) && !opBursting(u, 'apoptosis');
+      // 「次の通常攻撃時」のスキルは通常攻撃の処理の中で発動する（その攻撃を置き換える）
+      const nextAttack = s.nextAttack && !heal;
+      if (!nextAttack && skillReady() && (heal
           ? !field || injuredInRange(u, true).length > 0
           : field && (SUPPORT_SKILL[def.charId] === 'nextHeal' || SUPPORT_SKILL[def.charId] === 'areaHeal')
             ? injuredNear(u).length > 0
@@ -4352,6 +4382,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         if (loop && t < u.loopBackAt) {
           u.atkTimer = 0;
           break;
+        }
+        // 「次の通常攻撃時」のスキル：SPが溜まっていれば、この通常攻撃がスキルの攻撃（治療）になる。SPは溜まらない
+        const nextHeal = SUPPORT_SKILL[def.charId] === 'nextHeal';
+        if (nextAttack && skillReady() && (field && nextHeal ? injuredNear(u).length > 0 : !nextHeal && pickTargets(u, false).length > 0)) {
+          castSkill(u, outerAtkPct);
+          u.result.hits += nextHeal ? 0 : s.hits;
+          u.raidIdleFrom = t;
+          u.attacks++;
+          u.ts.barrierTimer = 0;
+          u.atkTimer += interval;
+          continue;
         }
         const targets = pickTargets(u, activeNow);
         if (!targets.length) {

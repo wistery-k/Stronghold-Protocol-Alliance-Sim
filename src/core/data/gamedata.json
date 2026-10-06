@@ -8643,18 +8643,18 @@
      "respawn": 70
     },
     "skill": {
-     "id": "skchr_shotst_2",
-     "name": "装甲砕き・拡散",
-     "description": "攻撃範囲内の敵最大5体に攻撃力の155%の物理ダメージを与え、5秒間防御力-30%",
-     "skillType": "MANUAL",
+     "id": "skchr_shotst_1",
+     "name": "装甲砕き",
+     "description": "次の通常攻撃時、敵に攻撃力の135%の物理ダメージを与え、5秒間防御力-25%",
+     "skillType": "AUTO",
      "durationType": "NONE",
      "spType": "INCREASE_WHEN_ATTACK",
-     "spCost": 19,
+     "spCost": 5,
      "initSp": 0,
      "duration": -1.0,
      "blackboard": {
-      "atk_scale": 1.55,
-      "def": -0.3,
+      "atk_scale": 1.35,
+      "def": -0.25,
       "duration": 5.0
      }
     },
@@ -8706,18 +8706,18 @@
      "respawn": 70
     },
     "skill": {
-     "id": "skchr_shotst_2",
-     "name": "装甲砕き・拡散",
-     "description": "攻撃範囲内の敵最大5体に攻撃力の170%の物理ダメージを与え、5秒間防御力-35%",
-     "skillType": "MANUAL",
+     "id": "skchr_shotst_1",
+     "name": "装甲砕き",
+     "description": "次の通常攻撃時、敵に攻撃力の150%の物理ダメージを与え、5秒間防御力-30%",
+     "skillType": "AUTO",
      "durationType": "NONE",
      "spType": "INCREASE_WHEN_ATTACK",
-     "spCost": 18,
+     "spCost": 4,
      "initSp": 0,
      "duration": -1.0,
      "blackboard": {
-      "atk_scale": 1.7,
-      "def": -0.35,
+      "atk_scale": 1.5,
+      "def": -0.3,
       "duration": 5.0
      }
     },

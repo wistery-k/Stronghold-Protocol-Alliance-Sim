@@ -35,6 +35,7 @@ python3 scripts/extract_gamedata.py <ArknightsGameData> <ArknightsGameData_YoSta
 python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoStar>   # → src/core/data/battledata.json（敵・ラウンド・射程など）
 ```
 
+- 戦闘で使うスキルはイベントデータの `defaultSkillIndex`。ユーザーの指定で変える時は `scripts/skill_choice.py` の `SKILL_INDEX_OVERRIDES`（両方の抽出スクリプトが使う。今はメテオ→S1）
 - 生成物の JSON は手で直さない。敵の特殊能力は `extract_battle.py` で blackboard や図鑑の説明から拾い、`EnemySpec`（`src/core/data/battle.ts`）のフィールドにする → `sim.ts` で実装、という流れ。
 - 使っているモードは `MODE = 'mode_single_normal'`。ボス（R14・R15）の HP は難易度ごとの値 `bossInfoDict` の `bloodPoint*` から取っていて、今は `BOSS_HP_FIELD = 'bloodPointHard'`（絶境＝日本版の死地。冑 180万・360万）。`difficultyFactorInfo`（1.0/1.6/1.7/1.7）と `modeFactorInfo`（1.25）は意味が不明で未使用。
 - 飛行の敵は各ステージの飛行経路（経由点）を `route` として持つ。盤面と座標系が違うボスステージ（R14・15）は対象外。
@@ -99,6 +100,7 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 
 - 未再現の素質：`docs/talents.md` で ❌（約39件）・一部（約31件）。スズランの足止め、アンジェリーナの反重力、キャサリンの支援装置など
 - スキル：サンクタ・ミキサー（反撃）、レミュアン（ロックオン爆撃）は実装済み（`sim.ts` の `mixerCounter`・`lemuenLock`・`lemuenBombard`）。仮の点は docs/battle.md の「弾薬スキル」の項を参照。素質（ミキサーの防御力・バリア、レミュアンの指名手配）と、リプレイのロックオン・爆撃の演出（fx 10 ロックオン／11 爆撃の発射）も実装済み。爆撃は `LEMUEN_BOMB_*`（最初の着弾0.2秒後・0.3秒間隔・一辺0.4のランダム位置）。fx 11 の時刻は着弾の時刻で、リプレイは砲弾をそれ以前から描く
+- 「次の通常攻撃時」のスキル（通常攻撃の置き換えは実装済み。`SkillModel.nextAttack`）の細部：チャージ（「N回チャージ可能」、bb の `ct`。今はSPが溜まると0に戻るだけ）、ミニマリストの2連続、バグパイプの追加の一撃（`cnt`）、マドロックの周囲の地上の敵全員への攻撃、シーのダメージ範囲拡大
 - 戦術（バンド）の一部：`src/core/data/bands.ts` の `impl: 'partial' | 'none'`
 - ボスの HP の難易度をゲーム内で選べるようにする案（ユーザーと話しただけで未着手）
 - コキュートスはデータ上攻撃力があるが攻撃しない（ユーザー確認済み、このままで正しい）

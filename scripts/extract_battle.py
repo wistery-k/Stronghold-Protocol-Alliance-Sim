@@ -17,6 +17,9 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from skill_choice import skill_index  # noqa: E402
+
 ACT_ID = 'act2autochess'
 MODE = 'mode_single_normal'  # 険境シミュレーション
 ROUNDS = 15
@@ -158,7 +161,7 @@ def main():
         if shop['isHidden'] or shop['chessType'] == 'DIY':
             continue
         ch = chars[shop['charId']]
-        skill_id = ch['skills'][shop['defaultSkillIndex']]['skillId']
+        skill_id = ch['skills'][skill_index(shop['charId'], shop)]['skillId']
         entry = {}
         for key, cid in (('normal', chess_id), ('golden', shop['goldenChessId'])):
             st = act['charChessDataDict'][cid]['status']
