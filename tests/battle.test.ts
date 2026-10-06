@@ -172,6 +172,21 @@ describe('マップ戦闘', () => {
     expect(u.byKind.arts > 0).toBe(true);
   });
 
+  it('鈎縄師（グレイディーア）は高台にも置け、高台から攻撃する（ブロックはしない）', () => {
+    const glady = UNITS.find((u) => u.charId === 'char_474_glady')!;
+    const spec = oneEnemy('test_glady_high', false, { def: 0, res: 0, speed: 0.3 });
+    const high = [...Array(36).keys()].filter((p) => tileAt(p) === 'high');
+    expect(high.length > 0).toBe(true);
+    for (const p of high) expect(canPlace(p, glady.id)).toBe(true);
+    // 他の近距離は高台に置けない
+    expect(canPlace(high[0], byProf('defender').id)).toBe(false);
+    // 経路に届く高台から攻撃し、敵は防衛地点まで進む（ブロックされない）
+    const runs = high.flatMap((p) => (['up', 'down', 'left', 'right'] as const).map((dir) => run([{ uid: 1, defId: glady.id, star: 1, pos: p, dir }], spec)));
+    const r = runs.find((x) => x.perUnit[0].hits > 0)!;
+    expect(!!r).toBe(true);
+    expect(r.leaked).toBe(1);
+  });
+
   it('グレイディーアS3：最も遠い敵をバインドして渦を作り、術ダメージ・減速・引き寄せ', () => {
     const glady = UNITS.find((u) => u.charId === 'char_474_glady')!;
     const sk = glady.normal.skill!;

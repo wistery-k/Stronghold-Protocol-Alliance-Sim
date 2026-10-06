@@ -67,7 +67,7 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 - 敵：バクダンバチ、祝祭のジャズ奏者、掠海のフローター、枯朽サルカズ戦車、墓守の石像、「帝国の甲冑」、仮想敵：泥濘。飛行の敵の飛行経路。活性源石の上の敵の表示
 - リプレイ：敵の寒冷・凍結の表示（水色の縁と雪の結晶／氷塊、凍った瞬間の破片、再生バーの数）、ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3の専用演出（fx 13）。スキル名の表示と山のマークはユーザーの希望で入れていない
 
-- 鈎縄師（`'hookmaster'`、グレイディーア）も `RANGED_TRAIT_SUBPROF` で常に対空。S3の渦（バインド・減速・1.5秒ごとの術ダメージと引き寄せ）は `sim.ts` の `openVortex` など
+- 鈎縄師（`'hookmaster'`、グレイディーア）も `RANGED_TRAIT_SUBPROF` で常に対空。高台にも置ける（`board.ts` の `HIGH_GROUND_MELEE_SUBPROF`）。S3の渦（バインド・減速・1.5秒ごとの術ダメージと引き寄せ）は `sim.ts` の `openVortex` など
 - 領主（`subProfession === 'lord'`）の特性：飛行の敵も攻撃、自身がブロックしていない敵へは攻撃力80%（`sim.ts` の `hitsAir`・`lordScale`、スキル中に100%になるのは `LORD_FULL_ATK_SKILL`）。凛御シルバーアッシュS2・デーゲンブレヒャーS3は対空（`SKILL_ANTI_AIR`）。偵察兵（`'agent'`、イネス）と哨戒衛士（`'shotprotector'`、アンダーフロー・リスカム・サンクタ・ミキサー）も特性「遠距離攻撃も行える」で常に対空（`RANGED_TRAIT_SUBPROF`）、攻撃力の低下なし
 - デーゲンブレヒャー：剣豪の特性（通常攻撃2回）、素質（累積方式で攻撃力160%と戦慄、戦慄の敵に防御力25%無視）、S3を斬撃10回＋最後の一撃のモーション（`sim.ts` の `BLKKGT`・`motionLen`/`slashLeft`。モーション中はスキル中扱いでゲージが減り、通常攻撃・SP回復なし）。敵の状態「戦慄」（`trembleUntil`：ブロック中は通常攻撃しない）。リプレイはモーション中にスキル範囲を表示（`SKILL_RANGE_SHOWN`）、戦慄の敵に「慄」の印
 
