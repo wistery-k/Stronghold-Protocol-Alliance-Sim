@@ -766,3 +766,15 @@ describe('【エーギル】の捕食', () => {
     expect(dv.stacks).toBe(2 * getUnit(id('プロヴァンス')).tier);
   });
 });
+
+describe('【エーギル】の捕食で得た値', () => {
+  it('捕食した後に捕食された者も、得た基礎攻撃力・ブロック数を持ち続ける（復活・再配置で効く）', () => {
+    const at = (uid: number, name: string, x: number): OwnedUnit => ({ ...ou(uid, name), pos: cellPos(x, 1), dir: 'right' });
+    const board = [at(1, 'アンダーフロー', 0), at(2, 'ルシーラ', 1), at(3, 'スペクター', 2), at(4, 'プロヴァンス', 3)];
+    const dv = egirDevour(board, new Set([1, 2, 3]));
+    const st = (name: string) => getUnit(id(name)).normal.stats;
+    expect(dv.dead.has(3)).toBe(true);
+    expect(dv.atkGain.get(3)).toBe(st('プロヴァンス').atk);
+    expect(dv.blockGain.get(2)).toBe(st('スペクター').block + st('プロヴァンス').block);
+  });
+});

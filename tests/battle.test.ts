@@ -484,6 +484,10 @@ describe('コストと再配置', () => {
       expect(r.perUnit.find((x) => x.uid === uid)!.retreats).toBe(0);
       expect(r.frames![0].u!.find((x) => x[0] === uid)![1]).toBe(100);
     }
+    // 復活した者も、捕食で得た基礎攻撃力を持ち続ける（スペクターはグレイディーアと帰溟スペクターの分）
+    const spec3 = UNITS.find((u) => u.name === 'スペクター')!.normal.stats.atk;
+    const gained = ['グレイディーア', '帰溟スペクター'].reduce((s, n) => s + UNITS.find((u) => u.name === n)!.normal.stats.atk, 0);
+    expect(r.frames![0].us!.find((x) => x[0] === 3)![3]).toBe(spec3 + gained);
   });
 
   it('行商人は配置中にコストを消費する（琳琅スワイヤーはコインで追加攻撃）', () => {
