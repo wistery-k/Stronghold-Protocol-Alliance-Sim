@@ -148,6 +148,7 @@ export interface ReplayFrame {
  * - 8 剣雨の命中（術ダメージとスタン）：[uid, x×100, y×100]
  * - 9 ザーロの1秒ごとの術ダメージ：[uid, x×100, y×100]
  * - 13 派手なスキルの演出（SKILL_FX）：[uid, 演出の種類, 0 = 発動・1 = スキル中の攻撃, 命中した敵の位置 x×100, y×100 の並び]
+ * - 14 グレイディーアS3の渦：[uid, 0 = 生成, x×100, y×100, 半径×100, 秒数×10] / [uid, 1 = ダメージと引き寄せ・2 = 消滅（スキル終了時は引き寄せ）, x×100, y×100, 半径×100, 巻き込んだ敵の位置 x×100, y×100 の並び]
  */
 export type FxEvent = number[];
 
@@ -417,8 +418,8 @@ const NEXT_ATTACK_SPLASH_RADIUS = 1.7;
 const ALL_IN_RANGE_SUB = new Set(['stalker']);
 /** 領主の特性：遠距離攻撃（自身がブロックしていない敵への攻撃）は攻撃力80%。飛行の敵も攻撃できる */
 const LORD_RANGED_SCALE = 0.8;
-/** 特性で遠距離攻撃もできる近距離の職分（飛行の敵も攻撃する）：領主・偵察兵・哨戒衛士（偵察兵・哨戒衛士は攻撃力の低下なし） */
-const RANGED_TRAIT_SUBPROF = new Set(['lord', 'agent', 'shotprotector']);
+/** 特性で遠距離攻撃もできる近距離の職分（飛行の敵も攻撃する）：領主・偵察兵・哨戒衛士・鈎縄師（領主以外は攻撃力の低下なし） */
+const RANGED_TRAIT_SUBPROF = new Set(['lord', 'agent', 'shotprotector', 'hookmaster']);
 /**
  * 解放者（ムリナール）の特性：通常時は攻撃せずブロック数0、攻撃力が最大 +200% まで徐々に上昇（40秒で最大）。
  * スキル終了時にリセット。値は character_table の trait（atk 2.0・max_stack_cnt 40）。上昇は一定の速さ（仮）
@@ -698,6 +699,14 @@ const PHILAE: Record<string, { radius: number }> = { char_4148_philae: { radius:
  */
 const BLKKGT = 'char_4116_blkkgt';
 const BLKKGT_SLASHES = 10;
+/**
+ * グレイディーア。S3「渇水の乱渦狂舞」：スキル範囲内の最も遠い敵をバインドしてその位置に渦を生成。
+ * 渦の中の敵は移動速度低下、interval 秒ごとに術ダメージと中心への引き寄せ、スキル終了時にもう一度引き寄せる。
+ * 渦の半径と1回の引き寄せの距離（force 0「普通の力」/ 1「相当の力」）は本家の値が不明なため仮
+ */
+const GLADY = 'char_474_glady';
+const GLADY_VORTEX_RADIUS = 1.3;
+const GLADY_PULL = [0.5, 1.0];
 
 /** 狩人：最大弾数、攻撃時の攻撃力倍率、攻撃をやめてから装填が始まるまでと1発の装填時間（秒） */
 const HUNTER_AMMO = 8;
@@ -1034,6 +1043,8 @@ interface Runtime {
   /** 荒蕪ラップランドS3のザーロ（位置・追っている敵・取り付いたか）と、次のダメージまでの時間 */
   zaros: { x: number; y: number; target: Enemy | null; attached: boolean }[];
   zaroTimer: number;
+  /** グレイディーアS3の渦（中心・半径・次のダメージまでの時間） */
+  vortex: { x: number; y: number; r: number; timer: number } | null;
   /** スタン（<刺胄之弹>）と、毎秒の物理ダメージ */
   stunUntil: number;
   dotUntil: number;
@@ -1202,6 +1213,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       curInterval: 0,
       zaros: [],
       zaroTimer: 0,
+      vortex: null,
       stunUntil: -1,
       dotUntil: -1,
       dotDps: 0,
@@ -1815,7 +1827,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return e.input.path ? e.input.path.length - 1 - e.d : 0;
   };
 
-  /** 飛行（浮遊）の敵を攻撃できるか：遠距離・離陸中・領主／偵察兵／哨戒衛士（特性の遠距離攻撃）・対空のスキル中 */
+  /** 飛行（浮遊）の敵を攻撃できるか：遠距離・離陸中・領主／偵察兵／哨戒衛士／鈎縄師（特性の遠距離攻撃）・対空のスキル中 */
   const hitsAir = (u: Runtime, skillActive: boolean) =>
     !u.melee || lifted(u) || RANGED_TRAIT_SUBPROF.has(u.input.def.subProfession) || (skillActive && SKILL_ANTI_AIR.has(cid(u)));
   /** 領主の遠距離攻撃（自身がブロックしていない敵）の攻撃力の倍率 */
@@ -1914,6 +1926,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (cid(u) === 'char_107_liskam' && u.skill.bb.stun && u.alive) u.stunUntil = Math.max(u.stunUntil, t + u.skill.bb.stun);
     if (cid(u) === TIPPI) land(u);
     if (cid(u) === LEMUEN) lemuenBombard(u);
+    if (u.vortex) closeVortex(u, true);
     // カゼマル：スキル終了で召喚した身替りは消える
     if (cid(u) === KAZEMA && !u.owner) for (const o of rt) if (o.owner === u && o.alive) removeToken(o);
     // 帰溟スペクター：スキル終了後、身替りと入れ替わる
@@ -2065,6 +2078,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         applyCold(target, u.tb[0].cold ?? 0);
       }
       endSkill(u);
+    } else if (cid(u) === GLADY && field && s.bb.interval) {
+      openVortex(u);
     } else if (cid(u) === BLKKGT && s.bb.d_atk_scale) {
       // デーゲンブレヒャーS3：斬撃10回＋最後の一撃のモーション（毎コマの処理で斬る。最後の一撃でスキル終了）
       const gap = s.bb.d_hit_interval ?? 0.3;
@@ -3093,6 +3108,75 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       for (const o of alliesNear(z.x, z.y, z.radius)) takeDps(o, o.hp / o.maxHp > 0.5 ? z.high : z.low);
     }
   };
+  // ---- グレイディーアS3「渇水の乱渦狂舞」の渦 ----
+  const vortexHits = (v: NonNullable<Runtime['vortex']>) =>
+    enemies.filter((e) => e.alive && e.spawned && !(e.input.spec.roam && (e.minion === 'roam' || e.minion === 'back')) && Math.hypot(e.x - v.x, e.y - v.y) <= v.r);
+  /** 経路に沿って、中心に最も近づく位置まで最大 dist マス引き寄せる（ブロック中の敵・ボス・経路の無い敵は動かない） */
+  const pullToward = (e: Enemy, cx: number, cy: number, dist: number) => {
+    const path = e.input.path;
+    if (!path || path.length < 2 || e.blockedBy !== null || e.input.spec.boss || e.input.spec.roam || e.input.spec.projectile) return;
+    const at = (d: number) => {
+      const i = Math.min(Math.floor(d), path.length - 2);
+      const f = d - i;
+      return { x: cellX(path[i]) + (cellX(path[i + 1]) - cellX(path[i])) * f, y: cellY(path[i]) + (cellY(path[i + 1]) - cellY(path[i])) * f };
+    };
+    let best = e.d;
+    let bestDist = Math.hypot(e.x - cx, e.y - cy);
+    const lo = Math.max(0, e.d - dist);
+    // 防衛地点の手前で止める（引き寄せで到達させない）
+    const hi = Math.min(path.length - 1.01, e.d + dist);
+    for (let d = lo; d <= hi + 1e-9; d += 0.05) {
+      const q = at(d);
+      const k = Math.hypot(q.x - cx, q.y - cy);
+      if (k < bestDist - 1e-6) {
+        bestDist = k;
+        best = d;
+      }
+    }
+    if (best === e.d) return;
+    const q = at(best);
+    e.d = best;
+    e.x = q.x;
+    e.y = q.y;
+  };
+  const vortexPull = (u: Runtime) => (GLADY_PULL[Math.round(u.skill.bb.force ?? 0)] ?? GLADY_PULL[0]);
+  const openVortex = (u: Runtime) => {
+    const p = posOf(u);
+    // スキル範囲内の最も遠い敵
+    const target = targetsInRange(u, true).sort((a, b) => Math.hypot(b.x - p.x, b.y - p.y) - Math.hypot(a.x - p.x, a.y - p.y))[0];
+    if (!target) return;
+    rootEnemy(target, u.skill.duration);
+    u.vortex = { x: target.x, y: target.y, r: GLADY_VORTEX_RADIUS, timer: u.skill.bb.interval ?? 1.5 };
+    emit([14, u.input.uid, 0, Math.round(target.x * 100), Math.round(target.y * 100), Math.round(GLADY_VORTEX_RADIUS * 100), Math.round(u.skill.duration * 10)]);
+  };
+  /** 渦を閉じる。スキル終了時は渦の中の敵を引き寄せる（退場で消える時は引き寄せない） */
+  const closeVortex = (u: Runtime, pull: boolean) => {
+    const v = u.vortex!;
+    u.vortex = null;
+    const hit = pull && u.alive ? vortexHits(v) : [];
+    for (const e of hit) pullToward(e, v.x, v.y, vortexPull(u));
+    emit([14, u.input.uid, 2, Math.round(v.x * 100), Math.round(v.y * 100), Math.round(v.r * 100), ...hit.flatMap((e) => [Math.round(e.x * 100), Math.round(e.y * 100)])]);
+  };
+  const tickVortex = () => {
+    for (const u of rt) {
+      const v = u.vortex;
+      if (!v) continue;
+      if (!u.alive || u.skillLeft <= 0) {
+        closeVortex(u, false);
+        continue;
+      }
+      v.timer -= dt;
+      if (v.timer > 1e-9) continue;
+      v.timer += u.skill.bb.interval ?? 1.5;
+      const hit = vortexHits(v);
+      for (const e of hit) {
+        deal(u, e, hitDamage(u.curAtk * (u.skill.bb.atk_scale ?? 1), 'arts', effDefense(e), u.input.mods, artsVuln(e)), 'arts');
+        if (e.alive) pullToward(e, v.x, v.y, vortexPull(u));
+      }
+      emit([14, u.input.uid, 1, Math.round(v.x * 100), Math.round(v.y * 100), Math.round(v.r * 100), ...hit.flatMap((e) => [Math.round(e.x * 100), Math.round(e.y * 100)])]);
+    }
+  };
+
   const zones: { owner: Runtime; x: number; y: number; r: number; until: number; atk: number; heal: number; dot: number; groundOnly: boolean }[] = [];
   const tickZones = () => {
     for (const z of zones) {
@@ -3561,6 +3645,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     let slow = 0;
     for (const w of rt) {
       if (inSentinel(w, e)) slow = Math.max(slow, -(w.tb[1].move_speed ?? 0));
+      // グレイディーアS3：渦の中の敵の移動速度低下
+      if (w.vortex && Math.hypot(e.x - w.vortex.x, e.y - w.vortex.y) <= w.vortex.r) slow = Math.max(slow, -(w.skill.bb.move_speed ?? 0));
       if (!w.alive || !covers(w.rangeNormal, e)) continue;
       if (cid(w) === 'char_213_mostma') slow = Math.max(slow, -(w.tb[1].move_speed ?? 0));
       // 帰溟スペクター：身替りの間、周囲の敵の移動速度低下
@@ -4246,6 +4332,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       tickEnemyStates();
       tickTexas();
       tickZaro();
+      tickVortex();
       // 【サルゴン】の強化の層数（最大・時間平均）
       if (g.sargon) {
         let cur = 0;

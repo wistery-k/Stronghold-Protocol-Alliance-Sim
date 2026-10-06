@@ -2067,6 +2067,107 @@ body.dragging * {
   stroke-width: 1;
 }
 
+/* グレイディーアS3「渇水の乱渦狂舞」の渦（深海の渦と紅い銛） */
+.fx-vortex-base {
+  fill: rgba(8, 52, 78, 0.55);
+  stroke: #5fe6ff;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 10px #1fb8e0);
+}
+.fx-vortex-depth {
+  fill: rgba(3, 22, 40, 0.55);
+  stroke: none;
+}
+.fx-vortex-foam {
+  fill: none;
+  stroke: rgba(225, 252, 255, 0.85);
+  stroke-width: 3;
+  stroke-dasharray: 26 12 6 12;
+  stroke-linecap: round;
+}
+.fx-vortex-foam.inner {
+  stroke: rgba(150, 240, 255, 0.7);
+  stroke-width: 2;
+  stroke-dasharray: 10 8;
+}
+.fx-vortex-arm {
+  fill: none;
+  stroke: rgba(30, 150, 200, 0.85);
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+.fx-vortex-arm.hi {
+  stroke: rgba(200, 250, 255, 0.9);
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 4px #7ff0ff);
+}
+.fx-vortex-drop {
+  fill: #c8f6ff;
+}
+.fx-vortex-drop.bright {
+  fill: #ffffff;
+  filter: drop-shadow(0 0 4px #5fe6ff);
+}
+.fx-vortex-eye {
+  fill: #020e1c;
+  stroke: #8ff4ff;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 8px #3fd8ff);
+}
+.fx-vortex-core {
+  fill: rgba(120, 240, 255, 0.55);
+  filter: drop-shadow(0 0 10px #8ff4ff);
+}
+.fx-vortex-chain {
+  stroke: #ff5a6e;
+  stroke-width: 3;
+  stroke-dasharray: 7 4;
+  filter: drop-shadow(0 0 4px #ff2a48);
+}
+.fx-vortex-hook {
+  fill: #ff4d63;
+  stroke: #ffe3e7;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 6px #ff2a48);
+}
+.fx-vortex-splash {
+  fill: rgba(150, 235, 255, 0.18);
+  stroke: #e0fbff;
+  stroke-width: 5;
+  filter: drop-shadow(0 0 8px #5fe6ff);
+}
+.fx-vortex-splash.big {
+  stroke-width: 7;
+}
+.fx-vortex-wave {
+  fill: none;
+  stroke: #9ff3ff;
+  stroke-width: 6;
+  filter: drop-shadow(0 0 8px #3fd8ff);
+}
+.fx-vortex-wave.thin {
+  stroke-width: 2.5;
+  stroke-dasharray: 14 9;
+}
+.fx-vortex-streak {
+  stroke: #dffbff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px #3fd8ff);
+}
+.fx-vortex-hit {
+  fill: rgba(120, 220, 255, 0.35);
+  stroke: #c9a2ff;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 6px #9f7bff);
+}
+.fx-vortex-pillar {
+  fill: rgba(170, 240, 255, 0.75);
+  stroke: #ffffff;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 12px #3fd8ff);
+}
+
 /* 専用のスキル演出（ノーシスS2・凛御シルバーアッシュS2・シルバーアッシュS3・聖聆プラマニクスS3） */
 .fx-ice-cell {
   fill: rgba(150, 225, 255, 0.45);

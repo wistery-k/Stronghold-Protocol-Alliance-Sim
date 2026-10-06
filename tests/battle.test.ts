@@ -157,6 +157,52 @@ describe('マップ戦闘', () => {
     }
   });
 
+  it('鈎縄師（グレイディーア）は通常攻撃もスキルも飛行の敵に当たる', () => {
+    const hms = UNITS.filter((u) => u.subProfession === 'hookmaster');
+    expect(hms.map((u) => u.charId)).toEqual(['char_474_glady']);
+    const glady = hms[0];
+    expect(glady.position).toBe('melee');
+    const board: OwnedUnit[] = [{ uid: 1, defId: glady.id, star: 1, pos: 29, dir: 'right' }];
+    const r = run(board, oneEnemy('test_hook_fly', true, { hp: 200000, def: 0, res: 0, speed: 0.1 }));
+    const u = r.perUnit[0];
+    expect(u.hits > 0).toBe(true);
+    expect(u.byKind.physical > 0).toBe(true);
+    // 範囲内に飛行の敵しかいなくてもスキルを発動し、渦の術ダメージも飛行の敵に当たる
+    expect(u.skillCasts > 0).toBe(true);
+    expect(u.byKind.arts > 0).toBe(true);
+  });
+
+  it('グレイディーアS3：最も遠い敵をバインドして渦を作り、術ダメージ・減速・引き寄せ', () => {
+    const glady = UNITS.find((u) => u.charId === 'char_474_glady')!;
+    const sk = glady.normal.skill!;
+    // ブロックされない敵2体（12秒差）。渦は後ろの敵の位置にでき、前の敵は経路を戻る向きに引き寄せられる
+    const spec = oneEnemy('test_glady_vortex', false, { def: 0, res: 0, speed: 0.2, unblockable: true });
+    spec.timeLimit = 60;
+    spec.spawns[0] = { ...spec.spawns[0], count: 2, interval: 12 };
+    const r = run([{ uid: 1, defId: glady.id, star: 1, pos: 31, dir: 'right' }], spec);
+    const vfx = r.fx!.filter((e) => e[1] === 14);
+    const open = vfx.find((e) => e[3] === 0)!;
+    const ticks = vfx.filter((e) => e[3] === 1);
+    const close = vfx.find((e) => e[3] === 2)!;
+    expect(open[7]).toBe(sk.duration * 10);
+    // 1.5秒ごと、効果時間8秒で5回。1回ごとに攻撃力の85%の術ダメージ（術耐性0）を2体に
+    expect(ticks.length).toBe(Math.floor(sk.duration / sk.blackboard.interval));
+    expect(r.perUnit[0].byKind.arts).toBe(Math.round(glady.normal.stats.atk * sk.blackboard.atk_scale) * ticks.length * 2);
+    expect(close[0] - open[0]).toBe(sk.duration * 100);
+    const t0 = open[0] / 100;
+    const at = (tt: number, id: number) => r.frames!.find((f) => f.t >= tt - 1e-9)!.e.find((e) => e[0] === id)!;
+    // 後ろの敵（2体目）はバインドされ、渦の中心から動かない
+    expect(at(t0 + 1, 2)[1]).toBe(open[4]);
+    expect(at(t0 + 7, 2)[1]).toBe(open[4]);
+    expect(((at(t0 + 1, 2)[4] ?? 0) & 1024) !== 0).toBe(true);
+    // 前の敵（1体目）は防衛地点（左）へ進んでいたが、渦の中心（右）へ引き寄せられる
+    expect(at(t0 + 7, 1)[1] > at(t0, 1)[1]).toBe(true);
+    // 渦の中では移動速度-50%（引き寄せの無い1秒間の進みを、スキル後と比べる）
+    const inVortex = at(t0 + 1.6, 1)[1] - at(t0 + 2.6, 1)[1];
+    const after = at(t0 + 10, 1)[1] - at(t0 + 11, 1)[1];
+    expect(Math.abs(inVortex / after - (1 + sk.blackboard.move_speed)) < 0.15).toBe(true);
+  });
+
   it('近距離の非領主は飛行の敵を攻撃できない', () => {
     const guard = UNITS.find((u) => u.profession === 'guard' && u.position === 'melee' && u.subProfession !== 'lord')!;
     const r = run([{ uid: 1, defId: guard.id, star: 1, pos: 29, dir: 'right' }], oneEnemy('test_fly_g', true, { speed: 0.3 }));
