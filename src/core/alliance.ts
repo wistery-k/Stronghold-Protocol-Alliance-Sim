@@ -128,8 +128,8 @@ export interface BattleGlobals {
   laterano?: { members: Set<number>; atkPerAmmo: number; maxAtk: number };
   /** カジミエーシュ：オペレーターが配置されるたびに所属者全員の攻撃力上昇（上限あり。戦闘終了まで） */
   kazimierz?: { members: Set<number>; atkPerDeploy: number; maxAtk: number };
-  /** カジミエーシュLv2：近接は2秒ごとに攻撃力120%の確定ダメージ */
-  kazimierzPulse?: { members: Set<number>; scale: number; interval: number };
+  /** カジミエーシュLv2：ブロック中は2秒ごとに周囲へ攻撃力120%の確定ダメージとスタン、ブロックしていない時は攻撃に攻撃力30%の確定ダメージを追加 */
+  kazimierzPulse?: { members: Set<number>; scale: number; interval: number; stun: number; pure: number };
   /** 黄砂のコンパス＋サルゴンの渋茶：サルゴンのスキル発動で全サルゴンのSP回復 */
   sargonSpOnSkill?: { members: Set<number>; sp: number };
   /** 堅守Lv2：所属者以外の被ダメージを肩代わりし、被弾時に反撃 */
@@ -420,10 +420,14 @@ export function battleSetup(
       maxAtk: v('kazimierz', 'base_max_atk_when_born') + v('kazimierz', 'max_atk_when_born_per_stack') * sk('kazimierz'),
     };
     if (lv('kazimierz') >= 2) {
-      const ranged = [...members('kazimierz')].filter((uid) => isRanged(getUnit(board.find((o) => o.uid === uid)!.defId)));
-      const melee = [...members('kazimierz')].filter((uid) => !ranged.includes(uid));
-      apply(ranged, { trueDmgPct: v('kazimierz', 'pure_atk_scale') });
-      globals.kazimierzPulse = { members: new Set(melee), scale: v('kazimierz', 'damage_atk_scale'), interval: v('kazimierz', 'damage_interval') };
+      // 近接・遠距離ではなく、その時ブロックしているかで分かれる（sim.ts。重装の重盾衛士なども、ブロックしていない時は確定ダメージの追加）
+      globals.kazimierzPulse = {
+        members: members('kazimierz'),
+        scale: v('kazimierz', 'damage_atk_scale'),
+        interval: v('kazimierz', 'damage_interval'),
+        stun: v('kazimierz', 'stun'),
+        pure: v('kazimierz', 'pure_atk_scale'),
+      };
     }
   }
   // 精密

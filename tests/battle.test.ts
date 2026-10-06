@@ -1620,6 +1620,16 @@ describe('【カジミエーシュ】の配置回数と〈配置時〉の特性'
     // 加算数9 → 3回分（攻撃速度+0.5×3）。自身のほか前方1マスにも付与される
     expect(new Map(r.garrisonAspd).get(2)).toBe(1.5);
   });
+  it('Lv2は近接・遠距離でなくブロック中かで分かれ、ブロックしていない重装（アッシュロック）の攻撃にも確定ダメージが付く', () => {
+    setActiveMap('legacy');
+    const ids = ['2_18', '3_12', '6_17', '1_19', '2_12', '6_19'];
+    const pos = [13, 14, 22, 31, 23, 30];
+    const six = ids.map((defId, i) => ({ uid: i + 1, defId, star: 1, pos: pos[i], dir: 'left', items: [] }) as OwnedUnit);
+    const { inputs, globals } = buildSimInputs(six, [], {});
+    expect(globals.kazimierzPulse!.members.has(1)).toBe(true);
+    const r = simulateBattle(inputs, roundSpec(5), { globals });
+    expect(r.perUnit.find((u) => u.uid === 1)!.byKind!.true > 0).toBe(true);
+  });
 });
 
 describe('被撃回復のスキル', () => {
