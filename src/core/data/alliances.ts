@@ -263,7 +263,7 @@ export const ALLIANCES: Record<AllianceId, AllianceDef> = {
     describe: (s) => [
       {
         count: 2,
-        text: `【強襲】は10秒間攻撃しないかスキル準備完了時に範囲内に敵がいなければ、SPを保ったまま地上の敵1体の周囲へ再配置され、その間攻撃力とHP+${pct(v('raid', 'base_atk') + v('raid', 'atk_per_stack') * s)}`,
+        text: `【強襲】は10秒間攻撃しないかスキル準備完了時に範囲内に敵がいなければ、SPを保ったまま地上の敵1体の周囲へ再配置される。スキル発動中は攻撃力とHP+${pct(v('raid', 'base_atk') + v('raid', 'atk_per_stack') * s)}`,
       },
     ],
     stackMilestones: (s) => [{ at: 50, text: '50層：すべてのオペレーターの攻撃速度+50', reached: s >= 50 }],

@@ -116,7 +116,7 @@ export interface ReplayFrame {
   lf?: number[];
   /** 身替りと入れ替わっているオペレーターの uid（傀儡師） */
   dl?: number[];
-  /** 【強襲】で再配置されて元の位置にいないオペレーター [uid, マス, 向き（0右・1下・2左・3上）] */
+  /** 【強襲】で再配置されて戦闘開始時の位置にいないオペレーター（撤退中も含む）[uid, マス, 向き（0右・1下・2左・3上）] */
   mv?: [number, number, number][];
   /** 召喚された身替り（カゼマルの紙人形）[uid, マス, HP%, 召喚主の uid] */
   tk?: [number, number, number, number][];
@@ -1028,10 +1028,8 @@ interface Runtime {
   motionLen: number;
   slashLeft: number;
   slashTimer: number;
-  /** 【強襲】：最後に攻撃した（または配置された）時刻、再配置で上がった最大HP（0なら強化なし）、元の配置位置と向き */
+  /** 【強襲】：最後に攻撃した（または配置された）時刻と、戦闘開始時の位置と向き */
   raidIdleFrom: number;
-  raided: boolean;
-  raidHpAdd: number;
   home: { pos: number | undefined; dir: Direction | undefined };
 }
 
@@ -1115,8 +1113,6 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       slashLeft: 0,
       slashTimer: 0,
       raidIdleFrom: 0,
-      raided: false,
-      raidHpAdd: 0,
       home: { pos: input.pos, dir: input.dir },
       huntAmmo: HUNTER_AMMO,
       qalaisaStacks: 0,
@@ -1801,9 +1797,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
 
   /** スキル中の最大HP上昇の付け外し */
+  /** 【強襲】：有効化中の所属者はスキル発動中に攻撃力・最大HP上昇 */
+  const raidSkillBuff = (u: Runtime, key: 'atk' | 'hp') => (field && g.raid?.members.has(u.input.uid) && !u.owner ? g.raid[key] : 0);
   const setSkillHp = (u: Runtime, on: boolean) => {
-    if ((!u.skill.hpPct && !u.skill.hpFlat) || !u.alive) return;
-    const target = u.baseMaxHp * (1 + (on ? u.skill.hpPct : 0)) + (on ? u.skill.hpFlat : 0);
+    const raidHp = raidSkillBuff(u, 'hp');
+    if ((!u.skill.hpPct && !u.skill.hpFlat && !raidHp) || !u.alive) return;
+    const target = u.baseMaxHp * (1 + (on ? u.skill.hpPct + raidHp : 0)) + (on ? u.skill.hpFlat : 0);
     const diff = target - u.maxHp;
     u.maxHp = target;
     u.hp = Math.min(u.maxHp, Math.max(1, u.hp + Math.max(0, diff)));
@@ -2050,7 +2049,6 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.ammoLeft = 0;
     u.qalaisaStacks = 0;
     u.mberryShield = 0;
-    if (u.raided) raidReturn(u);
     if (field && u.input.pos !== undefined) u.redeployAt = t + u.respawn;
   };
 
@@ -2153,13 +2151,6 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.blocker = pos !== undefined && canBlockAt(pos) && u.input.def.damageType !== 'heal';
     u.block = u.blocker ? unitState(u.input.def, u.input.star).stats.block : 0;
   };
-  /** 再配置の強化を外して元の位置に戻す（撤退した時。再配置は元の位置に行う） */
-  const raidReturn = (u: Runtime) => {
-    u.raided = false;
-    u.baseMaxHp -= u.raidHpAdd;
-    u.raidHpAdd = 0;
-    placeAt(u, u.home.pos, u.home.dir);
-  };
   const DIRS: Direction[] = ['right', 'down', 'left', 'up'];
   /**
    * 地上の敵1体（防衛地点に最も近いもの）の周囲8マス（その敵のマスも含む）の空いている配置可能なマスへ再配置する。
@@ -2197,17 +2188,10 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       }
       if (!best) continue;
       placeAt(u, best.pos, best.dir);
-      if (!u.raided) {
-        u.raided = true;
-        u.raidHpAdd = u.baseMaxHp * g.raid.hp;
-        u.baseMaxHp += u.raidHpAdd;
-        u.maxHp += u.raidHpAdd;
-        u.hp += u.raidHpAdd;
-      }
-      u.raidIdleFrom = t;
-      // 後から配置されたので、遠距離の敵に一番狙われやすくなる
+      // 後から配置されたので、遠距離の敵に一番狙われやすくなる。配置時の効果も発動する（SPはそのまま）
       u.order = ++orderCounter;
       u.result.raids = (u.result.raids ?? 0) + 1;
+      onDeployed(u);
       return;
     }
   };
@@ -2432,6 +2416,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.skillLeft = s.duration;
     u.castAt = t;
     u.result.skillCasts++;
+    setSkillHp(u, true);
     if (s.deployHpLoss) u.hp = Math.max(1, u.hp * (1 - s.deployHpLoss));
     if (s.barrier) {
       u.barrier = u.maxHp * s.barrier;
@@ -4038,7 +4023,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       .filter((x) => x[1] > 0);
 
   const moveFrame = (): [number, number, number][] =>
-    rt.filter((u) => u.raided && u.input.pos !== undefined).map((u) => [u.input.uid, u.input.pos!, DIRS.indexOf(u.input.dir ?? DEFAULT_DIRECTION)]);
+    rt.filter((u) => !u.owner && u.input.pos !== undefined && (u.input.pos !== u.home.pos || u.input.dir !== u.home.dir)).map((u) => [u.input.uid, u.input.pos!, DIRS.indexOf(u.input.dir ?? DEFAULT_DIRECTION)]);
   const stealthFrame = (): number[] => rt.filter((u) => u.alive && u.input.pos !== undefined && unitStealthed(u)).map((u) => u.input.uid);
   const siracusaFrame = (): number[] =>
     g.siracusa ? rt.filter((u) => u.alive && u.input.pos !== undefined && g.siracusa!.members.has(u.input.uid) && t - u.ts.deployedAt < g.siracusa!.duration).map((u) => u.input.uid) : [];
@@ -4122,8 +4107,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u.talentStacks * (ELEMENT_TALENT[def.charId]?.atkPerApoptosisBurst?.atk ?? 0) +
         u.qalaisaStacks * (g.qalaisa?.atk ?? 0) +
         talentAtkPct(u) +
-        tileAtkPct(u) +
-        (u.raided && g.raid ? g.raid.atk : 0);
+        tileAtkPct(u);
       // 琳琅スワイヤー：コインを使って「シャンパン爆弾」（範囲内の敵に物理ダメージ）
       if (swire && field) {
         u.bombTimer -= dt;
@@ -4157,7 +4141,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // ヒューマス：スキル中、HP割合に応じた「勇猛」
       const peak = activeNow && !s.passive ? (peakPerformance(s.bb).find(([ratio]) => u.hp / u.maxHp >= ratio)?.[1] ?? 0) : 0;
       const atk =
-        baseAtk(def, star, mods, outerAtkPct + peak + (activeNow && (!PHILAE[def.charId] || u.philaeBoost) ? s.atkPct : 0)) +
+        baseAtk(def, star, mods, outerAtkPct + peak + (activeNow && (!PHILAE[def.charId] || u.philaeBoost) ? s.atkPct : 0) + (activeNow ? raidSkillBuff(u, 'atk') : 0)) +
         (t < u.inspireUntil ? u.inspireAtk : 0) +
         talentAtkFlat(u);
       u.curAtk = atk;

@@ -1575,7 +1575,7 @@ describe('【強襲】', () => {
     expect(r1.perUnit.every((u) => !u.raids)).toBe(true);
   });
 
-  it('再配置の間は攻撃力が上がる（層数に応じて）', () => {
+  it('スキル発動中は攻撃力が上がる（層数に応じて）', () => {
     const spec = oneEnemy('raidDummy2', false, { def: 0, res: 0 });
     setActiveMap('legacy');
     const a = buildSimInputs(board(humus.id), [], {});

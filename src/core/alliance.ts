@@ -152,7 +152,7 @@ export interface BattleGlobals {
   mberry?: { members: Set<number>; prob: number };
   /** 戦術【リサイクル】：地上オペレーターのスキル終了時に隣の味方のSP回復 */
   humus?: { sp: number };
-  /** 強襲：一定時間攻撃しないかスキル準備完了時、範囲内に敵がいなければ地上の敵の周囲へ再配置され、その間攻撃力・最大HP上昇 */
+  /** 強襲：一定時間攻撃しないかスキル準備完了時、範囲内に敵がいなければ地上の敵の周囲へ再配置。スキル発動中は攻撃力・最大HP上昇 */
   raid?: { members: Set<number>; atk: number; hp: number; idle: number };
 }
 
