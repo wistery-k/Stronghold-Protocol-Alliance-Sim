@@ -897,7 +897,6 @@ interface Enemy {
   /** レミュアンの素質：指名手配（【ラテラーノ】の攻撃範囲内に滞在した時間と、手配済みか） */
   wantedTime: number;
   wanted: boolean;
-  revived: boolean;
   defense: DefenseState;
   phases: EnemyPhase[];
   phaseIdx: number;
@@ -1453,7 +1452,6 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       reviveAt: null,
       wantedTime: 0,
       wanted: false,
-      revived: false,
       neutralUntil: -1,
       atkTimer: 0,
       vulnUntil: -1,
@@ -1622,9 +1620,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       e.alive = false;
       return;
     }
-    // 復活する敵：攻撃回数で倒せる状態になってその場に留まる
+    // 復活する敵：攻撃回数で倒せる状態になってその場に留まる（復活は何度でも）
     const rv = e.input.spec.revive;
-    if (rv && !e.revived && e.reviveAt === null && !neutral(e)) {
+    if (rv && e.reviveAt === null && !neutral(e)) {
       e.reviveAt = t + rv.interval;
       e.hp = rv.hits;
       e.maxHp = rv.hits;
@@ -4293,7 +4291,6 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (e.reviveAt !== null) {
         if (t >= e.reviveAt) {
           e.reviveAt = null;
-          e.revived = true;
           e.hp = e.input.spec.hp;
           e.maxHp = e.input.spec.hp;
         } else continue;

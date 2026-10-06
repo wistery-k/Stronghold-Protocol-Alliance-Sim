@@ -33,7 +33,7 @@ export interface EnemySpec {
   /** 倒れると別の敵を生む */
   deadSpawn?: { enemy: string; count: number };
   /**
-   * 倒れると「hits 回の攻撃で倒せる」状態になり、interval 秒後に復活する（1回だけ）。
+   * 倒れると「hits 回の攻撃で倒せる」状態になり、interval 秒後に復活する（何度でも）。
    * stealth：その状態（ダブリン追炎戦士の<怨念の残火>など）はステルス
    */
   revive?: { hits: number; interval: number; stealth?: boolean };
