@@ -144,6 +144,10 @@ h3 {
   flex-direction: column;
   line-height: 1.2;
 }
+.build-info {
+  font-size: 11px;
+  color: var(--muted);
+}
 .tabs {
   display: flex;
   gap: 4px;

@@ -120,7 +120,12 @@ function render() {
   const header = h(
     'header',
     { class: 'header' },
-    h('div', { class: 'title' }, h('b', null, '堅守協定シミュレーター')),
+    h(
+      'div',
+      { class: 'title' },
+      h('b', null, '堅守協定シミュレーター'),
+      h('span', { class: 'build-info' }, `最終更新 ${__BUILD_INFO__}`),
+    ),
     h(
       'nav',
       { class: 'tabs' },
