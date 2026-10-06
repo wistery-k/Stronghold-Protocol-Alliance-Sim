@@ -1225,7 +1225,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       result: { uid: input.uid, defId: input.def.id, name: input.def.name, star: input.star, damage: 0, hits: 0, skillCasts: 0, kills: 0, taken: 0, healed: 0, barrier: 0, byKind: { physical: 0, arts: 0, true: 0, element: 0 }, downAt: null, retreats: 0, redeploys: 0 },
       melee: input.def.position === 'melee',
       blocker,
-      block: blocker ? st.stats.block : 0,
+      block: blocker ? st.stats.block + (input.mods.blockFlat ?? 0) : 0,
       rangeNormal: field ? toSet(input.pos, input.dir, ids.range) : null,
       rangeSkill: field ? toSet(input.pos, input.dir, ids.skillRange ?? ids.range) : null,
       blocked: [],
@@ -2269,7 +2269,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     u.rangeNormal = toSet(pos, dir, ids.range);
     u.rangeSkill = toSet(pos, dir, ids.skillRange ?? ids.range);
     u.blocker = pos !== undefined && canBlockAt(pos) && u.input.def.damageType !== 'heal';
-    u.block = u.blocker ? unitState(u.input.def, u.input.star).stats.block : 0;
+    u.block = u.blocker ? unitState(u.input.def, u.input.star).stats.block + (u.input.mods.blockFlat ?? 0) : 0;
   };
   const DIRS: Direction[] = ['right', 'down', 'left', 'up'];
   /**

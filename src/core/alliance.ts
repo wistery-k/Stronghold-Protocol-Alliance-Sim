@@ -456,11 +456,11 @@ export function battleSetup(
     }
     apply(targets, { aspd: v('skillful', 'base_attack_speed') + v('skillful', 'attack_speed_per_stack') * sk('skillful') });
   }
-  // エーギル：前方1マスを捕食して基礎攻撃力を得る
+  // エーギル：前方1マスを捕食して基礎攻撃力・ブロック数を得る（連鎖する）
   let excluded = new Set<number>();
   if (lv('egir') >= 1) {
     const dv = egirDevour(board, members('egir'), v('egir', 'damage_value'));
-    for (const [uid, atk] of dv.atkGain) apply([uid], { atkFlat: atk });
+    for (const [uid, atk] of dv.atkGain) apply([uid], { atkFlat: atk, blockFlat: dv.blockGain.get(uid) });
     excluded = dv.dead;
   }
   // 秘術

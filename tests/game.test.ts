@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { alliancesCompletedBy, battleSetup, evaluateAlliances } from '../src/core/alliance';
-import { behindOf, frontOf, sameRow } from '../src/core/board';
+import { behindOf, cellPos, egirDevour, frontOf, sameRow } from '../src/core/board';
 import { applyAction, createGame, levelUpCost, priceOf, rollBans, roundSpecOf, type GameState } from '../src/core/game';
 import { Rng } from '../src/core/rng';
 import { CORE_IDS } from '../src/core/data/alliances';
@@ -723,5 +723,46 @@ describe('スズランの堅守特性と【投資家】', () => {
     expect(plain.stacks.swift).toBe(6);
     expect(inv.stacks.swift).toBe(12);
     expect(inv.log.some((l) => String(typeof l === 'string' ? l : JSON.stringify(l)).includes('ウルピスフォリア の獲得時の特性を発動'))).toBe(true);
+  });
+});
+
+describe('【エーギル】の捕食', () => {
+  const at = (uid: number, name: string, x: number, y: number, dir: OwnedUnit['dir'] = 'right'): OwnedUnit => ({ ...ou(uid, name), pos: cellPos(x, y), dir });
+  const base = (name: string) => getUnit(id(name)).normal.stats;
+  it('捕食で上がった後の基礎攻撃力・ブロック数を捕食でき、連鎖する', () => {
+    // アンダーフロー → ルシーラ → スペクター → プロヴァンス（右向きに一列）
+    const board = [at(1, 'アンダーフロー', 0, 1), at(2, 'ルシーラ', 1, 1), at(3, 'スペクター', 2, 1), at(4, 'プロヴァンス', 3, 1)];
+    const sum = ['アンダーフロー', 'ルシーラ', 'スペクター', 'プロヴァンス'].reduce((s, n) => s + base(n).atk, 0);
+    const setup = battleSetup(board, [], {});
+    const m = setup.mods.get(1)!;
+    expect(base('アンダーフロー').atk + (m.atkFlat ?? 0)).toBe(sum);
+    expect(m.blockFlat).toBe(base('ルシーラ').block + base('スペクター').block + base('プロヴァンス').block);
+    // 捕食されたルシーラ・スペクター・プロヴァンスは戦闘に出ない
+    expect([...setup.excluded].sort()).toEqual([2, 3, 4]);
+    // 連鎖の先から順に3回捕食する（加算数は被捕食者3名の等級の合計）
+    const dv = egirDevour(board, new Set([1, 2, 3]));
+    expect(dv.stacks).toBe(['ルシーラ', 'スペクター', 'プロヴァンス'].reduce((s, n) => s + getUnit(id(n)).tier, 0));
+  });
+  it('向き合ったエーギルは先の者が捕食し、後の者は捕食しない', () => {
+    const board = [at(1, 'アンダーフロー', 0, 0, 'right'), at(2, 'スペクター', 1, 0, 'left')];
+    const dv = egirDevour(board, new Set([1, 2]));
+    expect(dv.atkGain.get(1)).toBe(base('スペクター').atk);
+    expect(dv.atkGain.has(2)).toBe(false);
+    expect([...dv.dead]).toEqual([2]);
+  });
+  it('ループでは最初に捕食した者は捕食されず、全員分を得る', () => {
+    // (0,0)→(1,0)→(1,1)→(0,1)→(0,0) の輪
+    const board = [at(1, 'アンダーフロー', 0, 0, 'right'), at(2, 'スペクター', 1, 0, 'down'), at(3, 'ルシーラ', 0, 1, 'up'), at(4, 'グレイディーア', 1, 1, 'left')];
+    const dv = egirDevour(board, new Set([1, 2, 3, 4]));
+    expect(dv.dead.has(1)).toBe(false);
+    expect(dv.atkGain.get(1)).toBe(base('スペクター').atk + base('グレイディーア').atk + base('ルシーラ').atk);
+  });
+  it('倒れたオペレーターも捕食でき、2人で同じ者を捕食できる', () => {
+    // 上下からプロヴァンスを挟む
+    const board = [at(1, 'アンダーフロー', 1, 0, 'down'), at(2, 'プロヴァンス', 1, 1), at(3, 'スペクター', 1, 2, 'up')];
+    const dv = egirDevour(board, new Set([1, 3]));
+    expect(dv.atkGain.get(1)).toBe(base('プロヴァンス').atk);
+    expect(dv.atkGain.get(3)).toBe(base('プロヴァンス').atk);
+    expect(dv.stacks).toBe(2 * getUnit(id('プロヴァンス')).tier);
   });
 });

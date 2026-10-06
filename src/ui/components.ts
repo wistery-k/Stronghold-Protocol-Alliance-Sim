@@ -204,6 +204,7 @@ function modifierText(m: Modifier): string[] {
   const out: string[] = [];
   if (m.atkPct) out.push(`攻撃力+${pct(m.atkPct)}`);
   if (m.atkFlat) out.push(`基礎攻撃力+${fmt(m.atkFlat)}`);
+  if (m.blockFlat) out.push(`ブロック数+${m.blockFlat}`);
   if (m.aspd) out.push(`攻撃速度+${Math.round(m.aspd * 10) / 10}`);
   if (m.spRegen) out.push(`SP回復+${Math.round(m.spRegen * 100) / 100}/秒`);
   if (m.startSp) out.push(`初期SP+${m.startSp}`);
