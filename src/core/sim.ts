@@ -183,6 +183,8 @@ export interface BattleResult {
   enBursts: number;
   /** 【サルゴン】のスキル発動時の強化：1層あたりの攻撃速度・攻撃力と、層数の最大・時間平均 */
   sargon?: { aspd: number; atkPct: number; max: number; avg: number };
+  /** 【カジミエーシュ】：戦闘中にオペレーターが配置された回数と、最後の攻撃力上昇 */
+  kazimierz?: { deploys: number; atkPct: number };
   /** 【シラクーザ】の配置後の攻撃速度上昇（上昇量・秒数・対象人数） */
   siracusa?: { aspd: number; duration: number; members: number };
   enemies: EnemyMeta[];
@@ -414,7 +416,7 @@ const SELF_HEAL_SUB: Record<string, { hp: number; perTarget: boolean }> = {
 // ------------------------------------------------------------
 
 interface GarrisonEvent {
-  kind: 'useskill' | 'kill' | 'ammo' | 'dead' | 'freeze' | 'sleepstun';
+  kind: 'useskill' | 'kill' | 'ammo' | 'dead' | 'freeze' | 'sleepstun' | 'deploy';
   bonds: AllianceId[] | 'maxstack';
   count: number;
   /** シヴィライト・エテルナ：この特性で加算数を得るたびに追加される数（上限の対象外） */
@@ -446,6 +448,7 @@ const STACK_CAUSE: Record<GarrisonEvent['kind'], string> = {
   dead: '撤退',
   freeze: '範囲内の凍結',
   sleepstun: '範囲内の睡眠・スタン',
+  deploy: '戦闘中の配置',
 };
 
 function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
@@ -469,7 +472,9 @@ function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
                 ? 'freeze'
                 : key === 'act2autochess_gar_event_allyenemy_sleepstun_inrange'
                   ? 'sleepstun'
-                  : null;
+                  : key === 'act2autochess_gar_event_onstart'
+                    ? 'deploy'
+                    : null;
     if (!kind) continue;
     if (bb.conditionkey === 'character_same_row' && rowCount < Number(bb.check_count ?? 0)) continue;
     let count: number;
@@ -485,14 +490,16 @@ function garrisonEvents(input: SimUnitInput): GarrisonEvent[] {
             ? def.bonds
             : null;
     if (!bonds) continue;
+    const max = Number(bb.max_add_count_per_battle ?? Infinity);
     out.push({
       kind,
       bonds,
       count,
       bonus: input.bonusGain ?? 0,
-      max: Number(bb.max_add_count_per_battle ?? Infinity),
+      max,
       every: Number(kind === 'kill' ? (bb.check_cnt ?? 1) : (bb.consume_count ?? 1)),
-      gained: 0,
+      // 〈配置時〉の戦闘開始時の配置の分は戦闘前に加算済み（garrison.ts）。戦闘中の再配置で残りを加算する
+      gained: kind === 'deploy' ? Math.min(count, max) : 0,
       prob: Number(bb.prob ?? 1),
       acc: ACC_START,
       uid: input.uid,
@@ -1050,6 +1057,8 @@ interface EngineResult {
   opBursts: number;
   enBursts: number;
   sargon?: { aspd: number; atkPct: number; max: number; avg: number };
+  /** 【カジミエーシュ】：戦闘中にオペレーターが配置された回数と、最後の攻撃力上昇 */
+  kazimierz?: { deploys: number; atkPct: number };
   siracusa?: { aspd: number; duration: number; members: number };
 }
 
@@ -2245,12 +2254,23 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (indomAcc >= 1) {
         indomAcc -= 1;
         u.hp = u.maxHp;
+        countDeploy(u);
         return;
       }
     }
     for (const ev of u.events) if (ev.kind === 'dead') gainStacks(ev);
     leaveField(u);
   };
+
+  /** この戦闘でオペレーターが配置された回数（戦闘開始時の全員・再配置・【強襲】の再配置・【不屈】の即時再配置。【カジミエーシュ】の攻撃力） */
+  let deployCount = 0;
+  const countDeploy = (u: Runtime) => {
+    if (u.owner) return;
+    deployCount++;
+    // 〈配置時〉の堅守特性（ブレミシャインなど）：戦闘開始時の配置は戦闘前に加算済み
+    if (t > 0) for (const ev of u.events) if (ev.kind === 'deploy') gainStacks(ev);
+  };
+  const kazimierzAtk = (u: Runtime) => (g.kazimierz?.members.has(u.input.uid) ? Math.min(deployCount * g.kazimierz.atkPerDeploy, g.kazimierz.maxAtk) : 0);
 
   // ---- コスト・再配置 ----
   let cost = INITIAL_COST + (g.initialCost ?? 0);
@@ -2400,6 +2420,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   /** 配置時に発動するスキル（ウタゲ：HP減少と効果時間、グラベル：バリア） */
   const onDeployed = (u: Runtime) => {
     const s = u.skill;
+    countDeploy(u);
     // 素質：配置からの時間、マドロックのシールド（配置時に1枚）、アルケットのシールド
     u.ts.deployedAt = t;
     u.raidIdleFrom = t;
@@ -2426,6 +2447,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (cid(u) === TEXAS2) texasAppear(u);
   };
   if (field) for (const u of rt) onDeployed(u);
+  else deployCount = rt.length;
 
   const tickCost = () => {
     // ウルピスフォリア：配置中はコストの自然回復速度上昇
@@ -4107,7 +4129,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u.talentStacks * (ELEMENT_TALENT[def.charId]?.atkPerApoptosisBurst?.atk ?? 0) +
         u.qalaisaStacks * (g.qalaisa?.atk ?? 0) +
         talentAtkPct(u) +
-        tileAtkPct(u);
+        tileAtkPct(u) +
+        kazimierzAtk(u);
       // 琳琅スワイヤー：コインを使って「シャンパン爆弾」（範囲内の敵に物理ダメージ）
       if (swire && field) {
         u.bombTimer -= dt;
@@ -4127,7 +4150,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // 【強襲】：10秒間攻撃していないかスキル準備完了で、範囲内に敵がいなければ地上の敵の周囲へ再配置（SPはそのまま）
       if (field && g.raid?.members.has(uid) && !u.owner && !inMotion0(u)) {
         const ready = !s.passive && !skillActive() && s.spCost > 0 && u.sp >= s.spCost && t >= u.recastAt;
-        if ((t - u.raidIdleFrom >= g.raid.idle - 1e-9 || ready) && !targetsInRange(u, false).length && !targetsInRange(u, true).length) raidRelocate(u);
+        if ((t - u.raidIdleFrom >= g.raid.idle - 1e-9 || ready) && !targetsInRange(u, skillActive()).length) raidRelocate(u);
       }
       if (!s.passive && !skillActive() && t >= u.recastAt && u.sp >= s.spCost && s.spCost > 0 && !(field && def.charId === TIPPI) && !inDoll(u) && !opBursting(u, 'apoptosis') && (heal
           ? !field || injuredInRange(u, true).length > 0
@@ -4422,7 +4445,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   }
   const sargon = g.sargon ? { aspd: g.sargon.aspd, atkPct: g.sargon.atkPct, max: sargonMax, avg: Math.round((sargonSum / Math.max(dt, t)) * 10) / 10 } : undefined;
   const siracusa = g.siracusa && g.siracusa.aspd ? { aspd: g.siracusa.aspd, duration: g.siracusa.duration, members: rt.filter((u) => g.siracusa!.members.has(u.input.uid)).length } : undefined;
-  return { t, enemies, units: rt.filter((u) => !u.owner), timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, bossDefeated: bossDefeated(), colds, freezes, opBursts, enBursts, sargon, siracusa };
+  return { t, enemies, units: rt.filter((u) => !u.owner), timeline, phaseLog, stackGains, stackSources, frames, fx, killTime, bossDefeated: bossDefeated(), colds, freezes, opBursts, enBursts, sargon, siracusa, kazimierz: g.kazimierz ? { deploys: deployCount, atkPct: Math.min(deployCount * g.kazimierz.atkPerDeploy, g.kazimierz.maxAtk) } : undefined };
 }
 
 // ------------------------------------------------------------
@@ -4553,6 +4576,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     enBursts: r.enBursts,
     sargon: r.sargon,
     siracusa: r.siracusa,
+    kazimierz: r.kazimierz,
     enemies: r.enemies.map((e) => ({ id: e.id, key: e.input.key, name: e.input.spec.name, boss: e.input.spec.boss, flying: e.input.spec.flying && !e.stoned, maxHp: e.input.spec.hp, bounty: e.input.bounty, aura: e.input.spec.attack?.aura ? e.input.spec.attack.range : undefined, ring: e.input.spec.attack?.lockStrike ? e.input.spec.attack.range : undefined, large: e.input.spec.large || undefined })),
     bountyGold: bountyKilled.reduce((sum, e) => sum + (e.input.bounty ?? 0), 0),
     bountyKills: bountyKilled.length,

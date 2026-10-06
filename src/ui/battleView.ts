@@ -379,6 +379,14 @@ export function battleSummary(r: BattleResult, units: ReplayUnit[]) {
       r.opBursts || r.enBursts ? h('div', null, h('span', { class: 'muted small', title: '元素損傷が爆発した回数（味方/敵）' }, '元素爆発 味方/敵'), h('b', null, `${r.opBursts ?? 0}/${r.enBursts ?? 0}回`)) : null,
       r.colds || r.freezes ? h('div', null, h('span', { class: 'muted small' }, '寒冷/凍結'), h('b', null, `${r.colds ?? 0}/${r.freezes ?? 0}回`)) : null,
       r.sargon ? sargonKpi(r.sargon) : null,
+      r.kazimierz
+        ? h(
+            'div',
+            { title: `【カジミエーシュ】：この戦闘でオペレーターが配置された回数（戦闘開始時の全員・再配置を含む）。所属者の攻撃力+${pct(r.kazimierz.atkPct)}` },
+            h('span', { class: 'muted small' }, 'カジミエーシュ 配置'),
+            h('b', null, `${r.kazimierz.deploys}回（攻撃力+${pct(r.kazimierz.atkPct)}）`),
+          )
+        : null,
       r.siracusa
         ? h(
             'div',

@@ -1587,3 +1587,26 @@ describe('【強襲】', () => {
     expect(rb.totalDamage > ra.totalDamage).toBe(true);
   });
 });
+
+describe('【カジミエーシュ】の配置回数と〈配置時〉の特性', () => {
+  const board: OwnedUnit[] = [
+    { uid: 1, defId: '3_12', star: 1, pos: 14, dir: 'left', items: [] } as OwnedUnit,
+    { uid: 2, defId: '6_17', star: 1, pos: 22, dir: 'left', items: [] } as OwnedUnit,
+    { uid: 3, defId: '1_19', star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit,
+  ];
+  it('戦闘開始時の全員と【強襲】の再配置を数え、上限まで攻撃力が上がる。ブレミシャインは再配置のたびに加算数を得る（戦闘1回の上限まで）', () => {
+    const spec = oneEnemy('kazDummy', false, { def: 0, res: 0 });
+    setActiveMap('legacy');
+    const { inputs, globals } = buildSimInputs(board, [], {});
+    expect(globals.kazimierz!.atkPerDeploy).toBe(0.2);
+    const r = simulateBattle(inputs, spec, { globals, activeAlliances: new Set(['kazimierz', 'raid']), stacks: {} });
+    const raids = r.perUnit.reduce((s, u) => s + (u.raids ?? 0), 0);
+    expect(raids >= 1).toBe(true);
+    expect(r.kazimierz!.deploys).toBe(3 + raids);
+    expect(r.kazimierz!.atkPct).toBe(Math.min(0.2 * (3 + raids), 0.5));
+    const blem = r.perUnit.find((u) => u.uid === 1)!.raids ?? 0;
+    expect(blem >= 1).toBe(true);
+    const gained = r.stackSources.filter((x) => x.uid === 1 && x.cause === '戦闘中の配置' && x.bond === 'kazimierz').reduce((s, x) => s + x.amount, 0);
+    expect(gained).toBe(Math.min(4 * blem, 8));
+  });
+});

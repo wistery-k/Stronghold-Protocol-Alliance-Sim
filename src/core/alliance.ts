@@ -126,6 +126,8 @@ export interface BattleGlobals {
   arcane?: { members: Set<number>; vuln: number; vulnLow: number; lowRatio: number; duration: number };
   /** ラテラーノLv2：弾薬消費でラテラーノ全員の攻撃力上昇 */
   laterano?: { members: Set<number>; atkPerAmmo: number; maxAtk: number };
+  /** カジミエーシュ：オペレーターが配置されるたびに所属者全員の攻撃力上昇（上限あり。戦闘終了まで） */
+  kazimierz?: { members: Set<number>; atkPerDeploy: number; maxAtk: number };
   /** カジミエーシュLv2：近接は2秒ごとに攻撃力120%の確定ダメージ */
   kazimierzPulse?: { members: Set<number>; scale: number; interval: number };
   /** 黄砂のコンパス＋サルゴンの渋茶：サルゴンのスキル発動で全サルゴンのSP回復 */
@@ -404,10 +406,13 @@ export function battleSetup(
       fear: lv('siracusa') >= 2 ? v('siracusa', 'fear') : 0,
     };
   }
-  // カジミエーシュ：戦闘開始時に盤面の全員が配置される扱い
+  // カジミエーシュ：戦闘中にオペレーターが配置された回数（戦闘開始時の全員を含む）で攻撃力上昇（sim.ts の deployCount）
   if (lv('kazimierz') >= 1) {
-    const cap = v('kazimierz', 'base_max_atk_when_born') + v('kazimierz', 'max_atk_when_born_per_stack') * sk('kazimierz');
-    apply(members('kazimierz'), { atkPct: Math.min(v('kazimierz', 'atk_when_born') * board.length, cap) });
+    globals.kazimierz = {
+      members: members('kazimierz'),
+      atkPerDeploy: v('kazimierz', 'atk_when_born'),
+      maxAtk: v('kazimierz', 'base_max_atk_when_born') + v('kazimierz', 'max_atk_when_born_per_stack') * sk('kazimierz'),
+    };
     if (lv('kazimierz') >= 2) {
       const ranged = [...members('kazimierz')].filter((uid) => isRanged(getUnit(board.find((o) => o.uid === uid)!.defId)));
       const melee = [...members('kazimierz')].filter((uid) => !ranged.includes(uid));
