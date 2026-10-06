@@ -63,7 +63,7 @@ export const TILE_NAME: Record<TileType, string> = {
   spawn: '敵の出現地点',
   safe: '地上マス（敵は通らない）',
   wall: '配置できないマス',
-  high: '高台マス（遠距離のみ）',
+  high: '高台マス（遠距離と鈎縄師のみ）',
   goal: '防衛地点',
   floor: '地上（配置できない・敵が通る）',
   barricade: '障害物（配置できない・敵も通れない）',
@@ -114,12 +114,15 @@ export function isMelee(defId: string): boolean {
   return getUnit(defId).position === 'melee';
 }
 
+/** 近距離でも高台に置ける職分（鈎縄師：本家の配置可能マスが地上・高台の両方） */
+const HIGH_GROUND_MELEE_SUBPROF = new Set(['hookmaster']);
+
 /** そのオペレーターを置けるマスか */
 export function canPlace(pos: number, defId: string): boolean {
   if (pos < 0 || pos >= BOARD_CELLS) return false;
   const t = tileAt(pos);
   if (isGroundTile(t) || t === 'safe') return true;
-  if (t === 'high') return !isMelee(defId);
+  if (t === 'high') return !isMelee(defId) || HIGH_GROUND_MELEE_SUBPROF.has(getUnit(defId).subProfession);
   return false;
 }
 

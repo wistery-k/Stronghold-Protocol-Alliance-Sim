@@ -661,7 +661,7 @@ function moveUnit(
 
 function placeError(defId: string): string {
   return getUnit(defId)?.position === 'melee'
-    ? 'そのマスには置けません（近距離オペレーターは地上マスのみ）'
+    ? 'そのマスには置けません（近距離オペレーターは地上マスのみ。鈎縄師は高台にも置けます）'
     : 'そのマスには置けません';
 }
 

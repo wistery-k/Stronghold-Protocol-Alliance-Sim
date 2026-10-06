@@ -120,7 +120,7 @@ const SPECIAL_CODE = { infection: 'X', mire: 'M', smog: 'G', deepsea: 'D' } as c
 
 /** そのマスに置けるかの説明（ドラッグ中の案内用） */
 export function placeHint(defId: string, pos: number): string | null {
-  return canPlace(pos, defId) ? null : tileAt(pos) === 'high' ? '高台には遠距離オペレーターのみ' : '置けないマス';
+  return canPlace(pos, defId) ? null : tileAt(pos) === 'high' ? '高台には遠距離オペレーター（と鈎縄師）のみ' : '置けないマス';
 }
 
 /** 【サルゴン】の強化の要約（最大・平均の層数と攻撃速度） */
