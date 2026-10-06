@@ -3,7 +3,7 @@ import { ENEMIES, getBounty, groupLabel, groupName, roundEnemySummary, roundSpec
 import { getBand } from '../core/data/bands';
 import { getMap } from '../core/board';
 import { ENEMY_HP_SCALE } from '../core/rules';
-import { activeAllianceIds, evaluateAlliances, unitAlliances } from '../core/alliance';
+import { activeAllianceIds, alliancesCompletedBy, evaluateAlliances, unitAlliances } from '../core/alliance';
 import { benchUnits } from '../core/garrison';
 import {
   allOwned,
@@ -292,6 +292,8 @@ function prepView(p: GameViewProps): HTMLElement {
   const lvCost = levelUpCost(state);
   // 非精鋭で所持しているオペレーター（ショップで光らせる）
   const ownedNormal = new Set(allOwned(state).filter((o) => o.star === 1).map((o) => o.defId));
+  // 獲得すると先見・奇跡・投資家が発動人数に届くオペレーター（ショップで光らせる）
+  const completes = (id: string) => alliancesCompletedBy(allOwned(state), id);
   const hasChoice = state.choices.length > 0;
   const overflow = benchOverflow(state);
   const blockReason = hasChoice
@@ -407,6 +409,7 @@ function prepView(p: GameViewProps): HTMLElement {
           choice.options.map((id, index) =>
             unitCard(id, {
               owned: ownedNormal.has(id),
+              completes: completes(id),
               highlight: new Set(unitAlliances(id).filter((a) => activeIds.has(a))),
               onClick: () => dispatch({ type: 'choose', index }),
             }),
@@ -443,6 +446,7 @@ function prepView(p: GameViewProps): HTMLElement {
             price,
             dim: state.gold < price,
             owned: ownedNormal.has(id),
+            completes: completes(id),
             highlight: new Set(unitAlliances(id).filter((a) => activeIds.has(a))),
             onClick: () => dispatch({ type: 'buy', slot }),
           });

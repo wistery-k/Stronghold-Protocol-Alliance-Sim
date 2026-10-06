@@ -826,6 +826,18 @@ aside {
 .card.owned {
   box-shadow: 0 0 0 2px var(--accent), 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent);
 }
+/* 獲得すると先見・奇跡・投資家が発動する（所持中の強調と色・線の形で区別） */
+.card.completes {
+  outline: 2px dashed var(--extra);
+  outline-offset: 2px;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--extra) 50%, transparent);
+}
+.tag.completes {
+  border-color: var(--extra);
+  background: var(--extra);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
 .stat.inline b {
   font-size: 18px;
 }
