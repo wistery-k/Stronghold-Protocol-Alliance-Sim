@@ -124,6 +124,8 @@ export interface Modifier {
   atkPct?: number;
   /** 基礎攻撃力への固定値加算 */
   atkFlat?: number;
+  /** 攻撃力の最終加算（攻撃力+n%などをすべて掛けた後に足す。【エーギル】の捕食） */
+  atkFinal?: number;
   /** ブロック数の加算（【エーギル】の捕食） */
   blockFlat?: number;
   aspd?: number;
