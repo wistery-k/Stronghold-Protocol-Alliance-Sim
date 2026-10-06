@@ -1366,3 +1366,185 @@ describe('モジュールの攻撃範囲', () => {
     expect(unitRangeIds('2_01', 2).range).toBe(unitRangeIds('2_01', 1).range);
   });
 });
+
+describe('「サンクタの翼」「サンクタの眼」', () => {
+  it('データ：HPが半分以下で一度だけ5秒の恐怖と移動速度+150%。眼は弾薬を1発奪う', () => {
+    for (const key of ['enemy_10083_hlbird', 'enemy_10084_hlegle']) {
+      expect(ENEMIES[key].selfFear).toEqual({ ratio: 0.5, fear: 5, speedMult: 2.5, speedDuration: 5 });
+    }
+    expect(ENEMIES.enemy_10084_hlegle.attack?.stealAmmo).toBe(1);
+    expect(ENEMIES.enemy_10083_hlbird.attack).toBeUndefined();
+  });
+
+  it('HPが半分以下になると一度だけ恐怖になり、来た道を速く戻る', () => {
+    setActiveMap('legacy');
+    ENEMIES.test_wing = { ...ENEMIES.enemy_10083_hlbird, hp: 3000, res: 0 };
+    const sn = byProf('sniper').id;
+    const board: OwnedUnit[] = [{ uid: 1, defId: sn, star: 1, pos: 29, dir: 'right' }];
+    const { inputs, globals } = buildSimInputs(board, [], {});
+    const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_wing', count: 1, interval: 0, delay: 0, spawn: 1 }] };
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    const frames = r.frames!;
+    const feared = frames.filter((f) => f.e.some((e) => ((e[4] ?? 0) & 4) !== 0));
+    expect(feared.length > 0).toBe(true);
+    const t0 = feared[0].t;
+    const t1 = feared[feared.length - 1].t;
+    // 一度だけ（続いた区間）で、5秒
+    expect(t1 - t0 >= 4.5 && t1 - t0 <= 5.05).toBe(true);
+    expect(feared.length).toBe(frames.filter((f) => f.t >= t0 && f.t <= t1).length);
+    // 恐怖になった時のHPは半分以下
+    expect(feared[0].e[0][3] <= 50).toBe(true);
+    // 恐怖の間は経路を戻る（通常の2.5倍の速さ）
+    const dist = (a: (typeof frames)[number], b: (typeof frames)[number]) => Math.hypot(a.e[0][1] - b.e[0][1], a.e[0][2] - b.e[0][2]);
+    const before = frames.filter((f) => f.t >= t0 - 2 && f.t <= t0);
+    const during = frames.filter((f) => f.t >= t0 + 0.5 && f.t <= t0 + 2.5);
+    const vBefore = dist(before[0], before[before.length - 1]) / (before[before.length - 1].t - before[0].t);
+    const vDuring = dist(during[0], during[during.length - 1]) / (during[during.length - 1].t - during[0].t);
+    expect(vDuring > vBefore * 1.5).toBe(true);
+  });
+
+  it('眼：弾薬スキル中の相手には、ダメージを与える代わりに弾薬を奪う', () => {
+    setActiveMap('legacy');
+    const insider = UNITS.find((u) => u.name === 'インサイダー')!;
+    const board: OwnedUnit[] = [{ uid: 1, defId: insider.id, star: 1, pos: 29, dir: 'right' }];
+    const go = (stealAmmo: number | undefined) => {
+      const eye = ENEMIES.enemy_10084_hlegle;
+      ENEMIES.test_eye = { ...eye, hp: 1e9, speed: 0.2, attack: { ...eye.attack!, atk: 50, range: 9, stealAmmo } };
+      const { inputs, globals } = buildSimInputs(board, [], {});
+      const spec: RoundSpec = { round: 1, levelId: 'test', timeLimit: 60, moveMultiplier: 0.5, spawns: [{ enemy: 'test_eye', count: 1, interval: 0, delay: 0, spawn: 1 }] };
+      return simulateBattle(inputs, spec, { globals, record: true });
+    };
+    // 最初の弾薬スキルの間のコマ
+    const ammoFrames = (r: ReturnType<typeof go>) => {
+      const fs = r.frames!;
+      const on = (i: number) => !!fs[i]?.u?.some((u) => u[0] === 1 && u[3] === 2);
+      const i0 = fs.findIndex((_, i) => on(i));
+      let i1 = i0;
+      while (on(i1 + 1)) i1++;
+      return i0 < 0 ? [] : fs.slice(i0, i1 + 1);
+    };
+    const steal = go(1);
+    const plain = go(undefined);
+    // 奪われる分、弾薬スキルが早く終わる
+    expect(ammoFrames(steal).length > 0).toBe(true);
+    expect(ammoFrames(steal).length < ammoFrames(plain).length).toBe(true);
+    // 弾薬スキル中はダメージを受けない（HPが減らない）
+    const hpIn = ammoFrames(steal).map((f) => f.u!.find((u) => u[0] === 1)![1]);
+    expect(Math.min(...hpIn)).toBe(hpIn[0]);
+    const hpPlain = ammoFrames(plain).map((f) => f.u!.find((u) => u[0] === 1)![1]);
+    expect(Math.min(...hpPlain) < hpPlain[0]).toBe(true);
+  });
+});
+
+describe('イネス', () => {
+  const ines = () => UNITS.find((u) => u.charId === 'char_4087_ines')!;
+  /** 最初のスキル中のコマ */
+  const firstSkill = (fs: NonNullable<ReturnType<typeof run>['frames']>) => {
+    const on = (i: number) => !!fs[i]?.u?.some((u) => u[0] === 1 && u[3] === 1);
+    const i0 = fs.findIndex((_, i) => on(i));
+    let i1 = i0;
+    while (on(i1 + 1)) i1++;
+    return i0 < 0 ? [] : fs.slice(i0, i1 + 1);
+  };
+
+  it('素質：最初にダメージを与えた敵を5秒バインドする（その場から動かない）', () => {
+    const board: OwnedUnit[] = [{ uid: 1, defId: ines().id, star: 1, pos: 29, dir: 'right' }];
+    const r = run(board, oneEnemy('test_ines_root', true, { def: 0, res: 0, speed: 1 }));
+    const frames = r.frames!;
+    const rooted = frames.filter((f) => f.e.some((e) => ((e[4] ?? 0) & 1024) !== 0));
+    expect(rooted.length > 0).toBe(true);
+    const t0 = rooted[0].t;
+    const t1 = rooted[rooted.length - 1].t;
+    expect(t1 - t0 >= 4.5 && t1 - t0 <= 5.05).toBe(true);
+    // 一度だけ
+    expect(rooted.length).toBe(frames.filter((f) => f.t >= t0 && f.t <= t1).length);
+    expect(rooted[0].e[0][1]).toBe(rooted[rooted.length - 1].e[0][1]);
+    expect(rooted[0].e[0][2]).toBe(rooted[rooted.length - 1].e[0][2]);
+  });
+
+  it('素質：奪った攻撃力の分だけ敵の攻撃が弱くなる', () => {
+    const board: OwnedUnit[] = [{ uid: 1, defId: ines().id, star: 1, pos: 29, dir: 'right' }];
+    // ブロックされる地上の敵（攻撃力1000）。素質で90奪われる
+    const spec = oneEnemy('test_ines_steal', false, { def: 0, res: 0, speed: 1, attack: { kind: 'melee', atk: 1000, interval: 1, range: 0, arts: false } });
+    const r = run(board, spec);
+    expect(r.perUnit[0].taken > 0).toBe(true);
+    const def = ines().normal.stats.def;
+    // 1発あたり (1000 - 90 - 防御力)
+    const hits = r.perUnit[0].taken / (1000 - 90 - def);
+    expect(Math.abs(hits - Math.round(hits)) < 1e-6).toBe(true);
+  });
+
+  it('S2：スキル中はステルス（遠距離攻撃の対象にならない）で、攻撃するたびに敵の攻撃速度を奪う', () => {
+    const def = ines();
+    const board: OwnedUnit[] = [{ uid: 1, defId: def.id, star: 1, pos: 29, dir: 'right' }];
+    const spec = oneEnemy('test_ines_s2', true, { def: 0, res: 0, speed: 0.3, attack: { kind: 'ranged', atk: 100, interval: 1, range: 9, arts: false } });
+    const r = run(board, spec);
+    const frames = r.frames!;
+    const inSkill = firstSkill(frames);
+    expect(inSkill.length > 0).toBe(true);
+    expect(inSkill.every((f) => f.st?.includes(1))).toBe(true);
+    const s0 = inSkill[0].t;
+    const s1 = inSkill[inSkill.length - 1].t;
+    // スキル中は敵の遠距離攻撃が来ない
+    const shots = (r.fx ?? []).filter((x) => x[1] === 3).map((x) => x[0] / 100);
+    expect(shots.some((x) => x > s0 + 0.1 && x < s1 - 0.1)).toBe(false);
+    expect(shots.some((x) => x < s0)).toBe(true);
+    // 奪った攻撃速度：スキルの終わり際の攻撃間隔は、スキル終了後より短い
+    const hitsT = (r.fx ?? []).filter((x) => x[1] === 0 && x[2] === 1).map((x) => x[0] / 100);
+    const gap = (from: number, to: number) => {
+      const xs = hitsT.filter((x) => x >= from && x <= to);
+      return (xs[xs.length - 1] - xs[0]) / (xs.length - 1);
+    };
+    expect(gap(s1 - 4, s1 - 0.1) < gap(s1 + 0.5, s1 + 5) * 0.8).toBe(true);
+  });
+
+  it('素質「影哨」：倒れた後も、その位置の攻撃範囲の敵は移動速度-30%（影哨が残る）', () => {
+    setActiveMap('legacy');
+    ENEMIES.test_ines_killer = { name: 'k', hp: 1e9, def: 0, res: 0, speed: 1, blockCnt: 1, flying: false, boss: false, elite: false, lifeReduce: 1, attack: { kind: 'melee', atk: 1e6, interval: 1, range: 0, arts: false } };
+    ENEMIES.test_ines_after = { name: 'f', hp: 1e9, def: 0, res: 0, speed: 1, blockCnt: 1, flying: true, boss: false, elite: false, lifeReduce: 1 };
+    const board: OwnedUnit[] = [{ uid: 1, defId: ines().id, star: 1, pos: 29, dir: 'right' }];
+    const { inputs, globals } = buildSimInputs(board, [], {});
+    const spec: RoundSpec = {
+      round: 1,
+      levelId: 'test',
+      timeLimit: 40,
+      moveMultiplier: 0.5,
+      spawns: [
+        { enemy: 'test_ines_killer', count: 1, interval: 0, delay: 0, spawn: 1 },
+        { enemy: 'test_ines_after', count: 1, interval: 0, delay: 20, spawn: 1 },
+      ],
+    };
+    const r = simulateBattle(inputs, spec, { globals, record: true });
+    const down = r.perUnit[0].downAt!;
+    expect(down < 20).toBe(true);
+    // 後から来た敵（イネスが倒れた後）の速さ：範囲内は範囲外の70%
+    const pts = r.frames!.map((f) => [f.t, f.e.find((e) => e[0] === 2)?.[1]] as const).filter((p) => p[1] !== undefined) as [number, number][];
+    const speed = (lo: number, hi: number) => {
+      const xs = pts.filter((p) => p[1] >= lo && p[1] <= hi);
+      return (xs[0][1] - xs[xs.length - 1][1]) / (xs[xs.length - 1][0] - xs[0][0]);
+    };
+    expect(Math.abs(speed(200, 400) / speed(500, 750) - 0.7) < 0.03).toBe(true);
+  });
+
+  it('S2で奪った敵の攻撃速度はスキル終了で戻る', () => {
+    const def = ines();
+    const board: OwnedUnit[] = [{ uid: 1, defId: def.id, star: 1, pos: 29, dir: 'right' }];
+    // ブロックされた遠距離の敵：ステルス中もブロックしているイネスを攻撃する
+    const spec = oneEnemy('test_ines_aspd', false, { def: 0, res: 0, speed: 1, attack: { kind: 'ranged', atk: 1, interval: 1, range: 1, arts: false } });
+    spec.timeLimit = 45;
+    const r = run(board, spec);
+    const frames = r.frames!;
+    const inSkill = firstSkill(frames);
+    const s0 = inSkill[0].t;
+    const s1 = inSkill[inSkill.length - 1].t;
+    const shots = (r.fx ?? []).filter((x) => x[1] === 3).map((x) => x[0] / 100);
+    const gap = (from: number, to: number) => {
+      const xs = shots.filter((x) => x >= from && x <= to);
+      return (xs[xs.length - 1] - xs[0]) / (xs.length - 1);
+    };
+    // 奪われた敵は攻撃間隔が長くなり、終了後は元の1秒に戻る
+    expect(gap(s1 - 5, s1) > 1.3).toBe(true);
+    expect(Math.abs(gap(s1 + 1, s1 + 6) - 1) < 0.05).toBe(true);
+    expect(s0 < s1).toBe(true);
+  });
+});

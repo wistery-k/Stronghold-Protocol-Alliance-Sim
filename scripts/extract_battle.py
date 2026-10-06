@@ -246,6 +246,18 @@ def main():
         if boomb and e.get('attack'):
             mv = next((b_['value'] for b_ in (boomb.get('blackboard') or []) if b_['key'] == 'move_speed'), 0)
             e['throwOnce'] = {'radius': 1, 'speedMult': 1 + mv}
+        # HPが初めて半分以下になると、数秒間恐怖になり移動速度が上がる（「サンクタの翼」「サンクタの眼」。半分は図鑑の説明から。
+        # move_speed は加算（+150%）と解釈する：同じ形の他の敵（市井盗贼 0.9「大幅提升」など）は1未満でも速くなるため）
+        if 'selffear.fear' in bb:
+            e['selfFear'] = {
+                'ratio': 0.5,
+                'fear': bb['selffear.fear']['value'],
+                'speedMult': 1 + (bb['selffear.move_speed']['value'] if 'selffear.move_speed' in bb else 0),
+                'speedDuration': bb['selffear.speed_duration']['value'] if 'selffear.speed_duration' in bb else 0,
+            }
+        # 攻撃時、目標が弾薬スキル中なら弾薬を奪う（ダメージは与えない）（「サンクタの眼」）
+        if 'damageorbullet.attack@minus_bullet' in bb and e.get('attack'):
+            e['attack']['stealAmmo'] = int(bb['damageorbullet.attack@minus_bullet']['value'])
         # 帝国砲撃誘導機：通常攻撃の代わりに、射程内の味方を「ロックオン」し、数秒後にその位置へ砲撃が着弾する。
         # 本家データに数値が無いため仮の値（ロックオンから着弾まで2秒、目標と周囲8マスに攻撃力の物理）
         if key in LOCK_STRIKE_ENEMIES and e.get('attack'):
