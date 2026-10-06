@@ -284,6 +284,16 @@ describe('マップ戦闘', () => {
     expect(r.frames!.some((f) => f.e.some((e) => ((e[4] ?? 0) & 8) !== 0))).toBe(false);
   });
 
+  it('仮想敵：再生：再生状態は進み続け、ブロックをすり抜ける', () => {
+    const atk = { kind: 'melee' as const, atk: 1, interval: 5, range: 0, arts: false };
+    const spec = oneEnemy('test_regen', false, { hp: 300, def: 0, res: 0, attack: atk, revive: { hits: 50, interval: 15 } });
+    const tank = byProf('defender');
+    const r = run([{ uid: 1, defId: tank.id, star: 3, pos: 31, dir: 'right' }], { ...spec, timeLimit: 60 });
+    // 重装が倒すと再生状態になってブロックが外れ、そのまま防衛地点へ抜ける
+    expect(r.killed).toBe(0);
+    expect(r.leaked).toBe(1);
+  });
+
   it('攻撃回数で倒れる敵は、ダメージ量に関係なく回数で倒れる', () => {
     const spec = oneEnemy('test_hits', false, { hp: 3, def: 99999, res: 100, hitsToKill: true, unblockable: true });
     const sniper = byProf('sniper');

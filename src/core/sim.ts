@@ -4296,13 +4296,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         e.d = 0;
         release(e);
       }
-      // 復活待ち：時間が来たら元のHPで復活する。残火（ダブリン追炎系）は元と同じ速さで進み、ブロックもされる。それ以外はその場に留まる
-      if (e.reviveAt !== null) {
-        if (t >= e.reviveAt) {
-          e.reviveAt = null;
-          e.hp = e.input.spec.hp;
-          e.maxHp = e.input.spec.hp;
-        } else if (!e.input.spec.revive?.stealth) continue;
+      // 復活待ち：元と同じ速さで進み、時間が来たら元のHPで復活する。残火（ダブリン追炎系）はブロックされ、それ以外（仮想敵：再生）はブロックされない
+      if (e.reviveAt !== null && t >= e.reviveAt) {
+        e.reviveAt = null;
+        e.hp = e.input.spec.hp;
+        e.maxHp = e.input.spec.hp;
       }
       if (!e.input.path || e.blockedBy !== null) continue;
       if (t < e.stallUntil || asleep(e) || t < e.stunUntil) continue;
@@ -4328,7 +4326,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       const curTile = path[Math.min(Math.round(e.d), path.length - 1)];
       const nd = e.d + speed * dt;
       const nextTile = path[Math.min(Math.round(nd), path.length - 1)];
-      if (!e.input.spec.unblockable && (!e.input.spec.flying || (field && !e.input.spec.projectile && !e.input.spec.roam && rt.some(lifted)))) {
+      if (!e.input.spec.unblockable && !(e.reviveAt !== null && !e.input.spec.revive?.stealth) && (!e.input.spec.flying || (field && !e.input.spec.projectile && !e.input.spec.roam && rt.some(lifted)))) {
         // 今いるマス・次に入るマスにブロックできるユニットがいれば止まる
         const b = blockerAt(curTile, e) ?? (nextTile !== curTile ? blockerAt(nextTile, e) : undefined);
         if (b) {
