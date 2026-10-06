@@ -462,7 +462,7 @@ export function battleSetup(
   const devour = new Map<number, { damage: number; hits: number }>();
   if (lv('egir') >= 1) {
     const dv = egirDevour(board, members('egir'), v('egir', 'damage_value'));
-    for (const [uid, atk] of dv.atkGain) apply([uid], { atkFlat: atk, blockFlat: dv.blockGain.get(uid) });
+    for (const [uid, atk] of dv.atkGain) apply([uid], { atkFinal: atk, blockFlat: dv.blockGain.get(uid) });
     for (const [uid, hits] of dv.hits) devour.set(uid, { damage: v('egir', 'damage_value'), hits });
   }
   // 秘術

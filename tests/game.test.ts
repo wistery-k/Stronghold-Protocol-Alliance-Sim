@@ -3,6 +3,7 @@ import { alliancesCompletedBy, battleSetup, evaluateAlliances } from '../src/cor
 import { behindOf, cellPos, egirDevour, frontOf, sameRow } from '../src/core/board';
 import { applyAction, createGame, levelUpCost, priceOf, rollBans, roundSpecOf, type GameState } from '../src/core/game';
 import { Rng } from '../src/core/rng';
+import { baseAtk } from '../src/core/sim';
 import { CORE_IDS } from '../src/core/data/alliances';
 import { unitAvailable } from '../src/core/items';
 import { UNITS, getUnit } from '../src/core/data/units';
@@ -735,7 +736,7 @@ describe('【エーギル】の捕食', () => {
     const sum = ['アンダーフロー', 'ルシーラ', 'スペクター', 'プロヴァンス'].reduce((s, n) => s + base(n).atk, 0);
     const setup = battleSetup(board, [], {});
     const m = setup.mods.get(1)!;
-    expect(base('アンダーフロー').atk + (m.atkFlat ?? 0)).toBe(sum);
+    expect(base('アンダーフロー').atk + (m.atkFinal ?? 0)).toBe(sum);
     expect(m.blockFlat).toBe(base('ルシーラ').block + base('スペクター').block + base('プロヴァンス').block);
     // 捕食されたルシーラ・スペクター・プロヴァンスは戦闘に出ない
     expect([...setup.excluded].sort()).toEqual([2, 3, 4]);
@@ -776,5 +777,13 @@ describe('【エーギル】の捕食で得た値', () => {
     expect(dv.dead.has(3)).toBe(true);
     expect(dv.atkGain.get(3)).toBe(st('プロヴァンス').atk);
     expect(dv.blockGain.get(2)).toBe(st('スペクター').block + st('プロヴァンス').block);
+  });
+});
+
+describe('【エーギル】の捕食の攻撃力', () => {
+  it('攻撃力+n%などを掛けた後に足す最終加算', () => {
+    const d = getUnit(id('ウルピアヌス'));
+    expect(baseAtk(d, 1, { atkFinal: 1000, atkPct: 0.5 })).toBeCloseTo(d.normal.stats.atk * 1.5 + 1000);
+    expect(baseAtk(d, 1, { atkFinal: 1000 }, 0.3)).toBeCloseTo(d.normal.stats.atk * 1.3 + 1000);
   });
 });

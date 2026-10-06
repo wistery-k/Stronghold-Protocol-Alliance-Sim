@@ -395,7 +395,7 @@ export function attackInterval(baseInterval: number, aspd: number, intervalAdd =
 
 export function baseAtk(def: UnitDef, star: Star, mods: Modifier, extraPct = 0): number {
   const st = unitState(def, star).stats;
-  return (st.atk + (mods.atkFlat ?? 0)) * (1 + (mods.atkPct ?? 0) + extraPct);
+  return (st.atk + (mods.atkFlat ?? 0)) * (1 + (mods.atkPct ?? 0) + extraPct) + (mods.atkFinal ?? 0);
 }
 
 /** カジミエーシュの競技旗：配置後しばらく与ダメージ上昇、その後減衰 */
