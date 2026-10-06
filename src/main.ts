@@ -124,7 +124,12 @@ function render() {
       'div',
       { class: 'title' },
       h('b', null, '堅守協定シミュレーター'),
-      h('span', { class: 'build-info' }, `最終更新 ${__BUILD_INFO__}`),
+      h(
+        'span',
+        { class: 'build-info' },
+        `最終更新 ${__BUILD_INFO__} · `,
+        h('a', { href: 'https://github.com/wistery-k/Stronghold-Protocol-Alliance-Sim', target: '_blank', rel: 'noopener' }, 'GitHub'),
+      ),
     ),
     h(
       'nav',
