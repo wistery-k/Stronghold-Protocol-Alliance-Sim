@@ -541,6 +541,22 @@ describe('寒冷・凍結とスキルの細部', () => {
     expect(ratio > 1.1 && ratio < 1.2).toBe(true);
   });
 
+  it('メテオS1：命中した敵の防御力を5秒間下げる', () => {
+    const meteor = unit('メテオ');
+    expect(meteor.normal.skill.id).toBe('skchr_shotst_1');
+    const dmg = () => run([{ uid: 1, defId: meteor.id, star: 1, pos: 34, dir: 'right' }], oneEnemy('test_meteor', false, { speed: 0.01, def: 300 })).perUnit[0].damage;
+    const withDown = dmg();
+    // 防御力低下を外すと与ダメージが減る
+    const bb = meteor.normal.skill.blackboard;
+    const saved = bb.def;
+    delete bb.def;
+    try {
+      expect(dmg() < withDown).toBe(true);
+    } finally {
+      bb.def = saved;
+    }
+  });
+
   it('与ダメージを種別（物理・術・確定・元素）ごとに記録する', () => {
     const spec = oneEnemy('test_kind', false, { speed: 0.01, def: 0, res: 0 });
     const kinds = (name: string) => run([{ uid: 1, defId: unit(name).id, star: 1, pos: 34, dir: 'right' }], spec).perUnit[0];

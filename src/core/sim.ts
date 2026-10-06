@@ -254,6 +254,9 @@ export interface SkillModel {
   costPerAttack: number;
   /** 連鎖術師：スキル中は跳躍の減衰なし（レイズ） */
   noChainDecay: boolean;
+  /** 即時発動スキルの命中で敵の防御力を下げる（割合・秒。メテオS1） */
+  hitDefDown: number;
+  hitDefDownTime: number;
 }
 
 export function parseSkill(s: SkillData): SkillModel {
@@ -267,6 +270,8 @@ export function parseSkill(s: SkillData): SkillModel {
   // 配置時に発動して時間で終わるスキル（ウタゲ・グラベル・血掟テキサス）
   const onDeploy = s.skillType === 'PASSIVE' && s.description.startsWith('配置後') && (bb.duration !== undefined || s.duration > 0);
   const passive = s.skillType === 'PASSIVE' && !onDeploy;
+  // 「敵に…、X秒間防御力-Y%」：命中した敵の防御力を一定時間下げる
+  const hitDefDown = /敵に.*秒間防御力-/.test(s.description) && (bb.def ?? 0) < 0 && (bb.duration ?? 0) > 0;
   const charge = s.spType === 'INCREASE_WITH_TIME' ? 'time' : s.spType === 'INCREASE_WHEN_ATTACK' ? 'attack' : s.spType === 'INCREASE_WHEN_TAKEN_DAMAGE' ? 'hit' : 'none';
   const atk = get('atk', 'attack@atk') ?? 0;
   const timesRaw = get('times', 'attack@times');
@@ -314,6 +319,8 @@ export function parseSkill(s: SkillData): SkillModel {
     costOverTime: Number(/所持コストが徐々に増加（合計(\d+)）/.exec(s.description)?.[1] ?? 0),
     costPerAttack: /攻撃するたびに所持コスト\+1/.test(s.description) ? 1 : 0,
     noChainDecay: s.description.includes('跳躍時のダメージ減衰が発生しなくなる'),
+    hitDefDown: hitDefDown ? Number(bb.def) : 0,
+    hitDefDownTime: hitDefDown ? Number(bb.duration) : 0,
   };
 }
 
@@ -834,6 +841,9 @@ interface Enemy {
   atkTimer: number;
   /** 脆弱（被ダメージ増加）の終わる時刻 */
   vulnUntil: number;
+  /** スキルの命中による防御力低下（割合）と終わる時刻（メテオS1） */
+  defDown: number;
+  defDownUntil: number;
   /** 遠距離攻撃のモーションで足を止めている時刻まで */
   stallUntil: number;
   /** 寒冷・凍結の終わる時刻 */
@@ -1245,6 +1255,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       dDef = Math.min(dDef, s.enemyDef);
       dRes = Math.min(dRes, s.enemyRes);
     }
+    // 防御力低下は重複せず、大きい方だけ
+    if (t < e.defDownUntil) dDef = Math.min(dDef, e.defDown);
     if (!dDef && !dRes) return e.defense;
     return { ...e.defense, def: e.defense.def * (1 + dDef), res: e.defense.res * (1 + dRes) };
   };
@@ -1387,6 +1399,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       neutralUntil: -1,
       atkTimer: 0,
       vulnUntil: -1,
+      defDown: 0,
+      defDownUntil: -1,
       stallUntil: -1,
       coldUntil: -1,
       frozenUntil: -1,
@@ -2034,6 +2048,11 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       for (const [e, m] of hitList) {
         for (let h = 0; h < s.hits; h++) strike(u, e, atk, s.atkScale * m);
         if (s.cold > 0) applyCold(e, s.cold);
+        if (s.hitDefDown && e.alive) {
+          // 効果中に掛け直すと、強い方の値で時間を更新
+          e.defDown = t < e.defDownUntil ? Math.min(e.defDown, s.hitDefDown) : s.hitDefDown;
+          e.defDownUntil = t + s.hitDefDownTime;
+        }
         // マドロックS2：確率で短時間スタン
         if (field && s.bb.buff_prob && s.bb.stun) skillStun(u, e, s.bb.buff_prob, s.bb.stun);
       }

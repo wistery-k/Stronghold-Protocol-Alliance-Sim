@@ -21,6 +21,7 @@ ACT_ID = 'act2autochess'  # 堅守協定：盟約（後期）
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from item_ja import ITEM_JA, ITEM_JA_FIXED  # noqa: E402
+from skill_choice import skill_index  # noqa: E402
 
 # 日本版データにまだ無いオペレーターの日本語名
 NAME_OVERRIDES = {
@@ -410,7 +411,7 @@ def main():
         for key, cid in (('normal', chess_id), ('golden', shop['goldenChessId'])):
             cd = act['charChessDataDict'][cid]
             st = cd['status']
-            skill_ref = ch['skills'][shop['defaultSkillIndex']]['skillId']
+            skill_ref = ch['skills'][skill_index(char_id, shop)]['skillId']
             garrisons = []
             for gid in cd['garrisonIds']:
                 g = act['garrisonDataDict'][gid]

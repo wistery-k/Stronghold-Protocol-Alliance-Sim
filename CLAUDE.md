@@ -35,6 +35,7 @@ python3 scripts/extract_gamedata.py <ArknightsGameData> <ArknightsGameData_YoSta
 python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoStar>   # → src/core/data/battledata.json（敵・ラウンド・射程など）
 ```
 
+- 戦闘で使うスキルはイベントデータの `defaultSkillIndex`。ユーザーの指定で変える時は `scripts/skill_choice.py` の `SKILL_INDEX_OVERRIDES`（両方の抽出スクリプトが使う。今はメテオ→S1）
 - 生成物の JSON は手で直さない。敵の特殊能力は `extract_battle.py` で blackboard や図鑑の説明から拾い、`EnemySpec`（`src/core/data/battle.ts`）のフィールドにする → `sim.ts` で実装、という流れ。
 - 使っているモードは `MODE = 'mode_single_normal'`。ボス（R14・R15）の HP は難易度ごとの値 `bossInfoDict` の `bloodPoint*` から取っていて、今は `BOSS_HP_FIELD = 'bloodPointHard'`（絶境＝日本版の死地。冑 180万・360万）。`difficultyFactorInfo`（1.0/1.6/1.7/1.7）と `modeFactorInfo`（1.25）は意味が不明で未使用。
 - 飛行の敵は各ステージの飛行経路（経由点）を `route` として持つ。盤面と座標系が違うボスステージ（R14・15）は対象外。
