@@ -19,9 +19,9 @@ import {
   unitRangeCells,
 } from '../core/board';
 import { ENEMIES, groupLabel, roundEnemySummary, type EnemySpec, type RoundGroup, type RoundSpec } from '../core/data/battle';
-import { getUnit } from '../core/data/units';
+import { getUnit, unitState } from '../core/data/units';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE } from '../core/rules';
-import { SKILL_RANGE_SHOWN, type BattleResult } from '../core/sim';
+import { SKILL_RANGE_SHOWN, attackInterval, type BattleResult } from '../core/sim';
 import type { Direction, OwnedUnit, Star } from '../core/types';
 import { makeDropTarget, starBadge, unitCard, type CardOptions } from './components';
 import { fmt, h, pct, s } from './dom';
@@ -949,6 +949,66 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     svg.append(g);
   }
 
+  // 選択したオペレーターのステータス（その時点のバフ込みの値。素の値との差も出す）
+  let selected: number | null = null;
+  let statKey = '';
+  const statPanel = h('div', { class: 'rp-stats' });
+  const selectUnit = (uid: number | null) => {
+    selected = uid;
+    statKey = '';
+    for (const [id, g] of unitNodes) g.classList.toggle('selected', id === uid);
+    draw();
+  };
+  const statRow = (label: string, value: string, base?: number, cur?: number, lowerIsBetter = false) => {
+    const diff = base !== undefined && cur !== undefined ? cur - base : 0;
+    const up = lowerIsBetter ? diff < 0 : diff > 0;
+    const shown = Math.abs(diff) >= (lowerIsBetter ? 0.005 : 0.5);
+    return h(
+      'div',
+      { class: 'rp-stat' },
+      h('span', { class: 'rp-stat-label' }, label),
+      h('span', { class: `rp-stat-value${shown ? (up ? ' up' : ' down') : ''}` }, value),
+      base !== undefined ? h('span', { class: 'rp-stat-base' }, `素の値 ${lowerIsBetter ? `${base.toFixed(2)}秒` : fmt(base)}`) : null,
+    );
+  };
+  const drawStats = (a: NonNullable<BattleResult['frames']>[number]) => {
+    if (selected === null) {
+      if (statKey !== 'none') {
+        statKey = 'none';
+        statPanel.replaceChildren(h('span', { class: 'muted small' }, 'オペレーターをクリックすると、その時点のステータス（バフ込み）を表示します'));
+      }
+      return;
+    }
+    const u = homeUnits.get(selected)!;
+    const def = getUnit(u.defId);
+    const base = unitState(def, u.star).stats;
+    const st = (a.us ?? []).find((x) => x[0] === selected);
+    const key = st ? st.join(',') : `down:${a.t}`;
+    if (key === statKey) return;
+    statKey = key;
+    const head = h('div', { class: 'rp-stats-head' }, h('b', {}, def.name), starBadge(u.star), h('button', { class: 'btn tiny', onclick: () => selectUnit(null) }, '閉じる'));
+    if (!st) {
+      const fr = (a.u ?? []).find((x) => x[0] === selected);
+      statPanel.replaceChildren(head, h('span', { class: 'muted small' }, fr && fr[3] === 4 ? '撤退中（再配置待ち）' : '戦場にいません'));
+      return;
+    }
+    const [, maxHp, hp, atk, df, aspd, interval, res] = st;
+    statPanel.replaceChildren(
+      head,
+      h(
+        'div',
+        { class: 'rp-stat-grid' },
+        statRow('最大HP', fmt(maxHp), base.hp, maxHp),
+        statRow('現在HP', `${fmt(hp)}（${Math.round((hp / Math.max(1, maxHp)) * 100)}%）`),
+        statRow('攻撃力', fmt(atk), base.atk, atk),
+        statRow('防御力', fmt(df), base.def, df),
+        statRow('術耐性', fmt(res), base.res, res),
+        statRow('攻撃速度', fmt(aspd), base.aspd, aspd),
+        statRow('攻撃間隔', `${(interval / 100).toFixed(2)}秒`, attackInterval(base.interval, base.aspd), interval / 100, true),
+      ),
+    );
+  };
+
   // オペレーター
   const unitNodes = new Map<number, SVGElement>();
   const unitBars = new Map<number, SVGElement>();
@@ -1002,6 +1062,9 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     }
     // 傀儡師：身替りと入れ替わっている間の表示
     g.append(s('text', { x: x + S / 2, y: y + 24, 'text-anchor': 'middle', class: 'rp-unit-doll' }, '身替り'));
+    // 選択中の枠（クリックでステータスを表示）
+    g.prepend(s('rect', { x: x + 2, y: y + 2, width: S - 4, height: S - 4, rx: 11, class: 'rp-unit-select' }));
+    g.addEventListener('click', () => selectUnit(selected === u.uid ? null : u.uid));
     unitNodes.set(u.uid, g);
     svg.append(g);
   }
@@ -1300,6 +1363,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
         el.replaceChildren(text, ...(text ? [s('title', {}, `【カジミエーシュ】攻撃力+${pct}%（この戦闘でオペレーターが配置された回数に応じて上昇）`)] : []));
       }
     }
+    drawStats(a);
     timeLabel.textContent = `${t.toFixed(1)}秒`;
     costLabel.textContent = a.c !== undefined ? `コスト ${a.c}` : '';
     coldLabel.textContent = colds || frozens ? `寒冷 ${colds}・凍結 ${frozens}` : '';
@@ -1353,6 +1417,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     { class: 'replay-wrap' },
     svg,
     h('div', { class: 'row rp-controls' }, playBtn, speedBtns, slider, timeLabel, costLabel, coldLabel),
-    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】・堅守特性（耀騎士ニアールなど）による攻撃速度、その上の「ATK+」は【カジミエーシュ】の攻撃力上昇（戦闘中の配置回数に応じる）。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）。水色の縁と左上の雪の結晶は寒冷、氷塊に包まれた敵は凍結（凍った瞬間に氷が弾ける。下の「寒冷・凍結」が今の数）。ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3は専用の演出（冷気の波と氷の棘、三日月の斬撃、前方を薙ぐ銀の弧、落ちてくる氷の峰）。デーゲンブレヒャーS3のモーション中はスキルの攻撃範囲を黄色の点線で示し、ゲージ（黄色）がモーションの残りに合わせて減っていく。右下に「慄」の印が付いた敵は戦慄（ブロックされている間は通常攻撃できない）、左下に「縛」の印が付いた敵はバインド（その場から動けない。攻撃はする）。赤い枠で右下に「襲」と出ている味方は【強襲】で敵の周囲へ再配置されたもの（撤退・再配置もその位置で行う）'),
+    statPanel,
+    h('div', { class: 'muted small' }, '●地上の敵　◌飛行の敵（大きさは最大HP）。オペレーターの下の緑はHP、青はSP、橙はスキルの残り（右上に残り秒数・弾数）。薄いオペレーターは撤退中（灰色のゲージが再配置までの時間）。攻撃は橙（物理）・紫（術）、範囲攻撃はマスや円の光、敵の遠距離攻撃は細い赤線、治療は緑の線、敵が残した汚染秽蝕は赤紫の円、敵の周りの紫の点線は周囲攻撃の範囲。オペレーター左上の丸は元素損傷（灼燃・神経・侵蝕・壊死。リングが爆発までの蓄積、塗りつぶしは爆発中）、左下の「AS+」は【サルゴン】の強化・【シラクーザ】・堅守特性（耀騎士ニアールなど）による攻撃速度、その上の「ATK+」は【カジミエーシュ】の攻撃力上昇（戦闘中の配置回数に応じる）。半透明の敵・味方はステルス中。点線の枠で「身替り」と出ている味方は傀儡師の身替り（ブロックせず周囲8マスを攻撃。一定時間で本体に戻る）、点線の小さな「紙人形」はカゼマルS2の身替り。青く脈打つ3×3の領域は帰溟スペクターの身替りの「内なる抱擁」（敵の移動速度-40%・毎秒術ダメージ）。影が付いて浮いている味方は離陸中（ティッピのスキル：地上の敵に狙われず、空中の敵をブロック・攻撃する）。紫に光って右上に結晶が出ている敵は活性源石の上（攻撃力・攻撃速度アップ、毎秒HP減少）。ピンクの狼の頭は荒蕪ラップランドS3のザーロ（取り付くと点線の円の範囲を減速し、1秒ごとに術ダメージ）。赤い照準と点線はレミュアンのロックオン（重ねてロックすると輪が増える）、赤い点線の円は爆撃の着弾予定（内側が爆心地）、落ちてくる砲弾と橙の爆発が爆撃。敵の周りの橙の点線の円は帝国砲撃誘導機の射程、薄い橙の枠と小さな照準がその砲撃のロックオン（2秒後に着弾）。水色の縁と左上の雪の結晶は寒冷、氷塊に包まれた敵は凍結（凍った瞬間に氷が弾ける。下の「寒冷・凍結」が今の数）。ノーシスS2・シルバーアッシュS3・凛御シルバーアッシュS2・聖聆プラマニクスS3は専用の演出（冷気の波と氷の棘、三日月の斬撃、前方を薙ぐ銀の弧、落ちてくる氷の峰）。デーゲンブレヒャーS3のモーション中はスキルの攻撃範囲を黄色の点線で示し、ゲージ（黄色）がモーションの残りに合わせて減っていく。右下に「慄」の印が付いた敵は戦慄（ブロックされている間は通常攻撃できない）、左下に「縛」の印が付いた敵はバインド（その場から動けない。攻撃はする）。赤い枠で右下に「襲」と出ている味方は【強襲】で敵の周囲へ再配置されたもの（撤退・再配置もその位置で行う）。オペレーターをクリックすると、その時点のステータス（スキル・盟約・素質・マスなどの効果込み）を下に表示（緑は素の値より良い、赤は悪い）'),
   );
 }
