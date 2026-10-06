@@ -675,10 +675,8 @@ const LOOP_DEFAULT_DIST = 2;
 const HUNTER_ATK_SCALE = 1.2;
 const HUNTER_RELOAD_DELAY = 1;
 const HUNTER_RELOAD_INTERVAL = 1;
-/** スノーハンターの素質（裂雲一撃：スキル発動時に攻撃力の185%の物理ダメージと寒冷3秒） */
-const SNOW_HUNTER: Record<string, { talentScale: number; talentCold: number }> = {
-  char_4211_snhunt: { talentScale: 1.85, talentCold: 3 },
-};
+/** スノーハンター（素質「裂雲一撃」：スキル発動時に攻撃力の180%の物理ダメージと寒冷3秒。値は素質の atk_scale・cold） */
+const SNOW_HUNTER = 'char_4211_snhunt';
 
 /** 遠距離の敵が攻撃する時に足を止める秒数 */
 const RANGED_ATTACK_STALL = 0.5;
@@ -1904,7 +1902,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         }
       }
       endSkill(u);
-    } else if (s.instant && SNOW_HUNTER[def.charId]) {
+    } else if (s.instant && def.charId === SNOW_HUNTER) {
       // スノーハンター：特殊弾の2連撃（移動していない敵には倍率上昇）＋素質で裂雲獣の一撃と寒冷
       const atk = baseAtk(def, star, mods, outerAtkPct + s.atkPct);
       const target = pickTargets(u, true)[0]?.[0];
@@ -1912,8 +1910,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         const still = target.blockedBy !== null || isFrozen(target);
         const sc = still ? (s.bb.atk_scale_2 ?? 1) : (s.bb.atk_scale_1 ?? 1);
         for (let h = 0; h < 2; h++) strike(u, target, atk, sc);
-        strike(u, target, atk, SNOW_HUNTER[def.charId].talentScale);
-        applyCold(target, SNOW_HUNTER[def.charId].talentCold);
+        strike(u, target, atk, u.tb[0].atk_scale ?? 1);
+        applyCold(target, u.tb[0].cold ?? 0);
       }
       endSkill(u);
     } else if (cid(u) === BLKKGT && s.bb.d_atk_scale) {

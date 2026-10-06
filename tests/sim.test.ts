@@ -109,6 +109,15 @@ describe('simulateDps', () => {
     expect(r.killed).toBe(false);
   });
 
+  it('スノーハンターの素質の一撃はゲームデータの倍率（攻撃力の180%）', () => {
+    // 開始直後にスキルを撃たせる：通常攻撃120%＋特殊弾160%×2＋素質180%
+    const def = structuredClone(byName('スノーハンター'));
+    def.normal.skill.initSp = def.normal.skill.spCost;
+    const r = simulateDps([{ uid: 1, def, star: 1, mods: {} }], dummy({ duration: 0.05 }));
+    expect(r.perUnit[0].skillCasts).toBe(1);
+    expect(r.totalDamage).toBe(Math.round(def.normal.stats.atk * (1.2 + 1.6 * 2 + 1.8)));
+  });
+
   it('スキル発動で加算数を得る特性（パピルス：サルゴン）', () => {
     const def = byName('パピルス');
     const r = simulateDps([{ uid: 1, def, star: 1, mods: {} }], dummy({ duration: 60 }), { activeAlliances: new Set(['sargon']) });
