@@ -459,6 +459,9 @@ def main():
         # 倒れると一定回数で倒せる状態になり、時間が経つと復活する
         if 'revive[trigger].interval' in bb:
             e['revive'] = {'hits': int(bb['revive[trigger].prop_max_hp']['value']), 'interval': bb['revive[trigger].interval']['value']}
+            # ダブリン追炎戦士・従兵：倒れた後の<怨念の残火>・<貪欲なる灰燼>はステルス
+            if any(a.startswith('被击倒时') and '<$ba.invisible>' in a for a in abilities):
+                e['revive']['stealth'] = True
         enemies[key] = e
         return True
 

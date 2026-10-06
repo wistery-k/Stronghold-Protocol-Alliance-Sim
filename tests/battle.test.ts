@@ -244,6 +244,35 @@ describe('マップ戦闘', () => {
     expect(r2.killed).toBe(1);
   });
 
+  it('ダブリン追炎戦士・従兵：倒れると攻撃回数で倒せるステルスの残火になり、時間内に倒さないと復活する', () => {
+    expect(ENEMIES.enemy_1288_duskls.revive).toEqual({ hits: 5, interval: 10, stealth: true });
+    expect(ENEMIES.enemy_1288_duskls_2.revive).toEqual({ hits: 5, interval: 10, stealth: true });
+    expect(ENEMIES.enemy_1292_duskld.revive).toEqual({ hits: 10, interval: 10, stealth: true });
+    // 仮想敵：再生の再生状態はステルスではない
+    expect(ENEMIES.enemy_9010_acpupp.revive?.stealth).toBeUndefined();
+    const sniper = byProf('sniper');
+    const remnant = (stealth: boolean) => {
+      const spec = oneEnemy(`test_revive_${stealth}`, false, { hp: 100, def: 0, res: 0, revive: { hits: 5, interval: 10, stealth } });
+      const r = run([{ uid: 1, defId: sniper.id, star: 2, pos: 22, dir: 'down' }], spec);
+      // 残火の間（HPが攻撃回数のあいだ）のフレーム
+      const frames = r.frames!.filter((f) => f.e.length && f.t > 0.5);
+      return { r, frames };
+    };
+    // ステルスでない：残火を狙撃が攻撃して倒しきる（復活しない）
+    const open = remnant(false);
+    expect(open.r.killed).toBe(1);
+    expect(open.frames.some((f) => ((f.e[0][4] ?? 0) & 8) !== 0)).toBe(false);
+    // ステルスの残火：遠距離からは狙えず（HPが減らない）、10秒後に復活し、2度目は倒れる
+    const hidden = remnant(true);
+    const stealthed = hidden.frames.filter((f) => ((f.e[0][4] ?? 0) & 8) !== 0);
+    expect(stealthed.length > 0).toBe(true);
+    expect(stealthed.every((f) => f.e[0][3] === 100)).toBe(true);
+    expect(stealthed[stealthed.length - 1].t - stealthed[0].t > 9).toBe(true);
+    expect(hidden.r.killed).toBe(1);
+    const lastSeen = (x: typeof open) => x.r.frames!.filter((f) => f.e.length).pop()!.t;
+    expect(lastSeen(hidden) > lastSeen(open)).toBe(true);
+  });
+
   it('攻撃回数で倒れる敵は、ダメージ量に関係なく回数で倒れる', () => {
     const spec = oneEnemy('test_hits', false, { hp: 3, def: 99999, res: 100, hitsToKill: true, unblockable: true });
     const sniper = byProf('sniper');

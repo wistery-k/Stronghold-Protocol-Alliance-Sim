@@ -83,6 +83,8 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 - 「次の通常攻撃時」のスキル（`SkillModel.nextAttack`）：通常攻撃の置き換え、チャージ（`charges`：SPを spCost×N まで溜め、発動ごとに spCost を使う）、ミニマリストの2連続・バグパイプの追加の一撃（`hits`）、マドロックのスキル範囲の地上の敵全員（`allGround`）、シーのスプラッシュ拡大（`splashRadius`）
 - 仮想敵：黒雲の吞み込み（`EnemySpec.devour`：周囲の飛行の敵をバインド→吞み込んで弾薬）と全弾発射（`salvo`）。`sim.ts` の `tickBlackCloud`・`stopDevour`、`Enemy.boundBy`/`devoured`（懸賞に数えない）
 
+- ダブリン追炎戦士・従兵：倒れた後の残火・灰燼（復活待ち）をステルスに（`EnemySpec.revive.stealth`、`sim.ts` の `isStealthed`）。戦闘の制限時間に復活待ちの時間を足す（`battleTimeLimit`）。「燃える葦の群生」の効果は葦の群生がこのモードに無いので未使用
+
 ## 仮の値・未確認の点（ユーザーに伝え済み）
 
 - カゼマルS2の紙人形：1体だけ・前方優先・スキル終了で消える。攻撃力は本家トークンの比で約1.117倍

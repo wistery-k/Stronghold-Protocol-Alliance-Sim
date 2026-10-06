@@ -1291,7 +1291,9 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     e.neutralUntil = Math.max(e.neutralUntil, t + seconds);
     e.defense.res = currentRes(e);
   };
-  const isStealthed = (e: Enemy) => !!e.input.spec.stealth && e.blockedBy === null && e.reviveAt === null && !neutral(e) && !revealed(e);
+  // 復活待ちの敵は、ステルスの残火（ダブリン追炎戦士・従兵）だけがステルス（その場に留まりブロックされない）
+  const isStealthed = (e: Enemy) =>
+    (e.reviveAt !== null ? !!e.input.spec.revive?.stealth : !!e.input.spec.stealth && e.blockedBy === null) && !neutral(e) && !revealed(e);
 
   /** スキルによる防御力・術耐性低下を反映した敵の防御 */
   /** 範囲に敵が入っているか（大型のボスは占めるマスのどれかが入っていればよい） */
@@ -1860,7 +1862,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       if (!e.alive) return false;
       if (!field) return true;
       if ((isFlying(e) || e.input.spec.float) && !hitsAir(u, skillActive)) return false;
-      // ステルス：ブロックされている間だけ狙える（復活待ち・特殊能力無効化中は狙える）
+      // ステルス：ブロックされている間だけ狙える（特殊能力無効化中は狙える。復活待ちはステルスの残火だけ狙えない）
       if (isStealthed(e)) return false;
       // ボスの手下は無敵（攻撃の対象にならない。突進中・撃ち落とされた後は狙える）
       if (e.input.spec.roam && (e.minion === 'roam' || e.minion === 'back')) return false;
@@ -4915,7 +4917,8 @@ export function battleTimeLimit(spec: RoundSpec): number {
     const speed = Math.max(0.01, e.spec.speed * spec.moveMultiplier);
     // 遠距離の敵は攻撃のたびに足を止めるので、そのぶん余裕を持たせる
     const stall = e.spec.attack?.kind === 'ranged' ? 1 + RANGED_ATTACK_STALL / Math.max(0.5, e.spec.attack.interval) : 1;
-    limit = Math.max(limit, e.spawnAt + ((e.path.length - 1) / speed) * stall + 5);
+    // 復活する敵は復活待ちの間その場に留まる
+    limit = Math.max(limit, e.spawnAt + ((e.path.length - 1) / speed) * stall + (e.spec.revive?.interval ?? 0) + 5);
   }
   return Math.ceil(limit);
 }
