@@ -1639,6 +1639,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
   };
 
   /** 1ヒット（倍率 scale）を与える */
+  /** 【カジミエーシュ】Lv2の判定：敵をブロックしているか（単体標的モードでは近接をブロック中とみなす） */
+  const kazimierzBlocking = (u: Runtime) => (field ? u.blocked.length > 0 : u.input.def.position === 'melee');
   const strike = (u: Runtime, e: Enemy, atk: number, scale: number) => {
     const { def, mods, uid } = u.input;
     if (!e.alive) return;
@@ -1698,6 +1700,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (type !== 'heal' && mods.lifeOnHit) healUnit(u, u, u.maxHp * mods.lifeOnHit);
     if (type !== 'heal') {
       if (mods.trueDmgPct) deal(u, e, atk * mods.trueDmgPct * e.defense.damageTaken, 'true');
+      // カジミエーシュLv2：ブロックしていない時は攻撃に攻撃力30%の確定ダメージを追加
+      if (g.kazimierzPulse?.members.has(uid) && !kazimierzBlocking(u)) deal(u, e, atk * g.kazimierzPulse.pure * e.defense.damageTaken, 'true');
       if (siraProc && g.siracusa) {
         const before = u.result.damage;
         deal(u, e, g.siracusa.procDmg * e.defense.damageTaken, 'true');
@@ -4394,18 +4398,27 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       // 単体標的モードでは回復職のSPも時間で貯める
       if (heal && !field && s.charge === 'attack' && !activeNow) u.sp += dt / Math.max(0.2, interval);
 
-      // カジミエーシュLv2の周期ダメージ（近接・ブロック中に周囲の敵へ）
-      if (g.kazimierzPulse?.members.has(uid)) {
+      // カジミエーシュLv2の周期ダメージ（ブロック中に周囲の敵へ確定ダメージとスタン）
+      const kp = g.kazimierzPulse;
+      if (kp?.members.has(uid)) {
         u.pulseTimer -= dt;
         if (u.pulseTimer <= 0) {
-          u.pulseTimer += g.kazimierzPulse.interval;
+          u.pulseTimer += kp.interval;
           if (!field) {
-            for (const e of enemies) if (e.alive) deal(u, e, atk * g.kazimierzPulse.scale * e.defense.damageTaken, 'true');
-          } else if (u.blocked.length && u.input.pos !== undefined) {
+            if (kazimierzBlocking(u)) {
+              for (const e of enemies) {
+                if (!e.alive) continue;
+                deal(u, e, atk * kp.scale * e.defense.damageTaken, 'true');
+                stunEnemy(e, kp.stun);
+              }
+            }
+          } else if (kazimierzBlocking(u) && u.input.pos !== undefined) {
             const ux = cellX(u.input.pos);
             const uy = cellY(u.input.pos);
             for (const e of enemies) {
-              if (e.alive && Math.hypot(e.x - ux, e.y - uy) <= 1.3) deal(u, e, atk * g.kazimierzPulse.scale * e.defense.damageTaken, 'true');
+              if (!e.alive || Math.hypot(e.x - ux, e.y - uy) > 1.3) continue;
+              deal(u, e, atk * kp.scale * e.defense.damageTaken, 'true');
+              stunEnemy(e, kp.stun);
             }
           }
         }
