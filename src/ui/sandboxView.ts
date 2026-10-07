@@ -8,6 +8,7 @@ import { battleTimeLimit, simulateBattle, type BattleResult } from '../core/sim'
 import type { AllianceId, OwnedUnit, Star } from '../core/types';
 import { alliancePanel, unitCard } from './components';
 import { MAPS, RANDOM_MAPS, autoCell, bestDirection, canPlace, setActiveMap } from '../core/board';
+import { placeDevice, pruneDevices, turnDevice } from '../core/device';
 import { battleSummary, mapGrid, predictionLine, roundInfo } from './battleView';
 import { h } from './dom';
 
@@ -39,6 +40,7 @@ export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) =
     rawUpdate((s) => {
       s.replay = null;
       f(s);
+      pruneDevices(s.units);
     });
   setActiveMap(sb.mapId ?? MAPS[0].id);
   const group = sb.group ?? null;
@@ -81,6 +83,11 @@ export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) =
                     onClick: () => update((s) => { s.selectedUid = s.selectedUid === o.uid ? null : o.uid; }),
                   }),
                   onTurn: (uid, dir) => update((s) => { s.units.find((u) => u.uid === uid)!.dir = dir; }),
+                  devices: {
+                    selected: selected ?? null,
+                    onPlace: (uid, pos) => update((s) => { const u = s.units.find((x) => x.uid === uid); if (u) placeDevice(s.units, u, pos); }),
+                    onTurn: (uid, pos, dir) => update((s) => { const u = s.units.find((x) => x.uid === uid); if (u) turnDevice(u, pos, dir); }),
+                  },
                   onDropCell: (pos, uid) =>
                     update((s) => {
                       const u = s.units.find((x) => x.uid === uid);

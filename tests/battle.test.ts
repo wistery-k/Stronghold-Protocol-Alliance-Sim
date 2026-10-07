@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ENEMY_PATHS, GOAL, MAPS, cellPos, cellX, cellY, RANDOM_MAPS, SPAWNS, canPlace, setActiveMap, tileAt } from '../src/core/board';
 import { ENEMIES, ENEMY_GROUPS, ROUNDS, pickRoundGroup, roundSpec, unitRangeIds, type EnemySpec, type RoundSpec } from '../src/core/data/battle';
 import { UNITS } from '../src/core/data/units';
+import { autoDeviceDir, pruneDevices, placeDevice, removeDevice, validDevices } from '../src/core/device';
 import { buildSimInputs, createGame, roundGroupOf } from '../src/core/game';
 import { roundEnemies, routeCells, simulateBattle } from '../src/core/sim';
 import type { OwnedUnit } from '../src/core/types';
@@ -2060,30 +2061,53 @@ describe('仮想敵：黒雲', () => {
 describe('キャサリンの支援装置', () => {
   const cat = UNITS.find((u) => u.name === 'キャサリン')!;
   const tank = UNITS.find((u) => u.profession === 'defender' && u.tier <= 3)!;
-  const board: OwnedUnit[] = [
+  const mk = (): OwnedUnit[] => [
     { uid: 1, defId: tank.id, star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit,
     { uid: 2, defId: cat.id, star: 1, pos: 23, dir: 'right', items: [] } as OwnedUnit,
   ];
-  it('配置時に装置を置き、支援先の前方のオペレーターにキャサリンの最大HPの20%のバリアを付ける（リプレイにも記録）', () => {
-    const spec = oneEnemy('devDummy', false, { def: 0, res: 0 });
-    const r = run(board, spec);
-    const dv = r.frames![0].dv!;
-    expect(dv.length).toBe(2);
-    // 敵をブロックする味方（盾役）が先に支援先になり、1人に1個まで
-    expect(new Set(dv.map((x) => x[2])).size).toBe(2);
-    expect(dv[0][2]).toBe(1);
-    expect(dv[0][0]).toBe(22);
-    // 装置は支援先の隣（支援先の方を向く）
-    const [pos, dir, target] = dv[0];
-    const uPos = board.find((b) => b.uid === target)!.pos!;
-    const d = [[1, 0], [0, 1], [-1, 0], [0, -1]][dir];
-    expect(cellX(pos) + d[0]).toBe(cellX(uPos));
-    expect(cellY(pos) + d[1]).toBe(cellY(uPos));
+  const runWith = (board: OwnedUnit[], spec: RoundSpec) => run(board, spec);
+
+  it('置けるマス・個数の制限と、盤面の変化で使えなくなった装置の片付け', () => {
+    setActiveMap('legacy');
+    const board = mk();
+    const c = board[1];
+    expect(placeDevice(board, c, 22, 'down')).toBeUndefined();
+    expect(placeDevice(board, c, 22, 'down')).toBeTruthy(); // 同じマス
+    expect(placeDevice(board, c, 31)).toBeTruthy(); // オペレーターがいる
+    expect(placeDevice(board, c, 5)).toBeTruthy(); // 壁・高台
+    expect(placeDevice(board, c, 30, 'up')).toBeUndefined();
+    expect(placeDevice(board, c, 29)).toBeTruthy(); // 3個目
+    expect(validDevices(board, c).length).toBe(2);
+    expect(placeDevice(board, board[0], 22)).toBeTruthy(); // キャサリン以外は使えない
+    // オペレーターがそのマスに乗ると装置は消える
+    board.push({ uid: 3, defId: tank.id, star: 1, pos: 30, dir: 'right', items: [] } as OwnedUnit);
+    pruneDevices(board);
+    expect(c.devices!.map((d) => d.pos)).toEqual([22]);
+    removeDevice(c, 22);
+    expect(validDevices(board, c).length).toBe(0);
+    // 向きは自動で隣のオペレーターの方（ブロックする者を優先）
+    expect(autoDeviceDir(board, 22)).toBe('down');
   });
-  it('バリアが敵の攻撃を防ぎ、その量はキャサリンの実績になる', () => {
+  it('装置の前方のオペレーターにキャサリンの最大HPの20%のバリアが付き、リプレイにも記録される。装置が無ければ何も起きない', () => {
+    const spec = oneEnemy('devDummy', false, { def: 0, res: 0 });
+    const board = mk();
+    placeDevice(board, board[1], 22, 'down');
+    const r = runWith(board, spec);
+    expect(r.frames![0].dv).toEqual([[22, 1, 1]]);
+    expect(r.frames!.find((f) => f.t > 0.5)!.dv).toEqual([[22, 1, 1]]);
+    const r0 = runWith(mk(), spec);
+    expect(r0.frames![0].dv).toEqual([]);
+  });
+  it('同じ支援先に向けた装置は効果が重複せず、バリアが防いだ量はキャサリンの実績になる', () => {
     const spec = oneEnemy('devHit', false, { def: 0, res: 0, attack: { kind: 'melee', atk: 300, interval: 1, range: 0 } } as Partial<EnemySpec>);
-    const r = run(board, spec);
-    const c = r.perUnit.find((u) => u.uid === 2)!;
-    expect(c.barrier > 0).toBe(true);
+    const board = mk();
+    placeDevice(board, board[1], 22, 'down');
+    placeDevice(board, board[1], 30, 'right');
+    const r = runWith(board, spec);
+    const f = r.frames!.find((x) => x.t > 0.5)!;
+    expect(f.dv!.map((d) => d[2])).toEqual([1, 0]);
+    expect(r.perUnit.find((u) => u.uid === 2)!.barrier > 0).toBe(true);
+    const none = runWith(mk(), spec);
+    expect(none.perUnit.find((u) => u.uid === 2)!.barrier).toBe(0);
   });
 });

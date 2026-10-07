@@ -1,4 +1,5 @@
 import { bondKey, type BattleGlobals } from './alliance';
+import { DEVICE_MAX } from './device';
 import { BOARD_COLS, BOARD_ROWS, BOSS_CELLS, BOSS_CENTER, DIR_DELTA, ENEMY_PATHS, GOAL, PATH_TILES, canBlockAt, canPlace, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
 import { ENEMIES, rangeGrid, unitRangeIds, type ElementType, type EnemySpec, type RoundSpec } from './data/battle';
 import { difficultyAtkFactor, difficultyBossHp, difficultyHpFactor, type Difficulty } from './difficulty';
@@ -30,6 +31,8 @@ export interface SimUnitInput {
   dir?: Direction;
   /** 【エーギル】に捕食された：戦闘開始時に damage の物理ダメージを hits 回受ける */
   devoured?: { damage: number; hits: number };
+  /** キャサリンの支援装置（準備フェーズで置いたマスと向き） */
+  devices?: { pos: number; dir: Direction }[];
 }
 
 /** 与ダメージの種別（元素ダメージは防御力・術耐性の影響を受けない別枠） */
@@ -691,7 +694,7 @@ const SKILL_ACTIVE_ONLY_ATTACK = new Set(['char_291_aglina']);
 /** スキル中は攻撃しなくなる（スズラン・クオーラ・キャサリン・バブル） */
 /** キャサリンの支援装置（数値は素質の説明文から：初期バリア20%・補充6%/秒・5秒攻撃を受けていない時。同時に置けるのは2個） */
 const CATHY = 'char_4162_cathy';
-const CATHY_DEVICES = 2;
+const CATHY_DEVICES = DEVICE_MAX;
 const CATHY_BARRIER = 0.2;
 const CATHY_REFILL = 0.06;
 const CATHY_IDLE = 5;
@@ -1065,8 +1068,8 @@ interface Runtime {
   curInterval: number;
   /** 荒蕪ラップランドS3のザーロ（位置・追っている敵・取り付いたか）と、次のダメージまでの時間 */
   zaros: { x: number; y: number; target: Enemy | null; attached: boolean }[];
-  /** キャサリンの支援装置（置かれたマス・向き・支援先・バリアの上限・補充のタイマー） */
-  devices: { pos: number; dir: Direction; target: Runtime; cap: number; timer: number }[];
+  /** キャサリンの支援装置（置かれたマス・向き・前方のマス・支援先・バリアの上限・補充のタイマー） */
+  devices: { pos: number; dir: Direction; front: number; target: Runtime | null; cap: number; timer: number }[];
   zaroTimer: number;
   /** グレイディーアS3の渦（中心・半径・次のダメージまでの時間） */
   vortex: { x: number; y: number; r: number; timer: number } | null;
@@ -2321,43 +2324,17 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 
   // ---- キャサリンの支援装置 ----
   /**
-   * 配置時に装置を最大 CATHY_DEVICES 個置く（戦闘中は操作できないので自動）。支援先は、敵をブロックする味方 → 最大HPの高い順で、
-   * 1人に1個まで（装置の効果は重複しない）。置き場所は支援先の隣の空きマス（敵が通らないマス優先）で、支援先の方を向く
+   * 準備フェーズでプレイヤーが置いた装置（input.devices）を、キャサリンの配置時に有効にする。
+   * 装置の前方1マスにいる味方が支援先（【強襲】で動いても、その時そのマスにいる者）。1人に複数の装置があっても効果は重複しない
    */
   const placeDevices = (u: Runtime) => {
-    u.devices = [];
-    if (u.input.pos === undefined) return;
-    const taken = new Set(rt.filter((o) => (o.alive || o.redeployAt !== null) && o.input.pos !== undefined).map((o) => o.input.pos!));
-    const targets = rt
-      .filter((o) => o.alive && !o.owner && o.input.pos !== undefined)
-      .sort((a, b) => Number(b.blocker) - Number(a.blocker) || b.maxHp - a.maxHp || a.order - b.order);
-    const rank = (c: number) => (tileAt(c) === 'safe' ? 0 : PATH_TILES.has(c) ? 2 : 1);
-    for (const target of targets) {
-      if (u.devices.length >= CATHY_DEVICES) break;
-      const tx = cellX(target.input.pos!);
-      const ty = cellY(target.input.pos!);
-      let best: { pos: number; dir: Direction; rank: number } | null = null;
-      for (const dir of DIRS) {
-        const [dx, dy] = DIR_DELTA[dir];
-        const x = tx - dx;
-        const y = ty - dy;
-        if (x < 0 || y < 0 || x >= BOARD_COLS || y >= BOARD_ROWS) continue;
-        const c = cellPos(x, y);
-        if (taken.has(c) || !(tileAt(c) === 'safe' || canBlockAt(c))) continue;
-        if (!best || rank(c) < best.rank) best = { pos: c, dir, rank: rank(c) };
-      }
-      if (!best) continue;
-      taken.add(best.pos);
-      const cap = u.maxHp * CATHY_BARRIER;
-      u.devices.push({ pos: best.pos, dir: best.dir, target, cap, timer: 0 });
-      if (target.barrier < cap) {
-        target.barrier = cap;
-        target.barrierBy = u;
-        target.barrierDecay = 0;
-      }
-    }
+    const cap = u.maxHp * CATHY_BARRIER;
+    u.devices = (u.input.devices ?? []).slice(0, CATHY_DEVICES).map((d) => {
+      const [dx, dy] = DIR_DELTA[d.dir];
+      return { pos: d.pos, dir: d.dir, front: cellPos(cellX(d.pos) + dx, cellY(d.pos) + dy), target: null, cap, timer: 0 };
+    });
   };
-  /** 装置の補充：支援先が5秒間攻撃を受けていないか、スキル中なら、1秒ごとにバリアを補充（上限は付与時の値） */
+  /** 装置の補充：支援先が5秒間攻撃を受けていないか、スキル中なら、1秒ごとにバリアを補充（上限は付与時の20%） */
   const tickDevices = () => {
     for (const u of rt) {
       if (!u.devices.length) continue;
@@ -2366,20 +2343,34 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         continue;
       }
       const skill = u.skillLeft > 0;
+      const used = new Set<Runtime>();
       for (const d of u.devices) {
-        if (!d.target.alive) continue;
+        const cur = rt.find((o) => o.alive && !o.owner && o.input.pos === d.front && !used.has(o)) ?? null;
+        if (cur) used.add(cur);
+        if (cur !== d.target) {
+          d.target = cur;
+          d.timer = 0;
+          // 新しく支援先になった味方に、最初のバリアを付与
+          if (cur && cur.barrier < d.cap) {
+            cur.barrier = d.cap;
+            cur.barrierBy = u;
+            cur.barrierDecay = 0;
+          }
+          continue;
+        }
+        if (!cur) continue;
         d.timer += dt;
         if (d.timer < 1 - 1e-9) continue;
         d.timer -= 1;
-        if ((skill || t - d.target.ts.lastHitAt >= CATHY_IDLE) && d.target.barrier < d.cap) {
-          d.target.barrier = Math.min(d.cap, d.target.barrier + u.maxHp * CATHY_REFILL);
-          d.target.barrierBy = u;
+        if ((skill || t - cur.ts.lastHitAt >= CATHY_IDLE) && cur.barrier < d.cap) {
+          cur.barrier = Math.min(d.cap, cur.barrier + u.maxHp * CATHY_REFILL);
+          cur.barrierBy = u;
         }
       }
     }
   };
   const deviceFrame = (): [number, number, number][] =>
-    rt.flatMap((u) => u.devices.filter((d) => d.target.alive).map((d): [number, number, number] => [d.pos, DIRS.indexOf(d.dir), d.target.input.uid]));
+    rt.flatMap((u) => (u.alive ? u.devices.map((d): [number, number, number] => [d.pos, DIRS.indexOf(d.dir), d.target?.input.uid ?? 0]) : []));
 
   // ---- 【強襲】の再配置 ----
   const inMotion0 = (u: Runtime) => u.motionLen > 0 && u.skillLeft > 0;
