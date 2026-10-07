@@ -606,6 +606,20 @@ describe('寒冷・凍結とスキルの細部', () => {
     const r = run([{ uid: 1, defId: unit('ヴィルトゥオーサ').id, star: 2, pos: 22, dir: 'down' }], spec);
     expect(r.enBursts).toBeGreaterThan(0);
   });
+  it('ヴィクトリアの鉄鎚・灼熱：術ダメージで灼熱損傷が溜まり、爆発する', () => {
+    const spec = oneEnemy('test_scorch', false, { hp: 1e9, speed: 0.15, def: 0, res: 0 });
+    spec.timeLimit = 60;
+    const caster = byProf('caster');
+    const base: OwnedUnit = { uid: 1, defId: caster.id, star: 2, pos: 22, dir: 'down' };
+    const plain = run([base], spec);
+    const withItem = run([{ ...base, items: [{ uid: 9, itemId: '4_09', star: 1 }] }], spec);
+    expect(plain.enBursts).toBe(0);
+    expect(withItem.enBursts).toBeGreaterThan(0);
+    // リプレイには敵の元素損傷の蓄積（種類0＝灼燃）が記録される
+    expect(withItem.frames!.some((f) => (f.ee ?? []).some(([, type, pct]) => type === 0 && pct > 0 && pct <= 100))).toBe(true);
+    expect(withItem.frames!.some((f) => (f.ee ?? []).some(([, type, pct]) => type === 0 && pct > 100))).toBe(true);
+    expect(plain.frames!.every((f) => (f.ee ?? []).length === 0)).toBe(true);
+  });
   it('戦術【命結の秘】：最初に倒れた3名はその場で復活する', () => {
     const spec = oneEnemy('test_crush', false, { attack: { kind: 'melee', atk: 99999, interval: 1, range: 0, arts: false } });
     const board: OwnedUnit[] = [{ uid: 1, defId: UNITS.find((u) => u.profession === 'defender')!.id, star: 1, pos: 31, dir: 'right' }];

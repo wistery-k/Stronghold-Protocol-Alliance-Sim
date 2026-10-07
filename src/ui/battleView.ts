@@ -1395,7 +1395,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     zaroLayer.replaceChildren(...nodes);
   };
   const fxDraw = replayFx(r, units, S);
-  const enemyNodes = new Map<number, { g: SVGElement; bar: SVGElement; barW: number }>();
+  const enemyNodes = new Map<number, { g: SVGElement; bar: SVGElement; barW: number; elem: SVGElement; elemY: number; key: string }>();
   const enemyNode = (id: number) => {
     let n = enemyNodes.get(id);
     if (n) return n;
@@ -1418,7 +1418,9 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
         s('text', { x: S / 2, y: -S, 'text-anchor': 'middle', class: 'rp-boss-name' }, m.name),
       );
       g.append(s('title', {}, m.name));
-      n = { g, bar, barW: w - 16 };
+      const elem = s('g', { class: 'rp-elem' });
+      g.append(elem);
+      n = { g, bar, barW: w - 16, elem, elemY: y0 + 30, key: '' };
       enemyNodes.set(id, n);
       enemyLayer.prepend(g);
       return n;
@@ -1448,7 +1450,9 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       s('g', { class: 'rp-root-mark' }, s('circle', { cx: -rad - 2, cy: rad - 2, r: 9, class: 'rp-root-bg' }), s('text', { x: -rad - 2, y: rad + 2, 'text-anchor': 'middle', class: 'rp-root-text' }, '縛')),
     );
     g.append(s('title', {}, m.name));
-    n = { g, bar, barW: rad * 2 };
+    const elem = s('g', { class: 'rp-elem' });
+    g.append(elem);
+    n = { g, bar, barW: rad * 2, elem, elemY: rad + 9, key: '' };
     enemyNodes.set(id, n);
     enemyLayer.append(g);
     return n;
@@ -1509,6 +1513,31 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
       seen.add(e[0]);
     }
     for (const [id, n] of enemyNodes) if (!seen.has(id)) n.g.style.display = 'none';
+    // 敵の元素損傷（1%以上溜まっているものだけ）。敵の下に小さな丸を並べる
+    const enemyElems = new Map<number, [number, number][]>();
+    for (const [id, type, pct] of a.ee ?? []) (enemyElems.get(id) ?? enemyElems.set(id, []).get(id)!).push([type, pct]);
+    for (const [id, n] of enemyNodes) {
+      const list = seen.has(id) ? (enemyElems.get(id) ?? []) : [];
+      const key = list.map((x) => x.join(':')).join(',');
+      if (key === n.key) continue;
+      n.key = key;
+      const R = 7;
+      const c = 2 * Math.PI * R;
+      n.elem.replaceChildren(
+        ...list.map(([type, pct], i) => {
+          const cx = (i - (list.length - 1) / 2) * 17 + (n.g.classList.contains('large') ? S / 2 : 0);
+          const burst = pct > 100;
+          return s(
+            'g',
+            { class: `rp-elem-dot elem-${type}${burst ? ' burst' : ''}` },
+            s('circle', { cx, cy: n.elemY, r: R, class: 'rp-elem-bg' }),
+            s('circle', { cx, cy: n.elemY, r: R, class: 'rp-elem-ring', 'stroke-dasharray': `${(c * (burst ? pct - 100 : pct)) / 100} ${c}`, transform: `rotate(-90 ${cx} ${n.elemY})` }),
+            s('text', { x: cx, y: n.elemY + 3.3, 'text-anchor': 'middle', class: 'rp-elem-label', style: 'font-size:9px' }, ELEM_SHORT[type]),
+            s('title', {}, `${ELEM_FULL[type]}：${burst ? `爆発中（残り${pct - 100}%）` : `${pct}%`}`),
+          );
+        }),
+      );
+    }
     fxDraw(fxLayer, t, a, b, f, fxUnder);
     drawZaros(a, b, f);
     const skill = new Set(a.s);
