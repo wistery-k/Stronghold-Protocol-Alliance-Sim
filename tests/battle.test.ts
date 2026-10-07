@@ -260,6 +260,15 @@ describe('マップ戦闘', () => {
     expect(r2.killed).toBe(1);
   });
 
+  it('哨戒衛士のモジュール：攻撃範囲内のステルスの敵を狙えるようにする（モジュール無しでは狙えない）', () => {
+    const spec = oneEnemy('test_stealth', false, { hp: 100, def: 0, res: 0, stealth: true });
+    const sniper = byProf('sniper');
+    const guard = UNITS.find((u) => u.subProfession === 'shotprotector')!;
+    const withStar = (star: 1 | 2) => run([{ uid: 1, defId: sniper.id, star: 2, pos: 22, dir: 'down' }, { uid: 2, defId: guard.id, star, pos: 23, dir: 'down' }], { ...spec, timeLimit: 120 }).killed;
+    expect(withStar(1)).toBe(0);
+    expect(withStar(2)).toBe(1);
+  });
+
   it('ダブリン追炎戦士・従兵：倒れると攻撃回数で倒せるステルスの残火になり、時間内に倒さないと復活する', () => {
     expect(ENEMIES.enemy_1288_duskls.revive).toEqual({ hits: 5, interval: 10, stealth: true });
     expect(ENEMIES.enemy_1288_duskls_2.revive).toEqual({ hits: 5, interval: 10, stealth: true });
