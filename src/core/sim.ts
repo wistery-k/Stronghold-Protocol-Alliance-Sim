@@ -2954,7 +2954,8 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     if (PHILAE[o.input.def.charId] && o.skillLeft > 0) o.philaeBoost = true;
     o.elem[type] = (o.elem[type] ?? 0) + amount;
     if ((o.elem[type] ?? 0) < OP_ELEMENT_MAX) return;
-    // 爆発
+    // 爆発（蓄積は爆発の時点で0に戻る。超過分が残って、爆発が終わった瞬間にまた爆発するのを防ぐ）
+    o.elem[type] = 0;
     o.elemBurst[type] = t + OP_BURST_DURATION[type];
     opBursts++;
     // 寄生された味方が爆発すると、周囲4マスの他の味方に同じ種類の元素損傷
@@ -3143,8 +3144,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       for (const type of Object.keys(o.elemBurst) as ElementType[]) {
         const until = o.elemBurst[type] ?? -1;
         if (t < until) {
-          // 爆発中は蓄積が徐々に0へ
-          o.elem[type] = Math.max(0, (o.elem[type] ?? 0) - (OP_ELEMENT_MAX / OP_BURST_DURATION[type]) * dt);
+          // 爆発中は蓄積しない（表示は残り時間から求める）
           if (type === 'apoptosis') {
             o.sp = Math.max(0, o.sp - dt);
             takeDps(o, mitigate(o, 100, true));
@@ -4466,7 +4466,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     for (const u of rt) {
       if (u.input.pos === undefined || !u.alive || u.owner) continue;
       ELEM_ORDER.forEach((type, i) => {
-        if (opBursting(u, type)) out.push([u.input.uid, i, 100 + Math.max(1, Math.round(((u.elem[type] ?? 0) / OP_ELEMENT_MAX) * 100))]);
+        if (opBursting(u, type)) out.push([u.input.uid, i, 100 + Math.max(1, Math.round((((u.elemBurst[type] ?? 0) - t) / OP_BURST_DURATION[type]) * 100))]);
         else if ((u.elem[type] ?? 0) >= 1) out.push([u.input.uid, i, Math.min(100, Math.max(1, Math.round(((u.elem[type] ?? 0) / OP_ELEMENT_MAX) * 100)))]);
       });
     }
