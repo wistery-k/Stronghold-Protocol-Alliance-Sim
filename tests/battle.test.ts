@@ -615,6 +615,10 @@ describe('寒冷・凍結とスキルの細部', () => {
     const withItem = run([{ ...base, items: [{ uid: 9, itemId: '4_09', star: 1 }] }], spec);
     expect(plain.enBursts).toBe(0);
     expect(withItem.enBursts).toBeGreaterThan(0);
+    // リプレイには敵の元素損傷の蓄積（種類0＝灼燃）が記録される
+    expect(withItem.frames!.some((f) => (f.ee ?? []).some(([, type, pct]) => type === 0 && pct > 0 && pct <= 100))).toBe(true);
+    expect(withItem.frames!.some((f) => (f.ee ?? []).some(([, type, pct]) => type === 0 && pct > 100))).toBe(true);
+    expect(plain.frames!.every((f) => (f.ee ?? []).length === 0)).toBe(true);
   });
   it('戦術【命結の秘】：最初に倒れた3名はその場で復活する', () => {
     const spec = oneEnemy('test_crush', false, { attack: { kind: 'melee', atk: 99999, interval: 1, range: 0, arts: false } });

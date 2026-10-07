@@ -139,6 +139,8 @@ export interface ReplayFrame {
   us?: [number, number, number, number, number, number, number, number][];
   /** オペレーターの元素損傷 [uid, 種類（0灼燃・1神経・2侵蝕・3壊死）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1以上溜まっているものだけ */
   ue?: [number, number, number][];
+  /** 敵の元素損傷 [敵のid, 種類（0灼燃・1神経・2侵蝕・3壊死）, 爆発までの蓄積%（爆発中は 100 + 残り%）]。1%以上溜まっているものだけ */
+  ee?: [number, number, number][];
 }
 
 /**
@@ -4471,6 +4473,23 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     return out;
   };
 
+  const enemyElemFrame = (): [number, number, number][] => {
+    const out: [number, number, number][] = [];
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      const max = e.input.spec.boss ? EN_ELEMENT_MAX_BOSS : EN_ELEMENT_MAX;
+      ELEM_ORDER.forEach((type, i) => {
+        const until = e.elemBurst[type] ?? -1;
+        if (t < until) out.push([e.id, i, 100 + Math.max(1, Math.round(((until - t) / EN_BURST_DURATION[type]) * 100))]);
+        else {
+          const pct = Math.round(((e.elem[type] ?? 0) / max) * 100);
+          if (pct >= 1) out.push([e.id, i, Math.min(100, pct)]);
+        }
+      });
+    }
+    return out;
+  };
+
   let sargonMax = 0;
   let sargonSum = 0;
   const sargonFrame = (): [number, number][] =>
@@ -4890,6 +4909,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         u: unitFrame(),
         us: statFrame(),
         ue: elemFrame(),
+        ee: enemyElemFrame(),
         sg: sargonFrame(),
         sc: siracusaFrame(),
         kz: kazimierzFrame(),
@@ -4918,6 +4938,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       u: unitFrame(),
       us: statFrame(),
       ue: elemFrame(),
+      ee: enemyElemFrame(),
       sg: sargonFrame(),
         sc: siracusaFrame(),
         kz: kazimierzFrame(),
