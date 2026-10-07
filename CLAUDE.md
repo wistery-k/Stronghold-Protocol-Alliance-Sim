@@ -87,7 +87,7 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 
 ## 仮の値・未確認の点（ユーザーに伝え済み）
 
-- 難易度（`difficulty.ts`、ユーザー提供の表）：標準の10R以降は0.7のまま、標準の15Rのボス HP は表に無くデータのまま、ボスの手下は HP・攻撃力の補正を受ける。既定は死地（`DEFAULT_DIFFICULTY`）。`RoundSpec.difficulty` がある時だけ補正（サンドボックスは未対応＝補正なし）
+- 難易度（`difficulty.ts`、ユーザー提供の表）：ボスのHPは表の0.5倍（`BOSS_HP_SCALE`、ユーザーの指定。同盟演算の水準のため）、標準の10R以降は0.7のまま、標準の15Rのボス HP は表に無くデータのまま、ボスの手下は HP・攻撃力の補正を受ける。既定は死地（`DEFAULT_DIFFICULTY`）。`RoundSpec.difficulty` がある時だけ補正（サンドボックスは未対応＝補正なし）
 
 - カゼマルS2の紙人形：1体だけ・前方優先・スキル終了で消える。攻撃力は本家トークンの比で約1.117倍
 - 傀儡師の入れ替わり時の HP は最大値（身替りになる時も本体に戻る時も）

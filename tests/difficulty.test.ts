@@ -17,11 +17,11 @@ describe('難易度', () => {
     expect(difficultyAtkFactor('ultimate', 6)).toBeCloseTo(1.1 ** 3);
   });
   it('ボスのHPは難易度ごとの値で、攻撃力だけ補正を受ける', () => {
-    expect(difficultyBossHp('ultimate', 15)).toBe(7200000);
-    expect(difficultyBossHp('standard', 14)).toBe(247500);
+    expect(difficultyBossHp('ultimate', 15)).toBe(3600000);
+    expect(difficultyBossHp('standard', 14)).toBe(123750);
     const boss = ENEMIES.enemy_9013_acstmk;
     const s = scaledEnemy(boss, 14, 'ultimate');
-    expect(s.hp).toBe(3600000);
+    expect(s.hp).toBe(1800000);
     expect(s.attack!.atk).toBeCloseTo(boss.attack!.atk * 1.1 ** 7);
   });
   it('通常の敵は最大HP・攻撃力に補正が掛かり、難易度なしなら掛からない', () => {

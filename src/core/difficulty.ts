@@ -31,5 +31,10 @@ const factor = (d: Difficulty, round: number, base: number) => MULT[d] * base **
 
 export const difficultyHpFactor = (d: Difficulty, round: number) => factor(d, round, 1.2);
 export const difficultyAtkFactor = (d: Difficulty, round: number) => factor(d, round, 1.1);
+/** 独自の補正：表は同盟演算（4人で削る想定）の水準なので、単独演算ではボスのHPを半分にする */
+export const BOSS_HP_SCALE = 0.5;
 /** ボスの最大HP（表に無ければ undefined = データのまま） */
-export const difficultyBossHp = (d: Difficulty, round: number): number | undefined => BOSS_HP[d][round];
+export const difficultyBossHp = (d: Difficulty, round: number): number | undefined => {
+  const hp = BOSS_HP[d][round];
+  return hp === undefined ? undefined : Math.round(hp * BOSS_HP_SCALE);
+};
