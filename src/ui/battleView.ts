@@ -5,6 +5,7 @@ import {
   DEFAULT_DIRECTION,
   DIRECTIONS,
   DIRECTION_NAME,
+  DIR_DELTA,
   GOAL,
   PATH_TILES,
   SPAWNS,
@@ -24,6 +25,7 @@ import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE } from '../core/rules';
 import { SKILL_RANGE_SHOWN, attackInterval, scaledEnemy, type BattleResult } from '../core/sim';
 import type { Direction, OwnedUnit, Star } from '../core/types';
 import { makeDropTarget, starBadge, unitCard, type CardOptions } from './components';
+import { DEVICE_MAX, deviceTile, isDeviceHolder, validDevices } from '../core/device';
 import { fmt, h, pct, s } from './dom';
 
 // マップ戦闘まわりの表示：配置マップ、ラウンドの敵、予測、戦闘結果とリプレイ
@@ -40,8 +42,16 @@ export function mapGrid(
     onDropCell: (pos: number, uid: number) => void;
     onTurn: (uid: number, dir: Direction) => void;
     onItemDrop?: (unitUid: number, itemUid: number) => void;
+    /** キャサリンの支援装置：選択中のキャサリン（装置を置ける）と操作。装置はどのキャサリンのものも常に表示する */
+    devices?: {
+      selected: OwnedUnit | null;
+      onPlace: (uid: number, pos: number) => void;
+      onTurn: (uid: number, pos: number, dir: Direction) => void;
+    };
   },
 ) {
+  const devSel = opts.devices?.selected && opts.devices.selected.pos !== undefined && isDeviceHolder(opts.devices.selected.defId) ? opts.devices.selected : null;
+  const devCount = devSel ? validDevices(board, devSel).length : 0;
   const cells: HTMLElement[] = [];
   const highlight = (o: OwnedUnit | null) => {
     for (const c of cells) c.classList.remove('in-range', 'in-skill-range');
@@ -88,6 +98,42 @@ export function mapGrid(
             },
           }),
         ),
+      );
+    }
+    // キャサリンの支援装置：置かれた装置（選択中のキャサリンのものはクリックで向きを回す）と、置けるマスの枠
+    const dev = board.flatMap((b) => validDevices(board, b).map((d) => ({ owner: b, d }))).find((x) => x.d.pos === pos);
+    if (dev) {
+      const mine = dev.owner === devSel;
+      cell.append(
+        h(
+          mine ? 'button' : 'div',
+          {
+            class: `device${mine ? ' mine' : ''}`,
+            title: mine ? '支援装置：クリックで向きを変更（矢印の先のオペレーターを支援）' : '支援装置',
+            onclick: mine
+              ? (e: Event) => {
+                  e.stopPropagation();
+                  const next = MOVE_DIRS[(MOVE_DIRS.indexOf(dev.d.dir) + 1) % 4];
+                  opts.devices!.onTurn(dev.owner.uid, pos, next);
+                }
+              : undefined,
+          },
+          h('span', { class: 'device-name' }, '支'),
+          h('span', { class: 'device-arrow' }, DIR_ARROW[dev.d.dir]),
+        ),
+      );
+    } else if (devSel && !o && devCount < DEVICE_MAX && deviceTile(pos)) {
+      cell.classList.add('device-slot');
+      cell.append(
+        h('button', {
+          class: 'device-place',
+          title: 'ここに支援装置を置く',
+          'aria-label': '支援装置を置く',
+          onclick: (e: Event) => {
+            e.stopPropagation();
+            opts.devices!.onPlace(devSel.uid, pos);
+          },
+        }),
       );
     }
     if (isGroundTile(tile) || tile === 'safe' || tile === 'high') makeDropTarget(cell, (uid) => opts.onDropCell(pos, uid));
@@ -1300,6 +1346,31 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     );
   };
 
+  // キャサリンの支援装置（置かれたマスに小さな箱と、支援先への矢印）
+  const deviceLayer = s('g', { class: 'rp-devices' });
+  svg.insertBefore(deviceLayer, tokenLayer);
+  let deviceKey = '';
+  const drawDevices = (a: NonNullable<BattleResult['frames']>[number]) => {
+    const list = a.dv ?? [];
+    const key = list.join(';');
+    if (key === deviceKey) return;
+    deviceKey = key;
+    deviceLayer.replaceChildren(
+      ...list.map(([pos, dir]) => {
+        const cx = cellX(pos) * S + S / 2;
+        const cy = cellY(pos) * S + S / 2;
+        const [dx, dy] = DIR_DELTA[MOVE_DIRS[dir]];
+        return s(
+          'g',
+          { class: 'rp-device' },
+          s('rect', { x: cx - 13, y: cy - 13, width: 26, height: 26, rx: 5, class: 'rp-device-box' }),
+          s('text', { x: cx, y: cy + 4, 'text-anchor': 'middle', class: 'rp-device-name' }, '支'),
+          s('path', { d: `M${cx + dx * 15},${cy + dy * 15} L${cx + dx * 27 - dy * 6},${cy + dy * 27 + dx * 6} L${cx + dx * 27 + dy * 6},${cy + dy * 27 - dx * 6} Z`, class: 'rp-device-arrow' }),
+        );
+      }),
+    );
+  };
+
   // 敵の下に描く演出（グレイディーアS3の渦）
   const fxUnder = s('g', { class: 'rp-fx-under' });
   svg.append(fxUnder);
@@ -1455,6 +1526,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     const stealth = new Set(a.st ?? []);
     for (const [uid, g] of unitNodes) g.classList.toggle('stealth', stealth.has(uid));
     drawTokens(a);
+    drawDevices(a);
     const dolls = new Set(a.dl ?? []);
     for (const [uid, g] of unitNodes) g.classList.toggle('doll', dolls.has(uid));
     for (const [uid, f] of ghostField) f.style.display = dolls.has(uid) ? '' : 'none';

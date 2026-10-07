@@ -1,4 +1,5 @@
 import { bondKey, type BattleGlobals } from './alliance';
+import { DEVICE_MAX } from './device';
 import { BOARD_COLS, BOARD_ROWS, BOSS_CELLS, BOSS_CENTER, DIR_DELTA, ENEMY_PATHS, GOAL, PATH_TILES, canBlockAt, canPlace, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
 import { ENEMIES, rangeGrid, unitRangeIds, type ElementType, type EnemySpec, type RoundSpec } from './data/battle';
 import { difficultyAtkFactor, difficultyBossHp, difficultyHpFactor, type Difficulty } from './difficulty';
@@ -30,6 +31,8 @@ export interface SimUnitInput {
   dir?: Direction;
   /** 【エーギル】に捕食された：戦闘開始時に damage の物理ダメージを hits 回受ける */
   devoured?: { damage: number; hits: number };
+  /** キャサリンの支援装置（準備フェーズで置いたマスと向き） */
+  devices?: { pos: number; dir: Direction }[];
 }
 
 /** 与ダメージの種別（元素ダメージは防御力・術耐性の影響を受けない別枠） */
@@ -127,6 +130,8 @@ export interface ReplayFrame {
   tk?: [number, number, number, number][];
   /** 荒蕪ラップランドS3のザーロ [uid, x×100, y×100, 取り付いていれば1] */
   zr?: [number, number, number, number][];
+  /** キャサリンの支援装置 [マス, 向き（0右・1下・2左・3上）, 支援先の uid] */
+  dv?: [number, number, number][];
   /**
    * オペレーターのステータス（その時点のバフ込み）[uid, 最大HP, 現在HP, 攻撃力, 防御力, 攻撃速度, 攻撃間隔×100, 術耐性]。
    * 配置中で倒れていないものだけ。攻撃力・攻撃速度・攻撃間隔はスタン中は直前の値
@@ -687,6 +692,12 @@ const AROUND: [number, number][] = [-1, 0, 1].flatMap((a) => [-1, 0, 1].map((b):
 /** スキル発動中のみ攻撃行動を行う（アンジェリーナS3） */
 const SKILL_ACTIVE_ONLY_ATTACK = new Set(['char_291_aglina']);
 /** スキル中は攻撃しなくなる（スズラン・クオーラ・キャサリン・バブル） */
+/** キャサリンの支援装置（数値は素質の説明文から：初期バリア20%・補充6%/秒・5秒攻撃を受けていない時。同時に置けるのは2個） */
+const CATHY = 'char_4162_cathy';
+const CATHY_DEVICES = DEVICE_MAX;
+const CATHY_BARRIER = 0.2;
+const CATHY_REFILL = 0.06;
+const CATHY_IDLE = 5;
 const NO_ATTACK_IN_SKILL = new Set(['char_358_lisa', 'char_150_snakek', 'char_4162_cathy', 'char_381_bubble']);
 /** バブル：スキル中、攻撃されるたび自身の防御力の一定割合の物理ダメージで反撃 */
 const BUBBLE = 'char_381_bubble';
@@ -1057,6 +1068,8 @@ interface Runtime {
   curInterval: number;
   /** 荒蕪ラップランドS3のザーロ（位置・追っている敵・取り付いたか）と、次のダメージまでの時間 */
   zaros: { x: number; y: number; target: Enemy | null; attached: boolean }[];
+  /** キャサリンの支援装置（置かれたマス・向き・前方のマス・支援先・バリアの上限・補充のタイマー） */
+  devices: { pos: number; dir: Direction; front: number; target: Runtime | null; cap: number; timer: number }[];
   zaroTimer: number;
   /** グレイディーアS3の渦（中心・半径・次のダメージまでの時間） */
   vortex: { x: number; y: number; r: number; timer: number } | null;
@@ -1227,6 +1240,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       curAspd: 0,
       curInterval: 0,
       zaros: [],
+      devices: [],
       zaroTimer: 0,
       vortex: null,
       stunUntil: -1,
@@ -2308,6 +2322,56 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     dollBlast(tk, cands[0]);
   };
 
+  // ---- キャサリンの支援装置 ----
+  /**
+   * 準備フェーズでプレイヤーが置いた装置（input.devices）を、キャサリンの配置時に有効にする。
+   * 装置の前方1マスにいる味方が支援先（【強襲】で動いても、その時そのマスにいる者）。1人に複数の装置があっても効果は重複しない
+   */
+  const placeDevices = (u: Runtime) => {
+    const cap = u.maxHp * CATHY_BARRIER;
+    u.devices = (u.input.devices ?? []).slice(0, CATHY_DEVICES).map((d) => {
+      const [dx, dy] = DIR_DELTA[d.dir];
+      return { pos: d.pos, dir: d.dir, front: cellPos(cellX(d.pos) + dx, cellY(d.pos) + dy), target: null, cap, timer: 0 };
+    });
+  };
+  /** 装置の補充：支援先が5秒間攻撃を受けていないか、スキル中なら、1秒ごとにバリアを補充（上限は付与時の20%） */
+  const tickDevices = () => {
+    for (const u of rt) {
+      if (!u.devices.length) continue;
+      if (!u.alive) {
+        u.devices = [];
+        continue;
+      }
+      const skill = u.skillLeft > 0;
+      const used = new Set<Runtime>();
+      for (const d of u.devices) {
+        const cur = rt.find((o) => o.alive && !o.owner && o.input.pos === d.front && !used.has(o)) ?? null;
+        if (cur) used.add(cur);
+        if (cur !== d.target) {
+          d.target = cur;
+          d.timer = 0;
+          // 新しく支援先になった味方に、最初のバリアを付与
+          if (cur && cur.barrier < d.cap) {
+            cur.barrier = d.cap;
+            cur.barrierBy = u;
+            cur.barrierDecay = 0;
+          }
+          continue;
+        }
+        if (!cur) continue;
+        d.timer += dt;
+        if (d.timer < 1 - 1e-9) continue;
+        d.timer -= 1;
+        if ((skill || t - cur.ts.lastHitAt >= CATHY_IDLE) && cur.barrier < d.cap) {
+          cur.barrier = Math.min(d.cap, cur.barrier + u.maxHp * CATHY_REFILL);
+          cur.barrierBy = u;
+        }
+      }
+    }
+  };
+  const deviceFrame = (): [number, number, number][] =>
+    rt.flatMap((u) => (u.alive ? u.devices.map((d): [number, number, number] => [d.pos, DIRS.indexOf(d.dir), d.target?.input.uid ?? 0]) : []));
+
   // ---- 【強襲】の再配置 ----
   const inMotion0 = (u: Runtime) => u.motionLen > 0 && u.skillLeft > 0;
   /** 位置と向きを変える（攻撃範囲・ブロックを置き直し、ブロック中の敵は解放する） */
@@ -2614,6 +2678,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     // 血掟テキサス：「1回の配置につき1回」「配置後、敵を1体倒すまで」は配置ごとにリセット
     u.ts.recast = false;
     u.ts.firstKill = false;
+    if (cid(u) === CATHY) placeDevices(u);
     if (!s.onDeploy) return;
     u.skillLeft = s.duration;
     u.castAt = t;
@@ -4455,6 +4520,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       tickEnemyStates();
       tickTexas();
       tickZaro();
+      tickDevices();
       tickVortex();
       // 【サルゴン】の強化の層数（最大・時間平均）
       if (g.sargon) {
@@ -4832,6 +4898,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         mv: moveFrame(),
         tk: rt.filter((u) => u.alive && u.owner && u.input.pos !== undefined).map((u): [number, number, number, number] => [u.input.uid, u.input.pos!, Math.round((u.hp / u.maxHp) * 100), u.owner!.input.uid]),
         zr: zaroFrame(),
+        dv: deviceFrame(),
         c: Math.floor(cost),
       });
     }
@@ -4859,6 +4926,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
         mv: moveFrame(),
         tk: rt.filter((u) => u.alive && u.owner && u.input.pos !== undefined).map((u): [number, number, number, number] => [u.input.uid, u.input.pos!, Math.round((u.hp / u.maxHp) * 100), u.owner!.input.uid]),
         zr: zaroFrame(),
+        dv: deviceFrame(),
       c: Math.floor(cost),
     });
   }

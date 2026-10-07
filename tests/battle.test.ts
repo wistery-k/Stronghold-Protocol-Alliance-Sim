@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ENEMY_PATHS, GOAL, MAPS, cellPos, cellX, cellY, RANDOM_MAPS, SPAWNS, canPlace, setActiveMap, tileAt } from '../src/core/board';
 import { ENEMIES, ENEMY_GROUPS, ROUNDS, pickRoundGroup, roundSpec, unitRangeIds, type EnemySpec, type RoundSpec } from '../src/core/data/battle';
 import { UNITS } from '../src/core/data/units';
+import { autoDeviceDir, autoPlaceAfterPlacing, pruneDevices, placeDevice, removeDevice, validDevices } from '../src/core/device';
 import { buildSimInputs, createGame, roundGroupOf } from '../src/core/game';
 import { roundEnemies, routeCells, simulateBattle } from '../src/core/sim';
 import type { OwnedUnit } from '../src/core/types';
@@ -2055,4 +2056,83 @@ describe('仮想敵：黒雲', () => {
     expect(two.perUnit[0].taken - none.perUnit[0].taken).toBeCloseTo(2 * Math.max(1300 - d, 1300 * 0.05), 0);
   });
 
+});
+
+describe('キャサリンの支援装置', () => {
+  const cat = UNITS.find((u) => u.name === 'キャサリン')!;
+  const tank = UNITS.find((u) => u.profession === 'defender' && u.tier <= 3)!;
+  const mk = (): OwnedUnit[] => [
+    { uid: 1, defId: tank.id, star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit,
+    { uid: 2, defId: cat.id, star: 1, pos: 23, dir: 'right', items: [] } as OwnedUnit,
+  ];
+  const runWith = (board: OwnedUnit[], spec: RoundSpec) => run(board, spec);
+
+  it('置けるマス・個数の制限と、盤面の変化で使えなくなった装置の片付け', () => {
+    setActiveMap('legacy');
+    const board = mk();
+    const c = board[1];
+    expect(placeDevice(board, c, 22, 'down')).toBeUndefined();
+    expect(placeDevice(board, c, 22, 'down')).toBeTruthy(); // 同じマス
+    expect(placeDevice(board, c, 31)).toBeTruthy(); // オペレーターがいる
+    expect(placeDevice(board, c, 5)).toBeTruthy(); // 壁・高台
+    expect(placeDevice(board, c, 30, 'up')).toBeUndefined();
+    expect(placeDevice(board, c, 29)).toBeTruthy(); // 3個目
+    expect(validDevices(board, c).length).toBe(2);
+    expect(placeDevice(board, board[0], 22)).toBeTruthy(); // キャサリン以外は使えない
+    // オペレーターがそのマスに乗ると装置は消える
+    board.push({ uid: 3, defId: tank.id, star: 1, pos: 30, dir: 'right', items: [] } as OwnedUnit);
+    pruneDevices(board);
+    expect(c.devices!.map((d) => d.pos)).toEqual([22]);
+    removeDevice(c, 22);
+    expect(validDevices(board, c).length).toBe(0);
+    // 向きは自動で隣のオペレーターの方（ブロックする者を優先）
+    expect(autoDeviceDir(board, 22)).toBe('down');
+  });
+  it('装置の前方のオペレーターにキャサリンの最大HPの20%のバリアが付き、リプレイにも記録される。装置が無ければ何も起きない', () => {
+    const spec = oneEnemy('devDummy', false, { def: 0, res: 0 });
+    const board = mk();
+    placeDevice(board, board[1], 22, 'down');
+    const r = runWith(board, spec);
+    expect(r.frames![0].dv).toEqual([[22, 1, 1]]);
+    expect(r.frames!.find((f) => f.t > 0.5)!.dv).toEqual([[22, 1, 1]]);
+    const r0 = runWith(mk(), spec);
+    expect(r0.frames![0].dv).toEqual([]);
+  });
+  it('同じ支援先に向けた装置は効果が重複せず、バリアが防いだ量はキャサリンの実績になる', () => {
+    const spec = oneEnemy('devHit', false, { def: 0, res: 0, attack: { kind: 'melee', atk: 300, interval: 1, range: 0 } } as Partial<EnemySpec>);
+    const board = mk();
+    placeDevice(board, board[1], 22, 'down');
+    placeDevice(board, board[1], 30, 'right');
+    const r = runWith(board, spec);
+    const f = r.frames!.find((x) => x.t > 0.5)!;
+    expect(f.dv!.map((d) => d[2])).toEqual([1, 0]);
+    expect(r.perUnit.find((u) => u.uid === 2)!.barrier > 0).toBe(true);
+    const none = runWith(mk(), spec);
+    expect(none.perUnit.find((u) => u.uid === 2)!.barrier).toBe(0);
+  });
+});
+
+describe('キャサリンの支援装置の自動配置', () => {
+  const cat = UNITS.find((u) => u.name === 'キャサリン')!;
+  const tank = UNITS.find((u) => u.profession === 'defender' && u.tier <= 3)!;
+  it('キャサリンを配置すると、敵をブロックする味方から順に、隣の空きマス（敵が通らないマス優先）へ支援先を向けて自動で置く。後から味方を置いても、装置が無ければ置かれる', () => {
+    setActiveMap('legacy');
+    const t1 = { uid: 1, defId: tank.id, star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit;
+    const c = { uid: 2, defId: cat.id, star: 1, pos: 23, dir: 'right', items: [] } as OwnedUnit;
+    const board = [t1, c];
+    autoPlaceAfterPlacing(board, c);
+    expect(c.devices).toEqual([{ pos: 22, dir: 'down' }]);
+    // 後から置いた味方にも（装置に空きがあれば）
+    const t2 = { uid: 3, defId: tank.id, star: 1, pos: 29, dir: 'right', items: [] } as OwnedUnit;
+    board.push(t2);
+    autoPlaceAfterPlacing(board, t2);
+    expect(c.devices!.length).toBe(1); // すでに装置があるので増やさない
+    removeDevice(c, 22);
+    autoPlaceAfterPlacing(board, t2);
+    expect(validDevices(board, c).length).toBe(2);
+    // 装置を置いていれば戦闘にも反映される
+    const spec = oneEnemy('autoDev', false, { def: 0, res: 0 });
+    const r = run(board, spec);
+    expect(r.frames![0].dv!.length).toBe(2);
+  });
 });

@@ -23,7 +23,7 @@ import { BENCH_SIZE, MAX_ROUND, REFRESH_COST, TIER_ODDS } from '../core/rules';
 import { getItem, itemState } from '../core/data/items';
 import { equipNeedsDiscard } from '../core/items';
 import { getUnit } from '../core/data/units';
-import { isItemEntry, type OwnedItem } from '../core/types';
+import { isItemEntry, type OwnedItem, type OwnedUnit } from '../core/types';
 import { benchOverflow } from '../core/acquire';
 import { battleTimeLimit, simulateBattle, type BattleResult, type SimOptions, type SimUnitInput } from '../core/sim';
 import type { RoundSpec } from '../core/data/battle';
@@ -37,6 +37,7 @@ import {
   unitCard,
   unitDetail,
 } from './components';
+import { DEVICE_MAX, isDeviceHolder, validDevices } from '../core/device';
 import { battleSummary, mapGrid, predictionLine, roundInfo } from './battleView';
 import { h } from './dom';
 
@@ -317,6 +318,7 @@ function prepView(p: GameViewProps): HTMLElement {
     return [
       title,
       unitDetail(shown.unit, shown.where === 'board' ? setup.mods.get(shown.unit.uid) : undefined),
+      shown.where === 'board' && isDeviceHolder(shown.unit.defId) ? deviceInfo(shown.unit, state.board, isSelected, dispatch) : null,
       setup.excluded.has(shown.unit.uid) ? h('p', { class: 'small ng' }, '【エーギル】に捕食され、戦闘開始時に物理ダメージを受けて倒れる見込みです') : null,
       isSelected
         ? h(
@@ -518,6 +520,11 @@ function prepView(p: GameViewProps): HTMLElement {
             }),
             onDropCell: (pos, uid) => dispatch({ type: 'move', uid, to: { zone: 'board', pos } }),
             onTurn: (uid, dir) => dispatch({ type: 'turn', uid, dir }),
+            devices: {
+              selected: selectedUid !== null ? (state.board.find((o) => o.uid === selectedUid) ?? null) : null,
+              onPlace: (uid, pos) => dispatch({ type: 'placeDevice', uid, pos }),
+              onTurn: (uid, pos, dir) => dispatch({ type: 'turnDevice', uid, pos, dir }),
+            },
           }),
         ),
         h(
@@ -665,5 +672,27 @@ function endView(p: GameViewProps): HTMLElement {
       h('p', { class: 'muted small' }, `シード ${state.seed}`),
       h('button', { class: 'btn primary big', onclick: () => p.newGame() }, 'もう一度遊ぶ'),
     ),
+  );
+}
+
+/** キャサリンの支援装置の案内（置いた数・外すボタン）。マップの枠をクリックして置く */
+function deviceInfo(unit: OwnedUnit, board: OwnedUnit[], selected: boolean, dispatch: (a: Action) => void) {
+  const list = validDevices(board, unit);
+  return h(
+    'div',
+    { class: 'device-info small' },
+    h('b', null, `支援装置 ${list.length}/${DEVICE_MAX}`),
+    list.length === 0 ? h('span', { class: 'ng' }, '　未配置（戦闘中のバリアが付きません）') : null,
+    selected
+      ? h(
+          'span',
+          { class: 'muted' },
+          list.length < DEVICE_MAX ? '　マップの緑の枠をクリックで置く／' : '　',
+          '装置をクリックで向きを変更（矢印の先のオペレーターにバリア）',
+        )
+      : h('span', { class: 'muted' }, '　クリックで選択すると置けます'),
+    selected && list.length
+      ? h('div', { class: 'row' }, list.map((d, i) => h('button', { class: 'btn tiny', onclick: () => dispatch({ type: 'removeDevice', uid: unit.uid, pos: d.pos }) }, `装置${i + 1}を外す`)))
+      : null,
   );
 }

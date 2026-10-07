@@ -267,4 +267,6 @@ export interface OwnedUnit {
   pos?: number;
   /** 向き（未設定なら右） */
   dir?: Direction;
+  /** キャサリンの支援装置（置いたマスと向き。最大2個） */
+  devices?: { pos: number; dir: Direction }[];
 }

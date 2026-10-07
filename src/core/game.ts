@@ -44,6 +44,7 @@ import { miraProb } from './data/alliances';
 import { allOwned, benchOverflow, canReceive, compactBench, gainUnit, putOnBench, withRng } from './acquire';
 import {
   ITEM_SELL_PRICE,
+  onSellItem,
   gainItem,
   equipItem,
   itemBattleEnd,
@@ -74,6 +75,7 @@ import {
   shopSlots,
 } from './rules';
 import { DEFAULT_DIFFICULTY, type Difficulty } from './difficulty';
+import { autoPlaceAfterPlacing, pruneDevices, placeDevice, removeDevice, turnDevice, validDevices, isDeviceHolder } from './device';
 import { simulateBattle, type BattleResult } from './sim';
 import { isItemEntry, isUnitEntry, type AllianceId, type BenchEntry, type Direction, type OwnedItem, type OwnedUnit, type Star } from './types';
 
@@ -171,6 +173,9 @@ export type Action =
   | { type: 'undeploy'; uid: number }
   | { type: 'move'; uid: number; to: { zone: 'board'; pos: number } | { zone: 'bench'; index: number } }
   | { type: 'turn'; uid: number; dir: Direction }
+  | { type: 'placeDevice'; uid: number; pos: number; dir?: Direction }
+  | { type: 'turnDevice'; uid: number; pos: number; dir: Direction }
+  | { type: 'removeDevice'; uid: number; pos: number }
   | { type: 'choose'; index: number }
   | { type: 'skipChoice' }
   | { type: 'pickBounty'; index: number }
@@ -426,6 +431,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       state.bench[idx] = null;
       state.gold += ITEM_SELL_PRICE;
       state.log.push(`${itemState(getItem(it.itemId), it.star).name} を売却（+${ITEM_SELL_PRICE}）`);
+      onSellItem(state, it);
       return { state };
     }
     case 'moveItem': {
@@ -454,6 +460,8 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       f.unit.pos = pos;
       f.unit.dir = bestDirection(pos, f.unit.defId, f.unit.star);
       state.board.push(f.unit);
+      pruneDevices(state.board);
+      autoPlaceAfterPlacing(state.board, f.unit);
       return { state };
     }
     case 'undeploy': {
@@ -464,14 +472,20 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       state.board.splice(f.index, 1);
       delete f.unit.pos;
       state.bench[emptyIdx] = f.unit;
+      delete f.unit.devices;
+      pruneDevices(state.board);
       return { state };
     }
     case 'move': {
       const f = findOwned(state, action.uid);
       if (!f) return fail('ユニットが見つかりません');
+      const before = new Set(state.board);
       const err = moveUnit(state, f, action.to);
       if (err) return fail(err);
       if (state.board.length > deployCapOf(state)) return fail('配置上限に達しています');
+      if (f.unit.pos === undefined) delete f.unit.devices;
+      pruneDevices(state.board);
+      for (const o of state.board) if (!before.has(o)) autoPlaceAfterPlacing(state.board, o);
       return { state };
     }
     case 'choose': {
@@ -501,6 +515,18 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       const f = findOwned(state, action.uid);
       if (!f || f.where !== 'board') return fail('配置中のユニットを選んでください');
       f.unit.dir = action.dir;
+      return { state };
+    }
+    case 'placeDevice':
+    case 'turnDevice':
+    case 'removeDevice': {
+      const f = findOwned(state, action.uid);
+      if (!f || f.where !== 'board') return fail('配置中のキャサリンを選んでください');
+      if (action.type === 'removeDevice') removeDevice(f.unit, action.pos);
+      else {
+        const err = action.type === 'placeDevice' ? placeDevice(state.board, f.unit, action.pos, action.dir) : turnDevice(f.unit, action.pos, action.dir);
+        if (err) return fail(err);
+      }
       return { state };
     }
     case 'refresh': {
@@ -693,6 +719,7 @@ export function buildSimInputs(
       dir: o.dir,
       bonusGain: setup.bonusGain.get(o.uid),
       devoured: setup.devour.get(o.uid),
+      devices: isDeviceHolder(o.defId) ? validDevices(board, o) : undefined,
     })),
   };
 }

@@ -13,7 +13,8 @@ import { isItemEntry, type OwnedItem, type OwnedUnit, type Tier } from './types'
 export const MAX_EQUIP = 2;
 /** 所持している間はショップに出ない装備（プロデュース戦略） */
 const ONE_AT_A_TIME = new Set(['5_07']);
-export const ITEM_SELL_PRICE = 1;
+/** 装備の売却価格（どの装備も0。騎士の貯金箱・盟約のコインは売却でも資金を得る効果が発動する） */
+export const ITEM_SELL_PRICE = 0;
 
 /** 控えにある装備 */
 export function storedItems(state: GameState): OwnedItem[] {
@@ -118,6 +119,22 @@ export function equipNeedsDiscard(state: GameState, itemUid: number, unit: Owned
   return !isConsumable(def) && !anyone && (unit.items?.length ?? 0) >= MAX_EQUIP;
 }
 
+/** 資金をランダムに得る装備（騎士の貯金箱・盟約のコイン）の効果。装備時と売却時に発動する */
+function gainRandomCoin(state: GameState, name: string, b: { [k: string]: unknown }): void {
+  const min = Number(b.min ?? 0);
+  const max = Number(b.max ?? 0);
+  const gold = withRng(state, (rng) => min + rng.int(max - min + 1));
+  state.gold += gold;
+  notify(state, `${name}：資金+${gold}`);
+}
+
+/** 装備を売却した時の効果（資金をランダムに得る装備のみ） */
+export function onSellItem(state: GameState, item: OwnedItem): void {
+  const st = itemState(getItem(item.itemId), item.star);
+  const b = findBuff(st, 'equip_destory_gain_random_coin');
+  if (b) gainRandomCoin(state, st.name, b);
+}
+
 export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit, discardUid?: number): string | undefined {
   const idx = state.bench.findIndex((i) => isItemEntry(i) && i.uid === itemUid);
   if (idx < 0) return '装備が見つかりません';
@@ -155,12 +172,9 @@ export function equipItem(state: GameState, itemUid: number, unit: OwnedUnit, di
 
   for (const b of st.buffs) {
     switch (b.type) {
-      case 'equip_destory_gain_random_coin': {
-        const gold = withRng(state, (rng) => n(b, 'min') + rng.int(n(b, 'max') - n(b, 'min') + 1));
-        state.gold += gold;
-        notify(state, `${st.name}：資金+${gold}`);
+      case 'equip_destory_gain_random_coin':
+        gainRandomCoin(state, st.name, b);
         break;
-      }
       case 'use_equip_reward_char_chess_bond_layer': {
         const active = currentActive(state);
         for (const bond of ownedBonds(unit)) addStacks(state, bond, n(b, 'layer'), active);

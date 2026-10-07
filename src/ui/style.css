@@ -1458,6 +1458,19 @@ aside {
   font-size: 11px;
   font-weight: 700;
 }
+.rp-device-box {
+  fill: #e8f4ee;
+  stroke: #2f8f6b;
+  stroke-width: 2;
+}
+.rp-device-name {
+  fill: #1f6b4f;
+  font-size: 13px;
+  font-weight: 700;
+}
+.rp-device-arrow {
+  fill: #2f8f6b;
+}
 /* 離陸中の味方（ティッピ）。味方の g は座標を属性でなく子要素に持つので transform を使える（敵の g には使わない） */
 .rp-unit.lifted {
   transform: translateY(-9px);
@@ -2350,3 +2363,34 @@ body.dragging * {
   font-weight: 700;
   fill: #e4d4ff;
 }
+
+/* キャサリンの支援装置（準備画面のマップ） */
+.cell .device {
+  position: absolute;
+  inset: 12%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 2px solid #2f8f6b;
+  border-radius: 6px;
+  background: rgba(232, 244, 238, 0.92);
+  color: #1f6b4f;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0;
+  z-index: 2;
+}
+.cell .device.mine { cursor: pointer; box-shadow: 0 0 0 2px rgba(47, 143, 107, 0.35); }
+.cell .device-arrow { font-size: 1.1rem; }
+.cell.device-slot .device-place {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 2px dashed #2f8f6b;
+  border-radius: 6px;
+  background: rgba(47, 143, 107, 0.12);
+  cursor: pointer;
+  padding: 0;
+}
+.cell.device-slot .device-place:hover { background: rgba(47, 143, 107, 0.28); }
