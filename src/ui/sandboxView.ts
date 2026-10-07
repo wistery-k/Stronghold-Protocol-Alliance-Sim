@@ -5,10 +5,10 @@ import { activeAllianceIds } from '../core/alliance';
 import { buildSimInputs } from '../core/game';
 import { DEPLOY_CAP, MAX_STACKS } from '../core/rules';
 import { battleTimeLimit, simulateBattle, type BattleResult } from '../core/sim';
-import type { AllianceId, OwnedUnit, Star } from '../core/types';
+import type { AllianceId, OwnedDevice, OwnedUnit, Star } from '../core/types';
 import { alliancePanel, unitCard } from './components';
 import { MAPS, RANDOM_MAPS, autoCell, bestDirection, canPlace, setActiveMap } from '../core/board';
-import { autoPlaceAfterPlacing, placeDevice, pruneDevices, turnDevice } from '../core/device';
+import { autoDeviceDir, deviceAt, deviceTile, syncDevices } from '../core/device';
 import { battleSummary, mapGrid, predictionLine, roundInfo } from './battleView';
 import { h } from './dom';
 
@@ -16,6 +16,8 @@ import { h } from './dom';
 
 export interface SandboxState {
   units: OwnedUnit[];
+  /** キャサリンの支援装置（キャサリン1人につき2個。サンドボックスに控えは無いので場に置いた分だけ） */
+  devices?: OwnedDevice[];
   round: number;
   /** 敵グループ（null ならステージファイルの敵のまま） */
   group: RoundGroup | null;
@@ -31,7 +33,7 @@ export interface SandboxState {
 export const SANDBOX_MAX_UNITS = DEPLOY_CAP;
 
 export function createSandbox(): SandboxState {
-  return { units: [], round: 14, group: null, replay: null, stacks: {}, nextUid: 1, selectedUid: null, mapId: RANDOM_MAPS[0].id };
+  return { units: [], devices: [], round: 14, group: null, replay: null, stacks: {}, nextUid: 1, selectedUid: null, mapId: RANDOM_MAPS[0].id };
 }
 
 export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) => void) => void): HTMLElement {
@@ -40,12 +42,17 @@ export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) =
     rawUpdate((s) => {
       s.replay = null;
       f(s);
-      pruneDevices(s.units);
+      s.devices ??= [];
+      // キャサリンの数に合わせて装置を増減し、オペレーターが乗ったマスの装置は外す
+      s.devices = s.devices.filter((d) => d.pos !== undefined && deviceTile(d.pos) && !s.units.some((u) => u.pos === d.pos));
+      const host = { board: s.units, devices: s.devices, nextUid: s.nextUid };
+      syncDevices(host);
+      s.nextUid = host.nextUid;
     });
   setActiveMap(sb.mapId ?? MAPS[0].id);
   const group = sb.group ?? null;
   const spec = roundSpec(sb.round ?? 14, group);
-  const { inputs, statuses, globals, excluded } = buildSimInputs(sb.units, [], sb.stacks);
+  const { inputs, statuses, globals, excluded } = buildSimInputs(sb.units, [], sb.stacks, {}, sb.devices ?? []);
   const selected = sb.units.find((u) => u.uid === sb.selectedUid);
   const activeIds = activeAllianceIds(statuses);
   const simOpts = { globals, activeAlliances: activeIds, stacks: sb.stacks };
@@ -83,15 +90,32 @@ export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) =
                     onClick: () => update((s) => { s.selectedUid = s.selectedUid === o.uid ? null : o.uid; }),
                   }),
                   onTurn: (uid, dir) => update((s) => { s.units.find((u) => u.uid === uid)!.dir = dir; }),
-                  devices: {
-                    selected: selected ?? null,
-                    onPlace: (uid, pos) => update((s) => { const u = s.units.find((x) => x.uid === uid); if (u) placeDevice(s.units, u, pos); }),
-                    onTurn: (uid, pos, dir) => update((s) => { const u = s.units.find((x) => x.uid === uid); if (u) turnDevice(u, pos, dir); }),
-                  },
+                  devices: sb.devices ?? [],
+                  deviceCard: (d) => ({
+                    selected: d.uid === sb.selectedUid,
+                    onClick: () => update((st) => { st.selectedUid = st.selectedUid === d.uid ? null : d.uid; }),
+                  }),
+                  onDeviceTurn: (uid, dir) => update((st) => { const d = st.devices?.find((x) => x.uid === uid); if (d) d.dir = dir; }),
                   onDropCell: (pos, uid) =>
                     update((s) => {
+                      const dev = s.devices?.find((x) => x.uid === uid);
+                      if (dev) {
+                        // 支援装置の移動（装置のあるマスなら入れ替え。オペレーターのいるマス・置けないマスには置けない）
+                        if (!deviceTile(pos) || s.units.some((x) => x.pos === pos)) return;
+                        const other = deviceAt(s.devices!, pos);
+                        if (other && other !== dev) other.pos = dev.pos;
+                        dev.pos = pos;
+                        return;
+                      }
                       const u = s.units.find((x) => x.uid === uid);
                       if (!u || !canPlace(pos, u.defId)) return;
+                      // 装置のあるマスへ：装置は移動前のマスへ入れ替わる
+                      const swapDev = deviceAt(s.devices ?? [], pos);
+                      if (swapDev) {
+                        if (u.pos === undefined || !deviceTile(u.pos)) return;
+                        swapDev.pos = u.pos;
+                        swapDev.dir = autoDeviceDir(s.units, u.pos);
+                      }
                       const other = s.units.find((x) => x.pos === pos);
                       if (other && other !== u) {
                         if (u.pos === undefined || !canPlace(u.pos, other.defId)) return;
@@ -155,9 +179,7 @@ export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) =
                         if (s.units.length >= SANDBOX_MAX_UNITS) return;
                         const cell = autoCell(s.units, u.id, 1);
                         if (!cell) return;
-                        const added = { uid: s.nextUid++, defId: u.id, star: 1, pos: cell.pos, dir: cell.dir } as OwnedUnit;
-                        s.units.push(added);
-                        autoPlaceAfterPlacing(s.units, added);
+                        s.units.push({ uid: s.nextUid++, defId: u.id, star: 1, pos: cell.pos, dir: cell.dir });
                       }),
                   }),
                 ),

@@ -23,9 +23,9 @@ import { ENEMIES, groupLabel, roundEnemySummary, type EnemySpec, type RoundGroup
 import { getUnit, unitState } from '../core/data/units';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE } from '../core/rules';
 import { SKILL_RANGE_SHOWN, attackInterval, scaledEnemy, type BattleResult } from '../core/sim';
-import type { Direction, OwnedUnit, Star } from '../core/types';
-import { makeDropTarget, starBadge, unitCard, type CardOptions } from './components';
-import { DEVICE_MAX, deviceTile, isDeviceHolder, validDevices } from '../core/device';
+import type { Direction, OwnedDevice, OwnedUnit, Star } from '../core/types';
+import { deviceCard, makeDropTarget, starBadge, unitCard, type CardOptions } from './components';
+import { deviceFront } from '../core/device';
 import { fmt, h, pct, s } from './dom';
 
 // マップ戦闘まわりの表示：配置マップ、ラウンドの敵、予測、戦闘結果とリプレイ
@@ -42,16 +42,12 @@ export function mapGrid(
     onDropCell: (pos: number, uid: number) => void;
     onTurn: (uid: number, dir: Direction) => void;
     onItemDrop?: (unitUid: number, itemUid: number) => void;
-    /** キャサリンの支援装置：選択中のキャサリン（装置を置ける）と操作。装置はどのキャサリンのものも常に表示する */
-    devices?: {
-      selected: OwnedUnit | null;
-      onPlace: (uid: number, pos: number) => void;
-      onTurn: (uid: number, pos: number, dir: Direction) => void;
-    };
+    /** キャサリンの支援装置（オペレーターと同じカード・辺クリックの回転・ドラッグでの移動） */
+    devices?: OwnedDevice[];
+    deviceCard?: (d: OwnedDevice) => CardOptions;
+    onDeviceTurn?: (uid: number, dir: Direction) => void;
   },
 ) {
-  const devSel = opts.devices?.selected && opts.devices.selected.pos !== undefined && isDeviceHolder(opts.devices.selected.defId) ? opts.devices.selected : null;
-  const devCount = devSel ? validDevices(board, devSel).length : 0;
   const cells: HTMLElement[] = [];
   const highlight = (o: OwnedUnit | null) => {
     for (const c of cells) c.classList.remove('in-range', 'in-skill-range');
@@ -61,9 +57,16 @@ export function mapGrid(
     for (const p of unitRangeCells(o, true)) if (!normal.has(p)) cells[p]?.classList.add('in-skill-range');
   };
 
+  /** 支援装置にマウスを乗せたら、前方のマス（支援先）を示す */
+  const highlightDevice = (d: OwnedDevice | null) => {
+    for (const c of cells) c.classList.remove('in-range', 'in-skill-range');
+    if (d && d.pos !== undefined) cells[deviceFront({ pos: d.pos, dir: d.dir ?? DEFAULT_DIRECTION })]?.classList.add('in-range');
+  };
+
   for (let pos = 0; pos < BOARD_CELLS; pos++) {
     const tile = tileAt(pos);
     const o = board.find((b) => b.pos === pos);
+    const dev = o ? undefined : opts.devices?.find((d) => d.pos === pos);
     const cell = h(
       'div',
       { class: `cell t-${tile}${PATH_TILES.has(pos) ? ' path' : ''}`, title: TILE_NAME[tile] },
@@ -100,40 +103,29 @@ export function mapGrid(
         ),
       );
     }
-    // キャサリンの支援装置：置かれた装置（選択中のキャサリンのものはクリックで向きを回す）と、置けるマスの枠
-    const dev = board.flatMap((b) => validDevices(board, b).map((d) => ({ owner: b, d }))).find((x) => x.d.pos === pos);
     if (dev) {
-      const mine = dev.owner === devSel;
+      const base = opts.deviceCard?.(dev) ?? {};
       cell.append(
-        h(
-          mine ? 'button' : 'div',
-          {
-            class: `device${mine ? ' mine' : ''}`,
-            title: mine ? '支援装置：クリックで向きを変更（矢印の先のオペレーターを支援）' : '支援装置',
-            onclick: mine
-              ? (e: Event) => {
-                  e.stopPropagation();
-                  const next = MOVE_DIRS[(MOVE_DIRS.indexOf(dev.d.dir) + 1) % 4];
-                  opts.devices!.onTurn(dev.owner.uid, pos, next);
-                }
-              : undefined,
-          },
-          h('span', { class: 'device-name' }, '支'),
-          h('span', { class: 'device-arrow' }, DIR_ARROW[dev.d.dir]),
-        ),
-      );
-    } else if (devSel && !o && devCount < DEVICE_MAX && deviceTile(pos)) {
-      cell.classList.add('device-slot');
-      cell.append(
-        h('button', {
-          class: 'device-place',
-          title: 'ここに支援装置を置く',
-          'aria-label': '支援装置を置く',
-          onclick: (e: Event) => {
-            e.stopPropagation();
-            opts.devices!.onPlace(devSel.uid, pos);
+        deviceCard({
+          dragUid: dev.uid,
+          dir: dev.dir ?? DEFAULT_DIRECTION,
+          ...base,
+          onHover: (enter) => {
+            highlightDevice(enter ? dev : null);
+            base.onHover?.(enter);
           },
         }),
+        ...DIRECTIONS.map((d) =>
+          h('button', {
+            class: `edge edge-${d}${d === (dev.dir ?? DEFAULT_DIRECTION) ? ' on' : ''}`,
+            title: `${DIRECTION_NAME[d]}を向く`,
+            'aria-label': `${DIRECTION_NAME[d]}を向く`,
+            onclick: (e: Event) => {
+              e.stopPropagation();
+              opts.onDeviceTurn?.(dev.uid, d);
+            },
+          }),
+        ),
       );
     }
     if (isGroundTile(tile) || tile === 'safe' || tile === 'high') makeDropTarget(cell, (uid) => opts.onDropCell(pos, uid));

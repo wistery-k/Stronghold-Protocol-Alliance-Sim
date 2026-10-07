@@ -2364,33 +2364,9 @@ body.dragging * {
   fill: #e4d4ff;
 }
 
-/* キャサリンの支援装置（準備画面のマップ） */
-.cell .device {
-  position: absolute;
-  inset: 12%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  border: 2px solid #2f8f6b;
-  border-radius: 6px;
-  background: rgba(232, 244, 238, 0.92);
-  color: #1f6b4f;
-  font-weight: 700;
-  font-size: 0.9rem;
-  padding: 0;
-  z-index: 2;
+/* キャサリンの支援装置（準備画面のマップ・控え） */
+.card.device {
+  border-color: #2f8f6b;
+  background: color-mix(in srgb, #2f8f6b 14%, var(--panel-2));
 }
-.cell .device.mine { cursor: pointer; box-shadow: 0 0 0 2px rgba(47, 143, 107, 0.35); }
-.cell .device-arrow { font-size: 1.1rem; }
-.cell.device-slot .device-place {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border: 2px dashed #2f8f6b;
-  border-radius: 6px;
-  background: rgba(47, 143, 107, 0.12);
-  cursor: pointer;
-  padding: 0;
-}
-.cell.device-slot .device-place:hover { background: rgba(47, 143, 107, 0.28); }
+.card.device .device-dir { font-weight: 700; color: #2f8f6b; }

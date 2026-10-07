@@ -39,7 +39,8 @@ function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
-    return s.version === 9 ? s : null;
+    // 支援装置の追加前のセーブデータには devices が無い
+    return s.version === 9 ? { ...s, devices: s.devices ?? [] } : null;
   } catch {
     return null;
   }

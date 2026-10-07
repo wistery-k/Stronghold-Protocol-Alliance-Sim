@@ -75,9 +75,9 @@ import {
   shopSlots,
 } from './rules';
 import { DEFAULT_DIFFICULTY, type Difficulty } from './difficulty';
-import { autoPlaceAfterPlacing, pruneDevices, placeDevice, removeDevice, turnDevice, validDevices, isDeviceHolder } from './device';
+import { DEVICE_MAX, autoDeviceDir, deviceAt, deviceCap, deviceSpot, deviceTile, findDevice, simDevices, syncDevices } from './device';
 import { simulateBattle, type BattleResult } from './sim';
-import { isItemEntry, isUnitEntry, type AllianceId, type BenchEntry, type Direction, type OwnedItem, type OwnedUnit, type Star } from './types';
+import { isDeviceEntry, isItemEntry, isUnitEntry, type AllianceId, type BenchEntry, type Direction, type OwnedDevice, type OwnedItem, type OwnedUnit, type Star } from './types';
 
 export type Phase = 'prep' | 'result' | 'gameover' | 'clear';
 
@@ -141,6 +141,8 @@ export interface GameState {
   /** 控え：オペレーターと装備を一緒に保管する（上限を超えても保持し、超過中は戦闘不可） */
   bench: BenchEntry[];
   board: OwnedUnit[];
+  /** 場に置いた支援装置（控えの装置は bench に入る。キャサリンの数に合わせて増減する） */
+  devices: OwnedDevice[];
   pool: Record<string, number>;
   stacks: Partial<Record<AllianceId, number>>;
   freeRefreshes: number;
@@ -173,9 +175,6 @@ export type Action =
   | { type: 'undeploy'; uid: number }
   | { type: 'move'; uid: number; to: { zone: 'board'; pos: number } | { zone: 'bench'; index: number } }
   | { type: 'turn'; uid: number; dir: Direction }
-  | { type: 'placeDevice'; uid: number; pos: number; dir?: Direction }
-  | { type: 'turnDevice'; uid: number; pos: number; dir: Direction }
-  | { type: 'removeDevice'; uid: number; pos: number }
   | { type: 'choose'; index: number }
   | { type: 'skipChoice' }
   | { type: 'pickBounty'; index: number }
@@ -266,6 +265,7 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
     soldCount: 0,
     bench: Array(BENCH_SIZE).fill(null),
     board: [],
+    devices: [],
     pool,
     stacks: {},
     freeRefreshes: 0,
@@ -367,6 +367,7 @@ function spend(state: GameState, amount: number) {
 export function applyAction(prev: GameState, action: Action): ActionResult {
   const r = applyActionInner(prev, action);
   if (!r.error) {
+    syncDevices(r.state);
     r.state.bench = compactBench(r.state.bench);
     trimLog(r.state);
   }
@@ -396,6 +397,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       return { state };
     }
     case 'sell': {
+      if (findDevice(state, action.uid)) return fail('支援装置は売却できません');
       const f = findOwned(state, action.uid);
       if (!f) return fail('ユニットが見つかりません');
       const def = getUnit(f.unit.defId);
@@ -450,6 +452,12 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       return { state };
     }
     case 'deploy': {
+      const dev = findDevice(state, action.uid);
+      if (dev) {
+        if (dev.where !== 'bench') return fail('控えの支援装置を選んでください');
+        const err = moveDevice(state, dev, action.pos !== undefined ? { zone: 'board', pos: action.pos } : { zone: 'board', pos: deviceSpot(state.board, state.devices)?.pos ?? -1 });
+        return err ? fail(err) : { state };
+      }
       const f = findOwned(state, action.uid);
       if (!f || f.where !== 'bench') return fail('控えのユニットを選んでください');
       if (state.board.length >= deployCapOf(state)) return fail('配置上限に達しています');
@@ -457,14 +465,28 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       const pos = action.pos ?? auto?.pos ?? null;
       if (pos === null || unitAt(state.board, pos) || !canPlace(pos, f.unit.defId)) return fail(placeError(f.unit.defId));
       state.bench[f.index] = null;
+      // 支援装置があるマスなら、装置は空いた控えの枠へ
+      const under = deviceAt(state.devices, pos);
+      if (under) {
+        state.devices = state.devices.filter((d) => d !== under);
+        delete under.pos;
+        delete under.dir;
+        state.bench[f.index] = under;
+      }
       f.unit.pos = pos;
       f.unit.dir = bestDirection(pos, f.unit.defId, f.unit.star);
       state.board.push(f.unit);
-      pruneDevices(state.board);
-      autoPlaceAfterPlacing(state.board, f.unit);
       return { state };
     }
     case 'undeploy': {
+      const dev = findDevice(state, action.uid);
+      if (dev) {
+        if (dev.where !== 'board') return fail('場の支援装置を選んでください');
+        const emptyIdx = state.bench.slice(0, BENCH_SIZE).indexOf(null);
+        if (emptyIdx < 0) return fail('控えがいっぱいです');
+        const err = moveDevice(state, dev, { zone: 'bench', index: emptyIdx });
+        return err ? fail(err) : { state };
+      }
       const f = findOwned(state, action.uid);
       if (!f || f.where !== 'board') return fail('配置中のユニットを選んでください');
       const emptyIdx = state.bench.indexOf(null);
@@ -472,20 +494,19 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       state.board.splice(f.index, 1);
       delete f.unit.pos;
       state.bench[emptyIdx] = f.unit;
-      delete f.unit.devices;
-      pruneDevices(state.board);
       return { state };
     }
     case 'move': {
+      const dev = findDevice(state, action.uid);
+      if (dev) {
+        const err = moveDevice(state, dev, action.to);
+        return err ? fail(err) : { state };
+      }
       const f = findOwned(state, action.uid);
       if (!f) return fail('ユニットが見つかりません');
-      const before = new Set(state.board);
       const err = moveUnit(state, f, action.to);
       if (err) return fail(err);
       if (state.board.length > deployCapOf(state)) return fail('配置上限に達しています');
-      if (f.unit.pos === undefined) delete f.unit.devices;
-      pruneDevices(state.board);
-      for (const o of state.board) if (!before.has(o)) autoPlaceAfterPlacing(state.board, o);
       return { state };
     }
     case 'choose': {
@@ -512,21 +533,15 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       return { state };
     }
     case 'turn': {
+      const dev = findDevice(state, action.uid);
+      if (dev) {
+        if (dev.where !== 'board') return fail('場にある支援装置を選んでください');
+        dev.device.dir = action.dir;
+        return { state };
+      }
       const f = findOwned(state, action.uid);
       if (!f || f.where !== 'board') return fail('配置中のユニットを選んでください');
       f.unit.dir = action.dir;
-      return { state };
-    }
-    case 'placeDevice':
-    case 'turnDevice':
-    case 'removeDevice': {
-      const f = findOwned(state, action.uid);
-      if (!f || f.where !== 'board') return fail('配置中のキャサリンを選んでください');
-      if (action.type === 'removeDevice') removeDevice(f.unit, action.pos);
-      else {
-        const err = action.type === 'placeDevice' ? placeDevice(state.board, f.unit, action.pos, action.dir) : turnDevice(f.unit, action.pos, action.dir);
-        if (err) return fail(err);
-      }
       return { state };
     }
     case 'refresh': {
@@ -651,17 +666,32 @@ function moveUnit(
     if (!canPlace(to.pos, u.defId)) return placeError(u.defId);
     const other = unitAt(state.board, to.pos);
     if (other === u) return;
+    // 支援装置があるマスへ：装置は、移動前のマス（控えからなら控えの枠）に入れ替わる
+    const dev = deviceAt(state.devices, to.pos);
+    if (dev) {
+      if (from.where === 'board') {
+        if (!deviceTile(u.pos!)) return 'そのマスには支援装置があり、入れ替えられません';
+        dev.pos = u.pos;
+        dev.dir = autoDeviceDir(state.board, u.pos!);
+      } else {
+        state.devices = state.devices.filter((d) => d !== dev);
+        delete dev.pos;
+        delete dev.dir;
+        state.bench[from.index] = dev;
+      }
+    }
     if (from.where === 'board') {
       if (other && !canPlace(u.pos!, other.defId)) return `${getUnit(other.defId).name}はそのマスに置けません`;
       if (other) other.pos = u.pos;
       u.pos = to.pos;
     } else {
-      state.bench[from.index] = null;
+      if (!dev) state.bench[from.index] = null;
       if (other) {
         state.board = state.board.filter((o) => o !== other);
         delete other.pos;
         delete other.dir;
-        state.bench[from.index] = other;
+        if (dev) putOnBench(state, other);
+        else state.bench[from.index] = other;
       }
       u.pos = to.pos;
       u.dir = bestDirection(to.pos, u.defId, u.star);
@@ -681,12 +711,77 @@ function moveUnit(
         other.dir = bestDirection(u.pos!, other.defId, other.star);
         state.board.push(other);
       }
+      const oldPos = u.pos!;
       delete u.pos;
       delete u.dir;
       state.bench[to.index] = u;
       // 装備がいた枠なら、その装備は別の枠へ
       if (isItemEntry(other)) putOnBench(state, other);
+      // 支援装置がいた枠なら、その装置は動かしたオペレーターのマスへ（置けなければ別の枠へ）
+      if (isDeviceEntry(other)) {
+        if (deviceTile(oldPos) && state.devices.length < deviceCap(state.board)) {
+          other.pos = oldPos;
+          other.dir = autoDeviceDir(state.board, oldPos);
+          state.devices.push(other);
+        } else putOnBench(state, other);
+      }
     }
+  }
+  return undefined;
+}
+
+/** 支援装置を盤面のマス・控えの枠へ移動する。移動先に装置があれば入れ替える（オペレーターがいるマスへは置けない） */
+function moveDevice(
+  state: GameState,
+  from: { device: OwnedDevice; where: 'board' | 'bench'; index: number },
+  to: { zone: 'board'; pos: number } | { zone: 'bench'; index: number },
+): string | undefined {
+  const d = from.device;
+  if (to.zone === 'board') {
+    if (!deviceTile(to.pos)) return '支援装置は地上マスにしか置けません';
+    if (unitAt(state.board, to.pos)) return 'オペレーターがいるマスには置けません';
+    const other = deviceAt(state.devices, to.pos);
+    if (other === d) return;
+    if (from.where === 'board') {
+      if (other) {
+        other.pos = d.pos;
+        other.dir = d.dir;
+      }
+      d.pos = to.pos;
+      return;
+    }
+    if (!other && state.devices.length >= deviceCap(state.board)) return `支援装置は同時に${DEVICE_MAX}個までです`;
+    state.bench[from.index] = null;
+    if (other) {
+      state.devices = state.devices.filter((x) => x !== other);
+      delete other.pos;
+      delete other.dir;
+      state.bench[from.index] = other;
+    }
+    d.pos = to.pos;
+    d.dir = autoDeviceDir(state.board, to.pos);
+    state.devices.push(d);
+    return;
+  }
+  const other = state.bench[to.index];
+  if (other === d) return;
+  if (from.where === 'bench') {
+    state.bench[from.index] = other;
+    state.bench[to.index] = d;
+    return;
+  }
+  // 場 → 控え：控えの枠にいたものは、装置なら場のマスへ、それ以外は別の枠へ
+  if (isUnitEntry(other)) return 'オペレーターと支援装置は入れ替えられません';
+  const oldPos = d.pos!;
+  state.devices = state.devices.filter((x) => x !== d);
+  delete d.pos;
+  delete d.dir;
+  state.bench[to.index] = d;
+  if (isItemEntry(other)) putOnBench(state, other);
+  if (isDeviceEntry(other)) {
+    other.pos = oldPos;
+    other.dir = d.dir ?? autoDeviceDir(state.board, oldPos);
+    state.devices.push(other);
   }
   return undefined;
 }
@@ -703,8 +798,10 @@ export function buildSimInputs(
   bench: OwnedUnit[],
   stacks: Partial<Record<AllianceId, number>>,
   opts: BattleOptions = {},
+  devices: OwnedDevice[] = [],
 ) {
   normalizePositions(board);
+  const deviceMap = simDevices(board, devices);
   const setup = battleSetup(board, bench, stacks, opts);
   return {
     ...setup,
@@ -719,7 +816,7 @@ export function buildSimInputs(
       dir: o.dir,
       bonusGain: setup.bonusGain.get(o.uid),
       devoured: setup.devour.get(o.uid),
-      devices: isDeviceHolder(o.defId) ? validDevices(board, o) : undefined,
+      devices: deviceMap.get(o.uid),
     })),
   };
 }
@@ -753,7 +850,7 @@ function resolveBattle(state: GameState): void {
   prepFinish(state);
 
   const bench = benchUnits(state);
-  const { statuses, inputs, globals } = buildSimInputs(state.board, bench, state.stacks, { banned: state.banned, roundGained: state.round_.gained, band: state.band });
+  const { statuses, inputs, globals } = buildSimInputs(state.board, bench, state.stacks, { banned: state.banned, roundGained: state.round_.gained, band: state.band }, state.devices);
   const spec = roundSpecOf(state, state.round);
   const sim = simulateBattle(inputs, spec, { globals, activeAlliances: activeAllianceIds(statuses), stacks: state.stacks, record: true });
   const afterPrep = { ...state.stacks };
