@@ -85,6 +85,8 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 
 - ダブリン追炎戦士・従兵：倒れた後の残火・灰燼（復活待ち）をステルスに（`EnemySpec.revive.stealth`、`sim.ts` の `isStealthed`）。復活は何度でも（仮想敵：再生も。ユーザー確認済み）。残火は元の敵と同じ速さで進みブロックされ（倒れた時のブロックを引き継ぐ）、「狙われやすい」（`REMNANT_TAUNT`・`enemyTaunt`。ユーザーの指定）。仮想敵：再生の再生状態も進むがブロックされない（ユーザーの指定）。戦闘の制限時間に復活待ちの時間を足す（`battleTimeLimit`）。「燃える葦の群生」の効果は葦の群生がこのモードに無いので未使用
 
+- キャサリンの支援装置（`sim.ts` の `placeDevices`・`tickDevices`・`CATHY_*`、リプレイは fx でなくコマの `dv`＝[マス, 向き, 支援先uid]、描画は `battleView.ts` の `drawDevices`）。装置の自動配置（配置時に2個、支援先は敵をブロックする味方・最大HP順）は仮
+
 ## 仮の値・未確認の点（ユーザーに伝え済み）
 
 - 難易度（`difficulty.ts`、ユーザー提供の表）：ボスのHPは表の0.5倍（`BOSS_HP_SCALE`、ユーザーの指定。同盟演算の水準のため）、標準の10R以降は0.7のまま、標準の15Rのボス HP は表に無くデータのまま、ボスの手下は HP・攻撃力の補正を受ける。既定は死地（`DEFAULT_DIFFICULTY`）。`RoundSpec.difficulty` がある時だけ補正（サンドボックスは未対応＝補正なし）
@@ -108,7 +110,7 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 
 ## まだやっていないこと
 
-- 未再現の素質：`docs/talents.md` で ❌（約39件）・一部（約31件）。スズランの足止め、アンジェリーナの反重力、キャサリンの支援装置など
+- 未再現の素質：`docs/talents.md` で ❌（約39件）・一部（約31件）。スズランの足止め、アンジェリーナの反重力など
 - スキル：サンクタ・ミキサー（反撃）、レミュアン（ロックオン爆撃）は実装済み（`sim.ts` の `mixerCounter`・`lemuenLock`・`lemuenBombard`）。仮の点は docs/battle.md の「弾薬スキル」の項を参照。素質（ミキサーの防御力・バリア、レミュアンの指名手配）と、リプレイのロックオン・爆撃の演出（fx 10 ロックオン／11 爆撃の発射）も実装済み。爆撃は `LEMUEN_BOMB_*`（最初の着弾0.2秒後・0.3秒間隔・一辺0.4のランダム位置）。fx 11 の時刻は着弾の時刻で、リプレイは砲弾をそれ以前から描く
 - 戦術（バンド）の一部：`src/core/data/bands.ts` の `impl: 'partial' | 'none'`
 - ボスの HP の難易度をゲーム内で選べるようにする案（ユーザーと話しただけで未着手）

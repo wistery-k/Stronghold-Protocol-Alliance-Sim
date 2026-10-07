@@ -307,7 +307,7 @@ export const TALENT_STATUS: Record<string, [TalentImpl, string?][]> = {
   char_222_bpipe: [['partial', '確率は期待値。攻撃対象数+1は未再現'], ['full']],
   char_437_mizuki: [['full'], ['full']],
   char_446_aroma: [['partial', '浮遊は未再現']],
-  char_4162_cathy: [['none', '支援装置は未再現']],
+  char_4162_cathy: [['partial', '支援装置を戦闘開始時（配置時）に自動で2個置く。支援先は敵をブロックする味方・最大HPの高い順']],
   char_474_glady: [['partial', '海の怪物からの被ダメージ軽減は未再現'], ['none', '敵の重量が無いため未再現']],
   char_206_gnosis: [['full'], ['none', '状態異常が無いため未再現']],
   char_373_lionhd: [['full']],

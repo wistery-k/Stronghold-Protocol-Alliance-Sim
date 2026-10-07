@@ -2056,3 +2056,34 @@ describe('仮想敵：黒雲', () => {
   });
 
 });
+
+describe('キャサリンの支援装置', () => {
+  const cat = UNITS.find((u) => u.name === 'キャサリン')!;
+  const tank = UNITS.find((u) => u.profession === 'defender' && u.tier <= 3)!;
+  const board: OwnedUnit[] = [
+    { uid: 1, defId: tank.id, star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit,
+    { uid: 2, defId: cat.id, star: 1, pos: 23, dir: 'right', items: [] } as OwnedUnit,
+  ];
+  it('配置時に装置を置き、支援先の前方のオペレーターにキャサリンの最大HPの20%のバリアを付ける（リプレイにも記録）', () => {
+    const spec = oneEnemy('devDummy', false, { def: 0, res: 0 });
+    const r = run(board, spec);
+    const dv = r.frames![0].dv!;
+    expect(dv.length).toBe(2);
+    // 敵をブロックする味方（盾役）が先に支援先になり、1人に1個まで
+    expect(new Set(dv.map((x) => x[2])).size).toBe(2);
+    expect(dv[0][2]).toBe(1);
+    expect(dv[0][0]).toBe(22);
+    // 装置は支援先の隣（支援先の方を向く）
+    const [pos, dir, target] = dv[0];
+    const uPos = board.find((b) => b.uid === target)!.pos!;
+    const d = [[1, 0], [0, 1], [-1, 0], [0, -1]][dir];
+    expect(cellX(pos) + d[0]).toBe(cellX(uPos));
+    expect(cellY(pos) + d[1]).toBe(cellY(uPos));
+  });
+  it('バリアが敵の攻撃を防ぎ、その量はキャサリンの実績になる', () => {
+    const spec = oneEnemy('devHit', false, { def: 0, res: 0, attack: { kind: 'melee', atk: 300, interval: 1, range: 0 } } as Partial<EnemySpec>);
+    const r = run(board, spec);
+    const c = r.perUnit.find((u) => u.uid === 2)!;
+    expect(c.barrier > 0).toBe(true);
+  });
+});

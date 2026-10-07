@@ -5,6 +5,7 @@ import {
   DEFAULT_DIRECTION,
   DIRECTIONS,
   DIRECTION_NAME,
+  DIR_DELTA,
   GOAL,
   PATH_TILES,
   SPAWNS,
@@ -1300,6 +1301,31 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     );
   };
 
+  // キャサリンの支援装置（置かれたマスに小さな箱と、支援先への矢印）
+  const deviceLayer = s('g', { class: 'rp-devices' });
+  svg.insertBefore(deviceLayer, tokenLayer);
+  let deviceKey = '';
+  const drawDevices = (a: NonNullable<BattleResult['frames']>[number]) => {
+    const list = a.dv ?? [];
+    const key = list.join(';');
+    if (key === deviceKey) return;
+    deviceKey = key;
+    deviceLayer.replaceChildren(
+      ...list.map(([pos, dir]) => {
+        const cx = cellX(pos) * S + S / 2;
+        const cy = cellY(pos) * S + S / 2;
+        const [dx, dy] = DIR_DELTA[MOVE_DIRS[dir]];
+        return s(
+          'g',
+          { class: 'rp-device' },
+          s('rect', { x: cx - 13, y: cy - 13, width: 26, height: 26, rx: 5, class: 'rp-device-box' }),
+          s('text', { x: cx, y: cy + 4, 'text-anchor': 'middle', class: 'rp-device-name' }, '支'),
+          s('path', { d: `M${cx + dx * 15},${cy + dy * 15} L${cx + dx * 27 - dy * 6},${cy + dy * 27 + dx * 6} L${cx + dx * 27 + dy * 6},${cy + dy * 27 - dx * 6} Z`, class: 'rp-device-arrow' }),
+        );
+      }),
+    );
+  };
+
   // 敵の下に描く演出（グレイディーアS3の渦）
   const fxUnder = s('g', { class: 'rp-fx-under' });
   svg.append(fxUnder);
@@ -1455,6 +1481,7 @@ export function replayPlayer(r: BattleResult, units: ReplayUnit[]) {
     const stealth = new Set(a.st ?? []);
     for (const [uid, g] of unitNodes) g.classList.toggle('stealth', stealth.has(uid));
     drawTokens(a);
+    drawDevices(a);
     const dolls = new Set(a.dl ?? []);
     for (const [uid, g] of unitNodes) g.classList.toggle('doll', dolls.has(uid));
     for (const [uid, f] of ghostField) f.style.display = dolls.has(uid) ? '' : 'none';
