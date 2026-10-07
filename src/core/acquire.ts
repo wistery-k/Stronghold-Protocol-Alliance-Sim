@@ -5,7 +5,7 @@ import { Rng } from './rng';
 import { itemOnGain, returnItems, unitAvailable } from './items';
 import { BENCH_SIZE } from './rules';
 import type { GameState } from './game';
-import type { BenchEntry, OwnedUnit, Star, Tier } from './types';
+import { isDeviceEntry, type BenchEntry, type OwnedUnit, type Star, type Tier } from './types';
 
 // オペレーターの獲得（購入・特性による獲得・精鋭化報酬）と精鋭化の処理
 
@@ -22,7 +22,8 @@ export function allOwned(state: GameState): OwnedUnit[] {
 
 /** 控えの上限を超えているか（超えたままでは戦闘を開始できない） */
 export function benchOverflow(state: GameState): number {
-  return Math.max(0, state.bench.filter((b) => b !== null).length - BENCH_SIZE);
+  // 支援装置は数えない（キャサリンに付いてくるもので、控えの上限で戦闘できなくならないように）
+  return Math.max(0, state.bench.filter((b) => b !== null && !isDeviceEntry(b)).length - BENCH_SIZE);
 }
 
 /** 購入できるか：控えに空きがあるか、入れた瞬間に精鋭化できる */
@@ -39,9 +40,14 @@ export function canReceive(state: GameState, defId: string): boolean {
 export function compactBench(bench: BenchEntry[]): BenchEntry[] {
   if (bench.length <= BENCH_SIZE) return bench;
   const entries = bench.filter((b): b is NonNullable<BenchEntry> => b !== null);
-  if (entries.length > BENCH_SIZE) return entries;
+  if (entries.filter((b) => !isDeviceEntry(b)).length > BENCH_SIZE) return entries;
   const out: BenchEntry[] = bench.slice(0, BENCH_SIZE);
-  for (const u of entries) if (!out.includes(u)) out[out.indexOf(null)] = u;
+  for (const u of entries) {
+    if (out.includes(u)) continue;
+    const i = out.indexOf(null);
+    if (i >= 0) out[i] = u;
+    else out.push(u);
+  }
   return out;
 }
 

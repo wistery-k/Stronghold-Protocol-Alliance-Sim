@@ -246,8 +246,20 @@ export interface OwnedItem {
   star: Star;
 }
 
-/** 控えの枠：オペレーターか装備 */
-export type BenchEntry = OwnedUnit | OwnedItem | null;
+/** キャサリンの支援装置（場に置くと pos・dir を持つ。控えにも置けるが売却はできない） */
+export interface OwnedDevice {
+  uid: number;
+  device: true;
+  pos?: number;
+  dir?: Direction;
+}
+
+/** 控えの枠：オペレーター・装備・支援装置 */
+export type BenchEntry = OwnedUnit | OwnedItem | OwnedDevice | null;
+
+export function isDeviceEntry(e: BenchEntry | undefined): e is OwnedDevice {
+  return !!e && 'device' in e;
+}
 
 export function isItemEntry(e: BenchEntry | undefined): e is OwnedItem {
   return !!e && 'itemId' in e;
@@ -267,6 +279,4 @@ export interface OwnedUnit {
   pos?: number;
   /** 向き（未設定なら右） */
   dir?: Direction;
-  /** キャサリンの支援装置（置いたマスと向き。最大2個） */
-  devices?: { pos: number; dir: Direction }[];
 }

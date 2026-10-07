@@ -76,6 +76,27 @@ export function unitCard(defId: string, opts: CardOptions = {}) {
   return card;
 }
 
+/** 支援装置のカード（オペレーターと同じように、ドラッグで動かし、選択・ダブルクリックできる） */
+export function deviceCard(opts: CardOptions & { dir?: string } = {}) {
+  const arrow = ({ up: '↑', right: '→', down: '↓', left: '←' } as Record<string, string>)[opts.dir ?? ''] ?? '';
+  const card = h(
+    'div',
+    {
+      role: 'button',
+      tabindex: 0,
+      class: `card device tier-1${opts.selected ? ' selected' : ''}${opts.dim ? ' dim' : ''}`,
+      onclick: opts.onClick ? () => opts.onClick!() : undefined,
+      onmouseenter: opts.onHover ? () => opts.onHover!(true) : undefined,
+      onmouseleave: opts.onHover ? () => opts.onHover!(false) : undefined,
+      title: '支援装置（キャサリン）\n前方1マスのオペレーターにバリアを付与します。売却はできません',
+    },
+    h('div', { class: 'card-top' }, h('span', { class: 'card-name' }, '支援装置'), arrow ? h('span', { class: 'device-dir' }, arrow) : null),
+    h('div', { class: 'card-cls' }, '前方にバリア'),
+  );
+  if (opts.dragUid !== undefined) makeDraggable(card, 'unit', opts.dragUid);
+  return card;
+}
+
 /** 要素をドロップ先にする。ユニットの uid を受け取る（onItemDrop があれば装備も受け取る） */
 export function makeDropTarget<T extends HTMLElement>(el: T, onDrop: (uid: number) => void, onItemDrop?: (itemUid: number) => void): T {
   registerDropTarget(el, { unit: onDrop, ...(onItemDrop ? { item: onItemDrop } : {}) });

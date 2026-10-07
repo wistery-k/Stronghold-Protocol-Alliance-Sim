@@ -23,7 +23,7 @@ import { BENCH_SIZE, MAX_ROUND, REFRESH_COST, TIER_ODDS } from '../core/rules';
 import { getItem, itemState } from '../core/data/items';
 import { equipNeedsDiscard } from '../core/items';
 import { getUnit } from '../core/data/units';
-import { isItemEntry, type OwnedItem, type OwnedUnit } from '../core/types';
+import { isDeviceEntry, isItemEntry, type OwnedItem } from '../core/types';
 import { benchOverflow } from '../core/acquire';
 import { battleTimeLimit, simulateBattle, type BattleResult, type SimOptions, type SimUnitInput } from '../core/sim';
 import type { RoundSpec } from '../core/data/battle';
@@ -31,13 +31,14 @@ import type { AllianceId } from '../core/types';
 import {
   allianceSummary,
   alliancePanel,
+  deviceCard,
   emptySlot,
   itemCard,
   makeDropTarget,
   unitCard,
   unitDetail,
 } from './components';
-import { DEVICE_MAX, isDeviceHolder, validDevices } from '../core/device';
+import { findDevice } from '../core/device';
 import { battleSummary, mapGrid, predictionLine, roundInfo } from './battleView';
 import { h } from './dom';
 
@@ -287,7 +288,7 @@ function prepView(p: GameViewProps): HTMLElement {
   const activeIds = activeAllianceIds(statuses);
   // 戦闘開始時（準備フェーズ終了時の特性・配置時の特性の後）の加算数で予測する
   const battleStacks = previewBattleStacks(state);
-  const setup = buildSimInputs(state.board, bench, battleStacks, { banned: state.banned, roundGained: state.round_.gained, band: state.band });
+  const setup = buildSimInputs(state.board, bench, battleStacks, { banned: state.banned, roundGained: state.round_.gained, band: state.band }, state.devices);
   const predictOpts = { globals: setup.globals, activeAlliances: activeAllianceIds(setup.statuses), stacks: battleStacks };
   const prediction = cachedPrediction(setup.inputs, spec, predictOpts);
   const lvCost = levelUpCost(state);
@@ -310,6 +311,23 @@ function prepView(p: GameViewProps): HTMLElement {
   const renderDetail = (hoverUid: number | null): HTMLElement[] => {
     const shownUid = hoverUid ?? selectedUid;
     const shown = shownUid !== null ? findOwned(state, shownUid) : null;
+    const shownDevice = shownUid !== null && !shown ? findDevice(state, shownUid) : null;
+    if (shownDevice) {
+      const isSel = shownUid === selectedUid;
+      return [
+        h('h2', null, isSel ? '選択中' : '詳細'),
+        h(
+          'div',
+          { class: 'unit-detail' },
+          h('b', null, '支援装置（キャサリン）'),
+          h('p', { class: 'small' }, '前方1マスのオペレーター1名に、キャサリンの最大HP20%のバリアを付与し、5秒間攻撃を受けていなければ1秒ごとに6%を補充します（キャサリンのスキル中は常に補充）。'),
+          h('p', { class: 'muted small' }, 'キャサリン1人につき、場に置くと3個獲得し、同時に置けるのは2個までです。キャサリンが場を離れると消えます。売却はできません。ドラッグで移動、辺のクリックで向きを変更、控えにも置けます。'),
+        ),
+        isSel
+          ? h('div', { class: 'row' }, shownDevice.where === 'bench' ? h('button', { class: 'btn primary', onclick: () => dispatch({ type: 'deploy', uid: shownDevice.device.uid }) }, '配置する') : h('button', { class: 'btn', onclick: () => dispatch({ type: 'undeploy', uid: shownDevice.device.uid }) }, '控えに戻す'))
+          : null,
+      ].filter((x): x is HTMLElement => x !== null);
+    }
     const title = h('h2', null, shown && shown.unit.uid !== selectedUid ? '詳細' : '選択中');
     if (!shown) {
       return [title, h('p', { class: 'muted' }, 'ユニットにマウスを乗せると詳細が表示されます。ドラッグで配置・入れ替え、ダブルクリックで配置/控えへ移動、招集欄へドロップで売却')];
@@ -318,7 +336,6 @@ function prepView(p: GameViewProps): HTMLElement {
     return [
       title,
       unitDetail(shown.unit, shown.where === 'board' ? setup.mods.get(shown.unit.uid) : undefined),
-      shown.where === 'board' && isDeviceHolder(shown.unit.defId) ? deviceInfo(shown.unit, state.board, isSelected, dispatch) : null,
       setup.excluded.has(shown.unit.uid) ? h('p', { class: 'small ng' }, '【エーギル】に捕食され、戦闘開始時に物理ダメージを受けて倒れる見込みです') : null,
       isSelected
         ? h(
@@ -376,9 +393,11 @@ function prepView(p: GameViewProps): HTMLElement {
       { class: `slot${index >= BENCH_SIZE ? ' over' : ''}` },
       isItemEntry(o)
         ? itemCard(o.itemId, { star: o.star, dragItemUid: o.uid })
-        : o
-          ? unitCard(o.defId, { star: o.star, dragUid: o.uid, ...cardFor(o.uid, 'bench') })
-          : emptySlot(),
+        : isDeviceEntry(o)
+          ? deviceCard({ dragUid: o.uid, ...cardFor(o.uid, 'bench') })
+          : o
+            ? unitCard(o.defId, { star: o.star, dragUid: o.uid, ...cardFor(o.uid, 'bench') })
+            : emptySlot(),
     );
     return makeDropTarget(
       slot,
@@ -520,11 +539,9 @@ function prepView(p: GameViewProps): HTMLElement {
             }),
             onDropCell: (pos, uid) => dispatch({ type: 'move', uid, to: { zone: 'board', pos } }),
             onTurn: (uid, dir) => dispatch({ type: 'turn', uid, dir }),
-            devices: {
-              selected: selectedUid !== null ? (state.board.find((o) => o.uid === selectedUid) ?? null) : null,
-              onPlace: (uid, pos) => dispatch({ type: 'placeDevice', uid, pos }),
-              onTurn: (uid, pos, dir) => dispatch({ type: 'turnDevice', uid, pos, dir }),
-            },
+            devices: state.devices,
+            deviceCard: (d) => cardFor(d.uid, 'board'),
+            onDeviceTurn: (uid, dir) => dispatch({ type: 'turn', uid, dir }),
           }),
         ),
         h(
@@ -533,7 +550,7 @@ function prepView(p: GameViewProps): HTMLElement {
           h(
             'h2',
             null,
-            `控え（${state.bench.filter(Boolean).length}/${BENCH_SIZE}）`,
+            `控え（${state.bench.filter((b) => b && !isDeviceEntry(b)).length}/${BENCH_SIZE}）`,
             overflow > 0
               ? h('span', { class: 'ng' }, `　${overflow}つ超過：配置・装備・売却で上限内に戻してください`)
               : h('span', { class: 'muted small' }, '　装備はオペレーターへドラッグで装備（1人2つまで・外せません）'),
@@ -672,27 +689,5 @@ function endView(p: GameViewProps): HTMLElement {
       h('p', { class: 'muted small' }, `シード ${state.seed}`),
       h('button', { class: 'btn primary big', onclick: () => p.newGame() }, 'もう一度遊ぶ'),
     ),
-  );
-}
-
-/** キャサリンの支援装置の案内（置いた数・外すボタン）。マップの枠をクリックして置く */
-function deviceInfo(unit: OwnedUnit, board: OwnedUnit[], selected: boolean, dispatch: (a: Action) => void) {
-  const list = validDevices(board, unit);
-  return h(
-    'div',
-    { class: 'device-info small' },
-    h('b', null, `支援装置 ${list.length}/${DEVICE_MAX}`),
-    list.length === 0 ? h('span', { class: 'ng' }, '　未配置（戦闘中のバリアが付きません）') : null,
-    selected
-      ? h(
-          'span',
-          { class: 'muted' },
-          list.length < DEVICE_MAX ? '　マップの緑の枠をクリックで置く／' : '　',
-          '装置をクリックで向きを変更（矢印の先のオペレーターにバリア）',
-        )
-      : h('span', { class: 'muted' }, '　クリックで選択すると置けます'),
-    selected && list.length
-      ? h('div', { class: 'row' }, list.map((d, i) => h('button', { class: 'btn tiny', onclick: () => dispatch({ type: 'removeDevice', uid: unit.uid, pos: d.pos }) }, `装置${i + 1}を外す`)))
-      : null,
   );
 }
