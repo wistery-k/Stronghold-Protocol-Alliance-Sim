@@ -3759,11 +3759,12 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
     }
     return 1 - slow;
   };
-  /** ステルスを無効にする素質（シルバーアッシュ・イネス） */
+  /** ステルスを無効にする素質（シルバーアッシュ・イネス）と、哨戒衛士のモジュール（攻撃範囲内の敵の隠匿が無効） */
   const revealed = (e: Enemy) =>
     rt.some(
       (w) =>
         inSentinel(w, e) ||
+        (w.alive && w.input.def.subProfession === 'shotprotector' && unitState(w.input.def, w.input.star).moduleLevel > 0 && covers(w.skillLeft > 0 ? w.rangeSkill : w.rangeNormal, e)) ||
         (w.alive && covers(w.rangeNormal, e) && cid(w) === 'char_172_svrash' && (unitState(w.input.def, w.input.star).talents?.length ?? 0) >= 2),
     );
   const sumOf = (m: Map<Runtime, number>) => {
