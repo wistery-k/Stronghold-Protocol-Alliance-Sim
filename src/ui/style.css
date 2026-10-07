@@ -2370,3 +2370,18 @@ body.dragging * {
   background: color-mix(in srgb, #2f8f6b 14%, var(--panel-2));
 }
 .card.device .device-dir { font-weight: 700; color: #2f8f6b; }
+
+/* リプレイの凡例（折りたたみ） */
+.replay-legend summary {
+  cursor: pointer;
+  list-style: none;
+}
+.replay-legend summary::-webkit-details-marker {
+  display: none;
+}
+.replay-legend summary::before {
+  content: '▸ ';
+}
+.replay-legend[open] summary::before {
+  content: '▾ ';
+}
