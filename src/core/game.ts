@@ -73,6 +73,7 @@ import {
   sellPriceOf,
   shopSlots,
 } from './rules';
+import { DEFAULT_DIFFICULTY, type Difficulty } from './difficulty';
 import { simulateBattle, type BattleResult } from './sim';
 import { isItemEntry, isUnitEntry, type AllianceId, type BenchEntry, type Direction, type OwnedItem, type OwnedUnit, type Star } from './types';
 
@@ -104,6 +105,8 @@ export interface GameState {
   band: BandId | null;
   /** マップ（ゲーム開始時に抽選。古いセーブデータには無い） */
   mapId?: string;
+  /** 難易度（敵の最大HP・攻撃力の補正。古いセーブデータには無く、その場合は補正なし） */
+  difficulty?: Difficulty;
   /** 戦闘前の状態（戦闘結果の画面から戻すため。次のラウンドへ進むと消える） */
   preBattle?: GameState | null;
   /** 戦闘前に戻したラウンドの戦闘結果（新しい順。比較用） */
@@ -196,6 +199,8 @@ export interface GameOptions {
   band?: BandId | null;
   /** マップ（省略時は抽選） */
   mapId?: string;
+  /** 難易度（省略時は DEFAULT_DIFFICULTY） */
+  difficulty?: Difficulty;
 }
 
 /** ラウンドの敵グループ（シードとラウンドで決まる） */
@@ -204,8 +209,8 @@ export function roundGroupOf(state: Pick<GameState, 'seed' | 'enemyTypes'>, roun
 }
 
 /** ラウンドの敵の出現（敵グループを反映） */
-export function roundSpecOf(state: Pick<GameState, 'seed' | 'enemyTypes'> & { bounty?: GameState['bounty'] }, round: number): RoundSpec {
-  return withBounty(roundSpec(round, roundGroupOf(state, round)), getBounty(state.bounty?.picked));
+export function roundSpecOf(state: Pick<GameState, 'seed' | 'enemyTypes'> & { bounty?: GameState['bounty']; difficulty?: Difficulty }, round: number): RoundSpec {
+  return withBounty(roundSpec(round, roundGroupOf(state, round), state.difficulty), getBounty(state.bounty?.picked));
 }
 
 export const BAN_CORE_COUNT = 3;
@@ -233,6 +238,7 @@ export function createGame(seed = Math.floor(Math.random() * 2 ** 31), opts: Gam
   setActiveMap(mapId);
   const state: GameState = {
     mapId,
+    difficulty: opts.difficulty ?? DEFAULT_DIFFICULTY,
     version: 9,
     band,
     bandState: newBandState(),

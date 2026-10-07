@@ -37,7 +37,7 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 
 - 戦闘で使うスキルはイベントデータの `defaultSkillIndex`。ユーザーの指定で変える時は `scripts/skill_choice.py` の `SKILL_INDEX_OVERRIDES`（両方の抽出スクリプトが使う。今はメテオ→S1）
 - 生成物の JSON は手で直さない。敵の特殊能力は `extract_battle.py` で blackboard や図鑑の説明から拾い、`EnemySpec`（`src/core/data/battle.ts`）のフィールドにする → `sim.ts` で実装、という流れ。
-- 使っているモードは `MODE = 'mode_single_normal'`。ボス（R14・R15）の HP は難易度ごとの値 `bossInfoDict` の `bloodPoint*` から取っていて、今は `BOSS_HP_FIELD = 'bloodPointHard'`（絶境＝日本版の死地。冑 180万・360万）。`difficultyFactorInfo`（1.0/1.6/1.7/1.7）と `modeFactorInfo`（1.25）は意味が不明で未使用。
+- 使っているモードは `MODE = 'mode_single_normal'`。ボス（R14・R15）の HP は難易度ごとの値 `bossInfoDict` の `bloodPoint*` から取っていて、今は `BOSS_HP_FIELD = 'bloodPointHard'`（データ上の既定値。ゲーム内では `src/core/difficulty.ts` の難易度の表が優先）（絶境＝日本版の死地。冑 180万・360万）。`difficultyFactorInfo`（1.0/1.6/1.7/1.7）と `modeFactorInfo`（1.25）は意味が不明で未使用。
 - 飛行の敵は各ステージの飛行経路（経由点）を `route` として持つ。盤面と座標系が違うボスステージ（R14・15）は対象外。
 
 ## コードの地図
@@ -86,6 +86,8 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 - ダブリン追炎戦士・従兵：倒れた後の残火・灰燼（復活待ち）をステルスに（`EnemySpec.revive.stealth`、`sim.ts` の `isStealthed`）。復活は何度でも（仮想敵：再生も。ユーザー確認済み）。残火は元の敵と同じ速さで進みブロックされ（倒れた時のブロックを引き継ぐ）、「狙われやすい」（`REMNANT_TAUNT`・`enemyTaunt`。ユーザーの指定）。仮想敵：再生の再生状態も進むがブロックされない（ユーザーの指定）。戦闘の制限時間に復活待ちの時間を足す（`battleTimeLimit`）。「燃える葦の群生」の効果は葦の群生がこのモードに無いので未使用
 
 ## 仮の値・未確認の点（ユーザーに伝え済み）
+
+- 難易度（`difficulty.ts`、ユーザー提供の表）：ボスのHPは表の0.5倍（`BOSS_HP_SCALE`、ユーザーの指定。同盟演算の水準のため）、標準の10R以降は0.7のまま、標準の15Rのボス HP は表に無くデータのまま、ボスの手下は HP・攻撃力の補正を受ける。既定は死地（`DEFAULT_DIFFICULTY`）。`RoundSpec.difficulty` がある時だけ補正（サンドボックスは未対応＝補正なし）
 
 - カゼマルS2の紙人形：1体だけ・前方優先・スキル終了で消える。攻撃力は本家トークンの比で約1.117倍
 - 傀儡師の入れ替わり時の HP は最大値（身替りになる時も本体に戻る時も）

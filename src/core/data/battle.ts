@@ -1,6 +1,7 @@
 import battledata from './battledata.json';
 import { Rng } from '../rng';
 import type { Star } from '../types';
+import type { Difficulty } from '../difficulty';
 
 // オートバトル用のデータ（本家データから scripts/extract_battle.py で抽出）
 
@@ -187,6 +188,8 @@ export interface RoundSpec {
   timeLimit: number;
   moveMultiplier: number;
   spawns: SpawnSpec[];
+  /** 難易度（敵の最大HP・攻撃力の補正）。省略時は補正なし */
+  difficulty?: Difficulty;
 }
 
 const DATA = battledata as unknown as {
@@ -273,8 +276,8 @@ export function groupLabel(g: RoundGroup): string {
  * ラウンドの敵の出現。group を渡すと、ステージの敵の枠をそのグループの敵に置き換える。
  * 省略時はステージファイルの敵のまま。
  */
-export function roundSpec(round: number, group?: RoundGroup | null): RoundSpec {
-  const base = ROUNDS[Math.min(Math.max(round, 1), ROUNDS.length) - 1];
+export function roundSpec(round: number, group?: RoundGroup | null, difficulty?: Difficulty): RoundSpec {
+  const base = difficulty ? { ...ROUNDS[Math.min(Math.max(round, 1), ROUNDS.length) - 1], difficulty } : ROUNDS[Math.min(Math.max(round, 1), ROUNDS.length) - 1];
   const entry = group ? groupEntry(group) : undefined;
   if (!entry) return base;
   const pick = (role: EnemyRole, i: number) => {

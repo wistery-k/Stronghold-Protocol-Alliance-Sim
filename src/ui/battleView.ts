@@ -21,7 +21,7 @@ import {
 import { ENEMIES, groupLabel, roundEnemySummary, type EnemySpec, type RoundGroup, type RoundSpec } from '../core/data/battle';
 import { getUnit, unitState } from '../core/data/units';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE } from '../core/rules';
-import { SKILL_RANGE_SHOWN, attackInterval, type BattleResult } from '../core/sim';
+import { SKILL_RANGE_SHOWN, attackInterval, scaledEnemy, type BattleResult } from '../core/sim';
 import type { Direction, OwnedUnit, Star } from '../core/types';
 import { makeDropTarget, starBadge, unitCard, type CardOptions } from './components';
 import { fmt, h, pct, s } from './dom';
@@ -194,7 +194,8 @@ function enemyBadges(e: EnemySpec) {
 
 /** ラウンドに出てくる敵の一覧 */
 export function roundInfo(spec: RoundSpec, timeLimit: number, group?: RoundGroup | null) {
-  const list = roundEnemySummary(spec);
+  // 難易度の補正を掛けた能力値で表示する
+  const list = roundEnemySummary(spec).map((x) => ({ ...x, enemy: spec.difficulty ? scaledEnemy(x.enemy, spec.round, spec.difficulty) : x.enemy }));
   const total = list.reduce((sum, x) => sum + x.count, 0);
   const bounties = new Map(spec.spawns.filter((s) => s.bounty).map((s) => [s.enemy, s.bounty!]));
   return h(
@@ -221,16 +222,16 @@ export function roundInfo(spec: RoundSpec, timeLimit: number, group?: RoundGroup
             { class: enemy.boss ? 'boss' : bounties.has(key) ? 'bounty' : '' },
             h('td', null, enemy.name, ' ', enemyBadges(enemy), bounties.has(key) ? h('span', { class: 'badge bounty', title: `懸賞：倒すと資金+${bounties.get(key)}（次のラウンドに支給）` }, `懸賞+${bounties.get(key)}`) : null),
             h('td', null, count),
-            h('td', null, enemy.hitsToKill ? '-' : fmt(enemy.boss ? enemy.hp : enemy.hp * ENEMY_HP_SCALE)),
+            h('td', null, enemy.hitsToKill ? '-' : fmt(spec.difficulty || enemy.boss ? enemy.hp : enemy.hp * ENEMY_HP_SCALE)),
             h('td', null, enemy.def),
             h('td', null, Math.min(100, enemy.res + (enemy.refract ?? 0))),
             h(
               'td',
               { title: enemy.attack ? `攻撃間隔 ${enemy.attack.interval}秒${enemy.attack.kind === 'ranged' ? `・射程 ${enemy.attack.range}マス` : ''}` : '攻撃しない' },
               enemy.attack
-                ? `${fmt(enemy.attack.atk * ENEMY_ATK_SCALE)}${enemy.attack.kind === 'ranged' ? '遠' : '近'}${enemy.attack.arts ? '術' : ''}`
+                ? `${fmt(spec.difficulty ? enemy.attack.atk : enemy.attack.atk * ENEMY_ATK_SCALE)}${enemy.attack.kind === 'ranged' ? '遠' : '近'}${enemy.attack.arts ? '術' : ''}`
                 : enemy.parasite
-                  ? `${fmt(enemy.parasite.atk * ENEMY_ATK_SCALE)}寄生術`
+                  ? `${fmt(spec.difficulty ? enemy.parasite.atk : enemy.parasite.atk * ENEMY_ATK_SCALE)}寄生術`
                   : '-',
             ),
           ),
