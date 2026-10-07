@@ -1,6 +1,7 @@
 import { bondKey, type BattleGlobals } from './alliance';
 import { BOARD_COLS, BOARD_ROWS, BOSS_CELLS, BOSS_CENTER, DIR_DELTA, ENEMY_PATHS, GOAL, PATH_TILES, canBlockAt, canPlace, cellPos, cellX, cellY, rangeCells, tileAt, DEFAULT_DIRECTION } from './board';
 import { ENEMIES, rangeGrid, unitRangeIds, type ElementType, type EnemySpec, type RoundSpec } from './data/battle';
+import { difficultyAtkFactor, difficultyBossHp, difficultyHpFactor, type Difficulty } from './difficulty';
 import { ENEMY_ATK_SCALE, ENEMY_HP_SCALE, ENEMY_SPEED_SCALE } from './rules';
 import { unitState } from './data/units';
 import { ALLIANCES } from './data/alliances';
@@ -572,6 +573,9 @@ export interface SimOptions {
   record?: boolean;
   /** 敵の移動速度の倍率（ステージごとの値） */
   moveMultiplier?: number;
+  /** 難易度とラウンド（召喚される敵の能力値補正用） */
+  difficulty?: Difficulty;
+  round?: number;
 }
 
 type EnemyInputSpec = Pick<EnemySpec, 'name' | 'hp' | 'def' | 'res' | 'speed' | 'blockCnt' | 'flying' | 'boss' | 'lifeReduce'> &
@@ -4138,7 +4142,7 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
       e.summonAt = t + sm.cooldown;
       const base = ENEMIES[sm.enemy];
       if (!base) continue;
-      const spec = { ...scaledEnemy(base), hp: Math.round(e.input.spec.hp * sm.hpRatio) || base.hp };
+      const spec = { ...scaledEnemy(base, opts.round, opts.difficulty), hp: Math.round(e.input.spec.hp * sm.hpRatio) || base.hp };
       const ne = newEnemy({ key: sm.enemy, spec, spawnAt: t, path: ENEMY_PATHS[0] ?? null }, enemies.length + 1);
       ne.spawned = true;
       ne.alive = true;
@@ -4868,11 +4872,22 @@ function runEngine(units: SimUnitInput[], enemyInputs: EnemyInput[], timeLimit: 
 // マップ戦闘
 // ------------------------------------------------------------
 
-/** 敵の能力値に調整を掛ける。ボスと「攻撃回数で倒す敵」の HP は本家のまま */
-export function scaledEnemy(enemy: EnemySpec): EnemySpec {
+/**
+ * 敵の能力値に調整を掛ける。ボスと「攻撃回数で倒す敵」の HP は本家のまま。
+ * 難易度があれば、ラウンドごとの最大HP・攻撃力の補正を掛ける。ボス本体はHPが難易度ごとの値になり、攻撃力補正だけ受ける
+ */
+export function scaledEnemy(enemy: EnemySpec, round?: number, difficulty?: Difficulty): EnemySpec {
+  const dHp = difficulty && round ? difficultyHpFactor(difficulty, round) : 1;
+  const dAtk = difficulty && round ? difficultyAtkFactor(difficulty, round) : 1;
+  const mainBoss = enemy.boss && !enemy.minionOf;
   const hpScale = enemy.boss || enemy.hitsToKill ? 1 : ENEMY_HP_SCALE;
-  const attack = enemy.attack ? { ...enemy.attack, atk: enemy.attack.atk * ENEMY_ATK_SCALE } : undefined;
-  return { ...enemy, hp: Math.max(1, Math.round(enemy.hp * hpScale)), speed: enemy.speed * ENEMY_SPEED_SCALE, attack };
+  const atkScale = ENEMY_ATK_SCALE * dAtk;
+  const attack = enemy.attack ? { ...enemy.attack, atk: enemy.attack.atk * atkScale } : undefined;
+  const parasite = enemy.parasite ? { ...enemy.parasite, atk: enemy.parasite.atk * dAtk } : undefined;
+  let hp = enemy.hp * hpScale;
+  if (mainBoss) hp = (difficulty && round && difficultyBossHp(difficulty, round)) || enemy.hp;
+  else if (!enemy.hitsToKill) hp *= dHp;
+  return { ...enemy, hp: Math.max(1, Math.round(hp)), speed: enemy.speed * ENEMY_SPEED_SCALE, attack, ...(parasite ? { parasite } : {}) };
 }
 
 /** 経由点 [列, 行] を1マスずつのマス番号の列にする（斜めの区間は斜めに1マスずつ進む） */
@@ -4898,9 +4913,9 @@ export function roundEnemies(spec: RoundSpec): EnemyInput[] {
     if (!enemy) continue;
     // 飛行の敵は本家の飛行経路（経由点）を通る
     const path = s.route && enemy.flying ? routeCells(s.route) : ENEMY_PATHS[s.spawn % ENEMY_PATHS.length];
-    const scaled = scaledEnemy(enemy);
+    const scaled = scaledEnemy(enemy, spec.round, spec.difficulty);
     const ds = enemy.deadSpawn;
-    const child = ds && ENEMIES[ds.enemy] ? { key: ds.enemy, spec: scaledEnemy(ENEMIES[ds.enemy]), count: ds.count } : undefined;
+    const child = ds && ENEMIES[ds.enemy] ? { key: ds.enemy, spec: scaledEnemy(ENEMIES[ds.enemy], spec.round, spec.difficulty), count: ds.count } : undefined;
     for (let i = 0; i < s.count; i++) out.push({ key: s.enemy, spec: scaled, child, spawnAt: s.delay + i * s.interval, path, bounty: s.bounty });
   }
   return out;
@@ -4936,7 +4951,7 @@ export function simulateBattle(units: SimUnitInput[], spec: RoundSpec, opts: Sim
     inputs,
     limit,
     true,
-    { ...opts, moveMultiplier: spec.moveMultiplier },
+    { ...opts, moveMultiplier: spec.moveMultiplier, round: spec.round, difficulty: spec.difficulty },
   );
   // 冑（大型のボス）を倒すとその時点で戦闘終了。残っている敵（未出現を含む）は消え、突破に数えない
   const vanished = (e: (typeof r.enemies)[number]) => r.bossDefeated && !e.leaked && (e.alive || !e.spawned);

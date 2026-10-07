@@ -1,3 +1,4 @@
+import { DEFAULT_DIFFICULTY, type Difficulty } from './core/difficulty';
 import { applyAction, createGame, rollBans, type Action, type GameState } from './core/game';
 import { Rng } from './core/rng';
 import type { AllianceId } from './core/types';
@@ -22,6 +23,8 @@ const app = {
   pendingSeed: Math.floor(Math.random() * 2 ** 31),
   /** 戦術選択画面で再抽選した盟約BAN（null ならシードで決まるBAN） */
   pendingBanned: null as AllianceId[] | null,
+  /** 戦術選択画面で選んだ難易度 */
+  pendingDifficulty: DEFAULT_DIFFICULTY as Difficulty,
   /** 遊べるゲームがある（戦術選択をキャンセルできる） */
   hasGame: !!saved,
   sandbox: createSandbox(),
@@ -75,7 +78,7 @@ function newGame() {
 }
 
 function startGame(band: BandId) {
-  app.game = createGame(app.pendingSeed, { band, banned: app.pendingBanned ?? undefined });
+  app.game = createGame(app.pendingSeed, { band, banned: app.pendingBanned ?? undefined, difficulty: app.pendingDifficulty });
   app.choosingBand = false;
   app.hasGame = true;
   app.selectedUid = null;
@@ -98,6 +101,11 @@ function render() {
           () => {
             // 盟約BANだけを引き直す（マップ・敵・ショップのシードはそのまま）
             app.pendingBanned = rollBans(new Rng(Math.floor(Math.random() * 2 ** 31)));
+            render();
+          },
+          app.pendingDifficulty,
+          (d) => {
+            app.pendingDifficulty = d;
             render();
           },
         )

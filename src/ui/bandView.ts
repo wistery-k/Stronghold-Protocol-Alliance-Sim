@@ -1,6 +1,7 @@
 import { BANDS, type BandId } from '../core/data/bands';
 import { ALLIANCES, CORE_IDS } from '../core/data/alliances';
 import type { AllianceId } from '../core/types';
+import { DIFFICULTIES, DIFFICULTY_LABEL, type Difficulty } from '../core/difficulty';
 import { h } from './dom';
 
 // ゲーム開始時の戦術選択
@@ -35,6 +36,8 @@ export function bandView(
   banned: AllianceId[] = [],
   mapName = '',
   onReroll: (() => void) | null = null,
+  difficulty: Difficulty = 'deadly',
+  onDifficulty: ((d: Difficulty) => void) | null = null,
 ): HTMLElement {
   const random = () => {
     const pool = BANDS.filter((b) => b.impl !== 'none');
@@ -58,6 +61,19 @@ export function bandView(
           onCancel ? h('button', { class: 'btn ghost', onclick: onCancel }, 'キャンセル') : null,
         ),
       ),
+      onDifficulty
+        ? h(
+            'div',
+            { class: 'band-ban' },
+            h(
+              'div',
+              { class: 'ban-row' },
+              h('b', null, '難易度'),
+              DIFFICULTIES.map((d) => h('button', { class: `btn small${d === difficulty ? ' on' : ''}`, onclick: () => onDifficulty(d) }, DIFFICULTY_LABEL[d])),
+            ),
+            h('span', { class: 'muted small' }, 'ラウンドが進むほど敵の最大HP・攻撃力が上がります（ボスは難易度ごとのHP）'),
+          )
+        : null,
       banPanel(banned, mapName, onReroll),
       h(
         'div',
