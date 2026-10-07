@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ENEMY_PATHS, GOAL, MAPS, cellPos, cellX, cellY, RANDOM_MAPS, SPAWNS, canPlace, setActiveMap, tileAt } from '../src/core/board';
 import { ENEMIES, ENEMY_GROUPS, ROUNDS, pickRoundGroup, roundSpec, unitRangeIds, type EnemySpec, type RoundSpec } from '../src/core/data/battle';
 import { UNITS } from '../src/core/data/units';
-import { autoDeviceDir, pruneDevices, placeDevice, removeDevice, validDevices } from '../src/core/device';
+import { autoDeviceDir, autoPlaceAfterPlacing, pruneDevices, placeDevice, removeDevice, validDevices } from '../src/core/device';
 import { buildSimInputs, createGame, roundGroupOf } from '../src/core/game';
 import { roundEnemies, routeCells, simulateBattle } from '../src/core/sim';
 import type { OwnedUnit } from '../src/core/types';
@@ -2109,5 +2109,30 @@ describe('キャサリンの支援装置', () => {
     expect(r.perUnit.find((u) => u.uid === 2)!.barrier > 0).toBe(true);
     const none = runWith(mk(), spec);
     expect(none.perUnit.find((u) => u.uid === 2)!.barrier).toBe(0);
+  });
+});
+
+describe('キャサリンの支援装置の自動配置', () => {
+  const cat = UNITS.find((u) => u.name === 'キャサリン')!;
+  const tank = UNITS.find((u) => u.profession === 'defender' && u.tier <= 3)!;
+  it('キャサリンを配置すると、敵をブロックする味方から順に、隣の空きマス（敵が通らないマス優先）へ支援先を向けて自動で置く。後から味方を置いても、装置が無ければ置かれる', () => {
+    setActiveMap('legacy');
+    const t1 = { uid: 1, defId: tank.id, star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit;
+    const c = { uid: 2, defId: cat.id, star: 1, pos: 23, dir: 'right', items: [] } as OwnedUnit;
+    const board = [t1, c];
+    autoPlaceAfterPlacing(board, c);
+    expect(c.devices).toEqual([{ pos: 22, dir: 'down' }]);
+    // 後から置いた味方にも（装置に空きがあれば）
+    const t2 = { uid: 3, defId: tank.id, star: 1, pos: 29, dir: 'right', items: [] } as OwnedUnit;
+    board.push(t2);
+    autoPlaceAfterPlacing(board, t2);
+    expect(c.devices!.length).toBe(1); // すでに装置があるので増やさない
+    removeDevice(c, 22);
+    autoPlaceAfterPlacing(board, t2);
+    expect(validDevices(board, c).length).toBe(2);
+    // 装置を置いていれば戦闘にも反映される
+    const spec = oneEnemy('autoDev', false, { def: 0, res: 0 });
+    const r = run(board, spec);
+    expect(r.frames![0].dv!.length).toBe(2);
   });
 });

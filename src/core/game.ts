@@ -74,7 +74,7 @@ import {
   shopSlots,
 } from './rules';
 import { DEFAULT_DIFFICULTY, type Difficulty } from './difficulty';
-import { pruneDevices, placeDevice, removeDevice, turnDevice, validDevices, isDeviceHolder } from './device';
+import { autoPlaceAfterPlacing, pruneDevices, placeDevice, removeDevice, turnDevice, validDevices, isDeviceHolder } from './device';
 import { simulateBattle, type BattleResult } from './sim';
 import { isItemEntry, isUnitEntry, type AllianceId, type BenchEntry, type Direction, type OwnedItem, type OwnedUnit, type Star } from './types';
 
@@ -459,6 +459,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       f.unit.dir = bestDirection(pos, f.unit.defId, f.unit.star);
       state.board.push(f.unit);
       pruneDevices(state.board);
+      autoPlaceAfterPlacing(state.board, f.unit);
       return { state };
     }
     case 'undeploy': {
@@ -476,11 +477,13 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
     case 'move': {
       const f = findOwned(state, action.uid);
       if (!f) return fail('ユニットが見つかりません');
+      const before = new Set(state.board);
       const err = moveUnit(state, f, action.to);
       if (err) return fail(err);
       if (state.board.length > deployCapOf(state)) return fail('配置上限に達しています');
       if (f.unit.pos === undefined) delete f.unit.devices;
       pruneDevices(state.board);
+      for (const o of state.board) if (!before.has(o)) autoPlaceAfterPlacing(state.board, o);
       return { state };
     }
     case 'choose': {

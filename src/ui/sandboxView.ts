@@ -8,7 +8,7 @@ import { battleTimeLimit, simulateBattle, type BattleResult } from '../core/sim'
 import type { AllianceId, OwnedUnit, Star } from '../core/types';
 import { alliancePanel, unitCard } from './components';
 import { MAPS, RANDOM_MAPS, autoCell, bestDirection, canPlace, setActiveMap } from '../core/board';
-import { placeDevice, pruneDevices, turnDevice } from '../core/device';
+import { autoPlaceAfterPlacing, placeDevice, pruneDevices, turnDevice } from '../core/device';
 import { battleSummary, mapGrid, predictionLine, roundInfo } from './battleView';
 import { h } from './dom';
 
@@ -155,7 +155,9 @@ export function sandboxView(sb: SandboxState, rawUpdate: (f: (s: SandboxState) =
                         if (s.units.length >= SANDBOX_MAX_UNITS) return;
                         const cell = autoCell(s.units, u.id, 1);
                         if (!cell) return;
-                        s.units.push({ uid: s.nextUid++, defId: u.id, star: 1, pos: cell.pos, dir: cell.dir });
+                        const added = { uid: s.nextUid++, defId: u.id, star: 1, pos: cell.pos, dir: cell.dir } as OwnedUnit;
+                        s.units.push(added);
+                        autoPlaceAfterPlacing(s.units, added);
                       }),
                   }),
                 ),

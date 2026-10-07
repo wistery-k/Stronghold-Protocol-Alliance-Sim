@@ -85,7 +85,7 @@ python3 scripts/extract_battle.py   <ArknightsGameData> <ArknightsGameData_YoSta
 
 - ダブリン追炎戦士・従兵：倒れた後の残火・灰燼（復活待ち）をステルスに（`EnemySpec.revive.stealth`、`sim.ts` の `isStealthed`）。復活は何度でも（仮想敵：再生も。ユーザー確認済み）。残火は元の敵と同じ速さで進みブロックされ（倒れた時のブロックを引き継ぐ）、「狙われやすい」（`REMNANT_TAUNT`・`enemyTaunt`。ユーザーの指定）。仮想敵：再生の再生状態も進むがブロックされない（ユーザーの指定）。戦闘の制限時間に復活待ちの時間を足す（`battleTimeLimit`）。「燃える葦の群生」の効果は葦の群生がこのモードに無いので未使用
 
-- キャサリンの支援装置：準備フェーズにプレイヤーが置く（`OwnedUnit.devices`、ロジックは `src/core/device.ts`、操作は `placeDevice`／`turnDevice`／`removeDevice` アクション、マップ上の枠と装置は `battleView.ts` の `mapGrid` の `devices`）。戦闘は `SimUnitInput.devices` を受け取り（`sim.ts` の `placeDevices`・`tickDevices`・`CATHY_*`）、リプレイはコマの `dv`＝[マス, 向き, 支援先uid]（`drawDevices`）。装置が敵の進行を妨げない・攻撃を受けないのは仮
+- キャサリンの支援装置：配置時に自動で置かれ（`autoPlaceDevices`・`autoPlaceAfterPlacing`。支援先は敵をブロックする味方・最大HP順）、準備フェーズにプレイヤーが置き直せる（`OwnedUnit.devices`、ロジックは `src/core/device.ts`、操作は `placeDevice`／`turnDevice`／`removeDevice` アクション、マップ上の枠と装置は `battleView.ts` の `mapGrid` の `devices`）。戦闘は `SimUnitInput.devices` を受け取り（`sim.ts` の `placeDevices`・`tickDevices`・`CATHY_*`）、リプレイはコマの `dv`＝[マス, 向き, 支援先uid]（`drawDevices`）。装置が敵の進行を妨げない・攻撃を受けないのは仮
 
 ## 仮の値・未確認の点（ユーザーに伝え済み）
 
