@@ -44,6 +44,7 @@ import { miraProb } from './data/alliances';
 import { allOwned, benchOverflow, canReceive, compactBench, gainUnit, putOnBench, withRng } from './acquire';
 import {
   ITEM_SELL_PRICE,
+  onSellItem,
   gainItem,
   equipItem,
   itemBattleEnd,
@@ -430,6 +431,7 @@ function applyActionInner(prev: GameState, action: Action): ActionResult {
       state.bench[idx] = null;
       state.gold += ITEM_SELL_PRICE;
       state.log.push(`${itemState(getItem(it.itemId), it.star).name} を売却（+${ITEM_SELL_PRICE}）`);
+      onSellItem(state, it);
       return { state };
     }
     case 'moveItem': {

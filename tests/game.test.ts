@@ -360,6 +360,22 @@ describe('装備', () => {
     expect(items[0].star).toBe(2);
   });
 
+  it('装備の売却価格は0。貯金箱・盟約のコインは売却でも資金を得る効果が発動する', () => {
+    let s = withItemShop(createGame(1), '1_01');
+    s = applyAction({ ...s, itemShop: '1_01', gold: 100 }, { type: 'buyItem' }).state;
+    let gold = s.gold;
+    s = applyAction(s, { type: 'sellItem', uid: benchItems(s)[0].uid }).state;
+    expect(s.gold).toBe(gold);
+    s = applyAction({ ...s, itemShop: '1_03', gold: 100 }, { type: 'buyItem' }).state;
+    gold = s.gold;
+    s = applyAction(s, { type: 'sellItem', uid: benchItems(s)[0].uid }).state;
+    expect(s.gold).toBe(gold + 1);
+    s = applyAction({ ...s, itemShop: '3_12', gold: 100 }, { type: 'buyItem' }).state;
+    gold = s.gold;
+    s = applyAction(s, { type: 'sellItem', uid: benchItems(s)[0].uid }).state;
+    expect(s.gold >= gold + 1 && s.gold <= gold + 6).toBe(true);
+  });
+
   it('装備は控えに入り、1人2つまで、売却すると控えに戻る', () => {
     let s = withShop(createGame(1), ['インサイダー']);
     s = applyAction(s, { type: 'buy', slot: 0 }).state;
