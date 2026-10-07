@@ -4,12 +4,12 @@ import { BENCH_SIZE } from './rules';
 import { isDeviceEntry, type BenchEntry, type Direction, type OwnedDevice, type OwnedUnit } from './types';
 
 // キャサリンの支援装置：オペレーターと同じように、場・控えへ置き、ドラッグで動かし、辺のクリックで向きを変える。
-// キャサリンを場に置くと3個獲得し（場に出せるのは同時に2個まで）、キャサリンが場を離れると消える。売却はできない
+// キャサリンを場に置くと2個獲得し（本家は3個だが、このモードでは3個目を置けないので2個）、キャサリンが場を離れると消える。売却はできない
 
 /** キャサリン1人につき同時に置ける数 */
 export const DEVICE_MAX = 2;
 /** キャサリン1人を場に置いた時に獲得する数 */
-export const DEVICES_PER_CATHY = 3;
+export const DEVICES_PER_CATHY = 2;
 const CATHY_CHAR_ID = 'char_4162_cathy';
 
 export interface Device {
@@ -109,7 +109,7 @@ export function deviceSpot(board: OwnedUnit[], devices: OwnedDevice[]): Device |
 
 /**
  * キャサリンが場にいる数に合わせて装置を増減する（盤面が変わるたびに呼ぶ）。
- * 1人につき3個：新しく増える分は、場に出せる数（1人2個）に空きがあれば自動で場に、なければ控えに置く（控えに空きが無ければ作らない）。
+ * 1人につき2個：新しく増える分は、場に出せる数（1人2個）に空きがあれば自動で場に、なければ控えに置く（控えに空きが無ければ作らない）。
  * キャサリンが減ったら、控えの装置から先に消す。すでにある装置の位置は動かさない
  */
 export function syncDevices(host: DeviceHost): void {

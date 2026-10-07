@@ -321,7 +321,7 @@ function prepView(p: GameViewProps): HTMLElement {
           { class: 'unit-detail' },
           h('b', null, '支援装置（キャサリン）'),
           h('p', { class: 'small' }, '前方1マスのオペレーター1名に、キャサリンの最大HP20%のバリアを付与し、5秒間攻撃を受けていなければ1秒ごとに6%を補充します（キャサリンのスキル中は常に補充）。'),
-          h('p', { class: 'muted small' }, 'キャサリン1人につき、場に置くと3個獲得し、同時に置けるのは2個までです。キャサリンが場を離れると消えます。売却はできません。ドラッグで移動、辺のクリックで向きを変更、控えにも置けます。'),
+          h('p', { class: 'muted small' }, 'キャサリン1人につき、場に置くと2個獲得します。キャサリンが場を離れると消えます。売却はできません。ドラッグで移動、辺のクリックで向きを変更、控えにも置けます。'),
         ),
         isSel
           ? h('div', { class: 'row' }, shownDevice.where === 'bench' ? h('button', { class: 'btn primary', onclick: () => dispatch({ type: 'deploy', uid: shownDevice.device.uid }) }, '配置する') : h('button', { class: 'btn', onclick: () => dispatch({ type: 'undeploy', uid: shownDevice.device.uid }) }, '控えに戻す'))

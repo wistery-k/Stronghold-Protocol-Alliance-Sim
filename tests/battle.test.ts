@@ -2072,26 +2072,25 @@ describe('キャサリンの支援装置', () => {
   };
   const dev = (uid: number, pos: number, dir: OwnedDevice['dir']): OwnedDevice => ({ uid, device: true, pos, dir });
 
-  it('キャサリンを場に置くと3個獲得し、2個が自動で場（支援先は敵をブロックする味方）、1個が控えに置かれる。場を離れると消える', () => {
+  it('キャサリンを場に置くと2個獲得し、自動で場（支援先は敵をブロックする味方）に置かれる。場を離れると消える', () => {
     let s = createGame(1);
     setActiveMap('legacy');
     s = { ...s, mapId: 'legacy', board: [{ uid: 900, defId: tank.id, star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit], bench: [{ uid: 901, defId: cat.id, star: 1, items: [] } as OwnedUnit, ...s.bench.slice(1)], devices: [], nextUid: 1000 };
     s = applyAction(s, { type: 'deploy', uid: 901, pos: 23 }).state;
     expect(s.devices.length).toBe(2);
     expect(s.devices[0]).toMatchObject({ pos: 22, dir: 'down' });
-    expect(s.bench.filter((b) => b && 'device' in b).length).toBe(1);
+    expect(s.bench.filter((b) => b && 'device' in b).length).toBe(0);
     // 控えに戻すと全部消える
     s = applyAction(s, { type: 'undeploy', uid: 901 }).state;
     expect(s.devices.length).toBe(0);
     expect(s.bench.filter((b) => b && 'device' in b).length).toBe(0);
   });
-  it('装置はオペレーターと同じ操作（移動・回転・控えとの行き来）で扱え、売却はできない。場に出せるのは1人につき2個まで', () => {
+  it('装置はオペレーターと同じ操作（移動・回転・控えとの行き来）で扱え、売却はできない。場に出せるのは1人につき2個まで（控えの装置は場に空きがある時だけ出せる）', () => {
     let s = createGame(1);
     setActiveMap('legacy');
     s = { ...s, mapId: 'legacy', board: [{ uid: 900, defId: tank.id, star: 1, pos: 31, dir: 'right', items: [] } as OwnedUnit], bench: [{ uid: 901, defId: cat.id, star: 1, items: [] } as OwnedUnit, ...s.bench.slice(1)], devices: [], nextUid: 1000 };
     s = applyAction(s, { type: 'deploy', uid: 901, pos: 23 }).state;
     const [d1, d2] = s.devices;
-    const benchDev = s.bench.find((b) => b && 'device' in b)!;
     // 回転
     s = applyAction(s, { type: 'turn', uid: d1.uid, dir: 'left' }).state;
     expect(s.devices[0].dir).toBe('left');
@@ -2104,12 +2103,19 @@ describe('キャサリンの支援装置', () => {
     // オペレーターのいるマス・高台には置けない
     expect(applyAction(s, { type: 'move', uid: d1.uid, to: { zone: 'board', pos: 31 } }).error).toBeDefined();
     expect(applyAction(s, { type: 'move', uid: d1.uid, to: { zone: 'board', pos: 5 } }).error).toBeDefined();
-    // 3個目は場に出せない。控えに戻せば出せる
-    expect(applyAction(s, { type: 'deploy', uid: benchDev.uid, pos: 29 }).error).toBeDefined();
+    // 控えに戻して、また場へ（場に2個ある間は、控えの装置は出せない）
     s = applyAction(s, { type: 'undeploy', uid: d1.uid }).state;
     expect(s.devices.length).toBe(1);
-    s = applyAction(s, { type: 'deploy', uid: benchDev.uid, pos: 29 }).state;
+    s = applyAction(s, { type: 'undeploy', uid: d2.uid }).state;
+    s = applyAction(s, { type: 'deploy', uid: d1.uid, pos: 29 }).state;
+    s = applyAction(s, { type: 'deploy', uid: d2.uid, pos: 22 }).state;
     expect(s.devices.length).toBe(2);
+    s = applyAction(s, { type: 'undeploy', uid: d2.uid }).state;
+    s = applyAction(s, { type: 'move', uid: d1.uid, to: { zone: 'bench', index: 8 } }).state;
+    s = applyAction(s, { type: 'deploy', uid: d1.uid, pos: 29 }).state;
+    s = applyAction(s, { type: 'deploy', uid: d2.uid, pos: 22 }).state;
+    expect(s.devices.length).toBe(2);
+    expect(applyAction(s, { type: 'undeploy', uid: d1.uid }).state.devices.length).toBe(1);
     // 売却できない
     expect(applyAction(s, { type: 'sell', uid: d1.uid }).error).toContain('売却');
     expect(applyAction(s, { type: 'sell', uid: s.devices[0].uid }).error).toContain('売却');
